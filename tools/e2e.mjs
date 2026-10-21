@@ -1,5 +1,6 @@
 // 皇后 Queens · 端到端回归测试
 // 用法: NODE_PATH=... node tools/e2e.mjs [url]
+// 配套: node tools/check-diffpick.mjs（目标难度出题 / 尺寸锁定 / 加载遮罩，45 项）
 import { createRequire } from 'node:module';
 import { mkdirSync } from 'node:fs';
 const require = createRequire('C:/Users/CJL/.workbuddy/binaries/node/workspace/');

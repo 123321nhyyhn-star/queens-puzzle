@@ -52,6 +52,7 @@
   th{font:600 12px/1.3 var(--mono);color:var(--mute);letter-spacing:.04em;border-bottom:2px solid var(--ink);white-space:nowrap}
   td.c,th.c{text-align:center}
   td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+  .t-c th,.t-c td{text-align:center}
   tr.hi td{background:#FFF8E1}
   .tag{display:inline-block;font:600 11px/1 var(--mono);padding:4px 7px;border-radius:6px;border:1px solid var(--ink);background:#fff;white-space:nowrap}
   .tag.g{background:#DFF5E8;border-color:#1E7A4C}
@@ -99,6 +100,10 @@
     font-style:normal;background:var(--accent-soft);border-radius:4px;
     padding:0 3px;box-shadow:inset 0 -2px 0 rgba(255,217,61,.75);
   }
+  .tk{
+    font:600 .84em/1.4 var(--mono);font-style:normal;color:#6B5B4A;
+    background:#EFE2CE;border-radius:4px;padding:1px 4px;white-space:nowrap;
+  }
   .lb{font:600 11px/1 var(--mono);border:1px solid var(--hair);border-radius:99px;padding:3px 7px;color:var(--mute);white-space:nowrap}
   .lb.g{color:#1E7A4C;border-color:#9BD2B0;background:#F2FBF6}
   .lb.r{color:#B33;border-color:#E9B4B4;background:#FFF4F4}
@@ -130,7 +135,9 @@
   .fl{
     display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start;
   }
-  .fl > *{flex:0 0 auto}
+  .fl > .phone{flex:0 0 auto}
+  .fl > .panel{flex:0 1 420px;min-width:0}
+  .fl > .txtcol{flex:1 1 280px;min-width:0}
 
   .panel{
     background:#fff;border:2px solid var(--ink);border-radius:14px;
@@ -198,8 +205,8 @@
       </div>
       <div class="bar"></div>
       <div class="measure" style="margin-top:8px">
-        360px 宽手机 · 提示条可用 <b>264px</b><br>
-        字号 11.5px · 约 <b>22 个汉字</b> · 320px 窄机只剩 <b>19 个</b>
+        360px 手机 · 可用 <b>264px</b> · 11.5px<br>
+        约 <b>22 字</b>（320px 窄机只剩 19 字）
       </div>
     </div>
     <div style="flex:1 1 300px;min-width:260px">
@@ -207,14 +214,14 @@
         <code>index.html</code> 里 <code>.hint</code> 是固定 18px 高、<code>font-size:11.5px</code>，
         右边还挂着一个难度胶囊。用无头 Chrome 实测的真实可用宽度：
       </p>
-      <table style="margin:6px 0 10px">
+      <table class="t-c" style="margin:6px 0 10px">
         <tr><th>屏宽</th><th class="c">提示条宽</th><th class="c">字号</th><th class="c">能放几个汉字</th></tr>
         <tr><td class="num">320</td><td class="num">224px</td><td class="num">11.5px</td><td class="num">19</td></tr>
         <tr class="hi"><td class="num">360</td><td class="num">264px</td><td class="num">11.5px</td><td class="num">22</td></tr>
         <tr><td class="num">390</td><td class="num">294px</td><td class="num">11.5px</td><td class="num">25</td></tr>
         <tr><td class="num">430</td><td class="num">326px</td><td class="num">12.5px</td><td class="num">26</td></tr>
       </table>
-      <p><b>所以规矩是：一行版 ≤ 20 字。</b>20 字在 320px 的老机型上刚好占满，
+      <p><b>所以规矩是：一行版 ≤ 20 字。</b>20 字正好卡在 320px 老机型的临界线上，
       再长一点 <code>.hint</code> 就会换行——而它是固定 18px 高的，一换行会把下面的棋盘挤矮。</p>
       <p class="note" style="margin-bottom:0">
         数字比汉字便宜：一个汉字 11.5px，一个数字只有 7px。所以
@@ -286,7 +293,7 @@
 
 <section class="rule" id="h1">
   <div class="rule-h"><span class="hid">H1</span><span class="lv l1">L1</span><span class="rule-t">色块只剩一格</span></div>
-  <p class="pre"><b>什么时候能用</b>{G} 号色块还没放皇后，它上面只剩第 {R} 行第 {C} 列这一格没被排除。</p>
+  <p class="pre"><b>什么时候能用</b><i class="tk">{G}</i> 号色块还没放皇后，它上面只剩第 <i class="tk">{R}</i> 行第 <i class="tk">{C}</i> 列这一格没被排除。</p>
   <div class="say"><span class="lab">一行版</span><span class="txt"><i class="ph">{G}</i>号色块只剩一格：第<i class="ph">{R}</i>行第<i class="ph">{C}</i>列</span></div>
   <div class="say long"><span class="lab">展开版</span><span class="txt"><i class="ph">{G}</i> 号色块一共 <i class="ph">{m}</i> 格，现在只有第 <i class="ph">{R}</i> 行第 <i class="ph">{C}</i> 列这一格还没被排除。这个色块必须放一只皇后，所以只能放这里。</span></div>
   <div class="eg">
@@ -299,7 +306,7 @@
 
 <section class="rule" id="h1a">
   <div class="rule-h"><span class="hid">H1a</span><span class="lv l1">L1</span><span class="rule-t">色块整块就一格（H1 的特例）</span></div>
-  <p class="pre"><b>什么时候能用</b>{G} 号色块本身就只有一个格子（生成器会给出一格色块，实测 8×8 里很常见）。</p>
+  <p class="pre"><b>什么时候能用</b><i class="tk">{G}</i> 号色块本身就只有一个格子（生成器会给出一格色块，实测 8×8 里很常见）。</p>
   <div class="say"><span class="lab">一行版</span><span class="txt"><i class="ph">{G}</i>号色块整块就一格，直接放皇后</span></div>
   <div class="say long"><span class="lab">展开版</span><span class="txt"><i class="ph">{G}</i> 号色块整块只有第 <i class="ph">{R}</i> 行第 <i class="ph">{C}</i> 列这一格，没得挑——直接放皇后。</span></div>
   <div class="eg">
@@ -311,7 +318,7 @@
 
 <section class="rule" id="h2">
   <div class="rule-h"><span class="hid">H2</span><span class="lv l1">L1</span><span class="rule-t">行只剩一格</span></div>
-  <p class="pre"><b>什么时候能用</b>第 {R} 行还没放皇后，且只剩第 {C} 列这一格没被排除。</p>
+  <p class="pre"><b>什么时候能用</b>第 <i class="tk">{R}</i> 行还没放皇后，且只剩第 <i class="tk">{C}</i> 列这一格没被排除。</p>
   <div class="say"><span class="lab">一行版</span><span class="txt">第<i class="ph">{R}</i>行只剩一格：第<i class="ph">{C}</i>列</span></div>
   <div class="say long"><span class="lab">展开版</span><span class="txt">第 <i class="ph">{R}</i> 行其它 <i class="ph">{n-1}</i> 格都被排除了，只剩第 <i class="ph">{C}</i> 列这一格。每一行都要有一只皇后，所以只能是它。</span></div>
   <div class="eg">
@@ -323,7 +330,7 @@
 
 <section class="rule" id="h3">
   <div class="rule-h"><span class="hid">H3</span><span class="lv l1">L1</span><span class="rule-t">列只剩一格</span></div>
-  <p class="pre"><b>什么时候能用</b>第 {C} 列还没放皇后，且只剩第 {R} 行这一格没被排除。</p>
+  <p class="pre"><b>什么时候能用</b>第 <i class="tk">{C}</i> 列还没放皇后，且只剩第 <i class="tk">{R}</i> 行这一格没被排除。</p>
   <div class="say"><span class="lab">一行版</span><span class="txt">第<i class="ph">{C}</i>列只剩一格：第<i class="ph">{R}</i>行</span></div>
   <div class="say long"><span class="lab">展开版</span><span class="txt">第 <i class="ph">{C}</i> 列其它 <i class="ph">{n-1}</i> 格都被排除了，只剩第 <i class="ph">{R}</i> 行这一格。每一列都要有一只皇后，所以只能是它。</span></div>
   <div class="eg">
@@ -359,7 +366,7 @@
 <div class="card tight">
   <p style="margin-top:0"><b>为什么成立（讲解版，可用于首次教学）</b></p>
   <p style="margin-bottom:0">
-    {G1}、{G2} 这两个色块，还活着的格子全在第 {R1}、{R2} 这两行里。两个色块各要放一只皇后，
+    <i class="tk">{G1}</i>、<i class="tk">{G2}</i> 这两个色块，还活着的格子全在第 <i class="tk">{R1}</i>、<i class="tk">{R2}</i> 这两行里。两个色块各要放一只皇后，
     一共两只；而它们只能待在这两行——<b>一行又只放得下一只</b>。两只皇后、两行、每行一只，正好塞满。
     既然这两行的位置已经被它们俩用掉了，别的色块就别想在这两行放皇后了。
   </p>
@@ -373,7 +380,7 @@
 
 <section class="rule" id="h4">
   <div class="rule-h"><span class="hid">H4</span><span class="lv l2">L2 · k=1</span><span class="rule-t">一个色块挤进一行</span></div>
-  <p class="pre"><b>什么时候能用</b>{G} 号色块还活着的 {a} 格，全都在第 {R} 行里。</p>
+  <p class="pre"><b>什么时候能用</b><i class="tk">{G}</i> 号色块还活着的 <i class="tk">{a}</i> 格，全都在第 <i class="tk">{R}</i> 行里。</p>
   <div class="say"><span class="lab">一行版</span><span class="txt">第<i class="ph">{R}</i>行只能是<i class="ph">{G}</i>号，别家划掉</span></div>
   <div class="say long"><span class="lab">展开版</span><span class="txt"><i class="ph">{G}</i> 号色块还活着的 <i class="ph">{a}</i> 格全都在第 <i class="ph">{R}</i> 行。它必须放一只皇后，而这只皇后只能落在第 <i class="ph">{R}</i> 行——所以第 <i class="ph">{R}</i> 行的皇后就是 <i class="ph">{G}</i> 号色块的，这一行里其它色块的 <i class="ph">{c}</i> 格都可以划掉。</span></div>
   <div class="eg">
@@ -386,7 +393,7 @@
 
 <section class="rule" id="h5">
   <div class="rule-h"><span class="hid">H5</span><span class="lv l2">L2 · k=2</span><span class="rule-t">两个色块挤进两行</span></div>
-  <p class="pre"><b>什么时候能用</b>{G1}、{G2} 两个色块活着的格子，合起来只落在第 {R1}、{R2} 两行里（共 {a1}+{a2} 格）。</p>
+  <p class="pre"><b>什么时候能用</b><i class="tk">{G1}</i>、<i class="tk">{G2}</i> 两个色块活着的格子，合起来只落在第 <i class="tk">{R1}</i>、<i class="tk">{R2}</i> 两行里（共 <i class="tk">{a1}</i>+<i class="tk">{a2}</i> 格）。</p>
   <div class="say"><span class="lab">一行版</span><span class="txt">第<i class="ph">{R1}</i>、<i class="ph">{R2}</i>行只能是<i class="ph">{G1}</i>、<i class="ph">{G2}</i>号，别家划掉</span></div>
   <div class="say long"><span class="lab">展开版</span><span class="txt"><i class="ph">{G1}</i>、<i class="ph">{G2}</i> 号色块还活着的格子，全都落在第 <i class="ph">{R1}</i>、<i class="ph">{R2}</i> 这两行里。两个色块各要放一只皇后，一共两只，而它们只能待在这两行；一行又只放得下一只——所以这两行的皇后正好被它们俩占满，第 <i class="ph">{R1}</i>、<i class="ph">{R2}</i> 行里其它色块的 <i class="ph">{c}</i> 格都可以划掉。</span></div>
   <div class="eg">
@@ -464,7 +471,7 @@
 <div class="card tight">
   <p style="margin-top:0"><b>为什么成立（讲解版）</b></p>
   <p style="margin-bottom:0">
-    第 {R1}、{R2} 这两行，现在还活着的格子<b>只属于</b> {G1}、{G2} 两个色块。这两行各要一只皇后，一共两只，
+    第 <i class="tk">{R1}</i>、<i class="tk">{R2}</i> 这两行，现在还活着的格子<b>只属于</b> <i class="tk">{G1}</i>、<i class="tk">{G2}</i> 两个色块。这两行各要一只皇后，一共两只，
     而能在这里放皇后的只有这两个色块——所以这两只皇后必定是它们俩的。
     <b>色块只有一个皇后</b>，既然它们俩的皇后都在这两行里了，那它们在这两行以外的格子自然全部作废。
   </p>
@@ -472,13 +479,13 @@
 
 <div class="callout bad">
   <b>最容易写错的一句：</b>把结论说成"第 1 行作废"。
-  作废的<b>不是行，是色块的格子</b>——{G1} 号色块在第 1 行以外的那几格作废，第 1 行本身没有任何格子被作废。
+  作废的<b>不是行，是色块的格子</b>——<i class="tk">{G1}</i> 号色块在第 1 行以外的那几格作废，第 1 行本身没有任何格子被作废。
   一句话记法：<b>L2 划的是"行里的别人"，L3 划的是"色块的别处"。</b>
 </div>
 
 <section class="rule" id="h10">
   <div class="rule-h"><span class="hid">H10</span><span class="lv l3">L3 · k=1</span><span class="rule-t">一行里只剩一个色块</span></div>
-  <p class="pre"><b>什么时候能用</b>第 {R} 行还活着的 {a} 格，全都属于 {G} 号色块。</p>
+  <p class="pre"><b>什么时候能用</b>第 <i class="tk">{R}</i> 行还活着的 <i class="tk">{a}</i> 格，全都属于 <i class="tk">{G}</i> 号色块。</p>
   <div class="say"><span class="lab">一行版</span><span class="txt">第<i class="ph">{R}</i>行只剩<i class="ph">{G}</i>号，<i class="ph">{G}</i>号别处全划掉</span></div>
   <div class="say long"><span class="lab">展开版</span><span class="txt">第 <i class="ph">{R}</i> 行现在只剩 <i class="ph">{a}</i> 格还活着，它们全都属于 <i class="ph">{G}</i> 号色块。这一行必须放一只皇后，那只能是 <i class="ph">{G}</i> 号色块的——所以 <i class="ph">{G}</i> 号色块在第 <i class="ph">{R}</i> 行以外的 <i class="ph">{c}</i> 格都可以划掉。</span></div>
   <div class="eg">
@@ -491,7 +498,7 @@
 
 <section class="rule" id="h11">
   <div class="rule-h"><span class="hid">H11</span><span class="lv l3">L3 · k=2</span><span class="rule-t">两行里只剩两个色块</span></div>
-  <p class="pre"><b>什么时候能用</b>第 {R1}、{R2} 两行活着的格子，只属于 {G1}、{G2} 两个色块。</p>
+  <p class="pre"><b>什么时候能用</b>第 <i class="tk">{R1}</i>、<i class="tk">{R2}</i> 两行活着的格子，只属于 <i class="tk">{G1}</i>、<i class="tk">{G2}</i> 两个色块。</p>
   <div class="say"><span class="lab">一行版</span><span class="txt">第<i class="ph">{R1}</i>、<i class="ph">{R2}</i>行只剩<i class="ph">{G1}</i>、<i class="ph">{G2}</i>号，它俩别处划掉</span></div>
   <div class="say long"><span class="lab">展开版</span><span class="txt">第 <i class="ph">{R1}</i>、<i class="ph">{R2}</i> 两行还活着的格子，只属于 <i class="ph">{G1}</i>、<i class="ph">{G2}</i> 两个色块。这两行各要一只皇后，一共两只，只能由这两个色块出——所以它们俩的皇后都在这两行里，它们在这两行以外的 <i class="ph">{c}</i> 格都可以划掉。</span></div>
   <div class="eg">
@@ -517,7 +524,7 @@
 
 <section class="rule" id="h13">
   <div class="rule-h"><span class="hid">H13</span><span class="lv l3">L3 · k=1</span><span class="rule-t">一列里只剩一个色块</span></div>
-  <p class="pre"><b>什么时候能用</b>第 {C} 列活着的格子，全都属于同一个色块。</p>
+  <p class="pre"><b>什么时候能用</b>第 <i class="tk">{C}</i> 列活着的格子，全都属于同一个色块。</p>
   <div class="say"><span class="lab">一行版</span><span class="txt">第<i class="ph">{C}</i>列只剩<i class="ph">{G}</i>号，<i class="ph">{G}</i>号别处全划掉</span></div>
   <div class="say long"><span class="lab">展开版</span><span class="txt">第 <i class="ph">{C}</i> 列现在只剩 <i class="ph">{a}</i> 格还活着，它们全都属于 <i class="ph">{G}</i> 号色块。这一列必须放一只皇后，那只能是 <i class="ph">{G}</i> 号色块的——所以 <i class="ph">{G}</i> 号色块在第 <i class="ph">{C}</i> 列以外的 <i class="ph">{c}</i> 格都可以划掉。</span></div>
   <div class="eg">
@@ -535,7 +542,7 @@
   <div class="say long"><span class="lab">展开版</span><span class="txt">第 <i class="ph">{C1}</i>、<i class="ph">{C2}</i> 两列还活着的格子，只属于 <i class="ph">{G1}</i>、<i class="ph">{G2}</i> 两个色块。这两列各要一只皇后，一共两只，只能由这两个色块出——所以它们俩的皇后都在这两列里，它们在这两列以外的 <i class="ph">{c}</i> 格都可以划掉。</span></div>
   <div class="eg">
     <span class="who">8×8 · seed 988523829 · 开局</span><br>
-    第 5、8 列只剩 2、3 号（这 2 列相邻，但不必） → <b>「第5、8列只剩2、3号，它俩别处划掉」</b><span class="hl">18 字</span><br>
+    第 5、8 列只剩 2、3 号（这 2 列并不相邻） → <b>「第5、8列只剩2、3号，它俩别处划掉」</b><span class="hl">18 字</span><br>
     <span class="who">划掉 2 格：(1,6) (1,7)</span>
   </div>
   <div class="act"><b>UI</b>同 H11。</div>
@@ -588,13 +595,13 @@
 <p class="lead">上面 15 条是"内容"。同一条内容在不同场合要说不同的话，这一层可以统一套，不用每条规则重写。</p>
 
 <table>
-  <tr><th style="width:110px">场合</th><th>套法</th><th>例子（以 H4 为例）</th></tr>
+  <tr><th style="width:150px">场合</th><th>套法</th><th>例子（以 H4 为例）</th></tr>
   <tr><td><b>首次教学</b><br><span class="note">该规则第一次出现</span></td><td>前面加"看第 R 行：" + 一句原理</td><td>「看第5行：1号的格子全在这一行，这行只能放它」</td></tr>
   <tr class="hi"><td><b>常规</b></td><td>直接用一行版</td><td>「第5行只能是1号，别家划掉」</td></tr>
-  <tr><td><b>连续提示</b><br><span class="note">用户已经在看提示了还点</span></td><td>前面加"还有一处："</td><td>「还有一处：第8列只能是3号」</td></tr>
-  <tr><td><b>确认</b><br><span class="note">用户自己已经划对了</span></td><td>改成"你划对了"+ 理由</td><td>「划得对：第5行只能是1号」</td></tr>
-  <tr><td><b>纠错</b><br><span class="note">用户在"必须是皇后"的格子上划了 ×</span></td><td>红色，先说要撤什么</td><td>「这一格必须是皇后，你划掉的 × 要撤回来」</td></tr>
-  <tr><td><b>空转</b><br><span class="note">L1–L3 都说不出话</span></td><td>承认没有，别硬编</td><td>「这一步没有能一眼说清的数法了」</td></tr>
+  <tr><td><b>连续提示</b><br><span class="note">连点第二次</span></td><td>前面加"还有一处："</td><td>「还有一处：第8列只能是3号」</td></tr>
+  <tr><td><b>确认</b><br><span class="note">玩家已划对</span></td><td>改成"你划对了"+ 理由</td><td>「划得对：第5行只能是1号」</td></tr>
+  <tr><td><b>纠错</b><br><span class="note">× 划在皇后格上</span></td><td>红色，先说要撤什么</td><td>「这一格必须是皇后，你划掉的 × 要撤回来」</td></tr>
+  <tr><td><b>空转</b><br><span class="note">L1–L3 都没话说</span></td><td>承认没有，别硬编</td><td>「这一步没有能一眼说清的数法了」</td></tr>
 </table>
 
 <p class="note">
@@ -607,12 +614,12 @@
 
 <h3>7.1 变量表</h3>
 <table>
-  <tr><th style="width:90px">占位</th><th>含义</th><th>取值规则</th><th>示例</th></tr>
+  <tr><th style="width:132px">占位</th><th>含义</th><th>取值规则</th><th>示例</th></tr>
   <tr><td><code>{R}</code> <code>{C}</code></td><td>行号 / 列号</td><td>1 起，<b>行从上往下数、列从左往右数</b>（首次出现要在教学句里说一次）</td><td>第 5 行</td></tr>
-  <tr><td><code>{R1}{R2}{R3}</code></td><td>多条行号</td><td>从小到大排，用"、"连接；不合并区间（1、2、3 不写成 1–3）</td><td>第 6、7、8 行</td></tr>
-  <tr><td><code>{G}</code> <code>{G1}…</code></td><td>色块编号</td><td>和屏幕下方的色块条一致（1 起），<b>不是数组下标</b></td><td>3 号色块</td></tr>
+  <tr><td><code>{R1} {R2} …</code></td><td>多条行号</td><td>从小到大排，用"、"连接；不合并区间（1、2、3 不写成 1–3）</td><td>第 6、7、8 行</td></tr>
+  <tr><td><code>{G}</code> <code>{G1} …</code></td><td>色块编号</td><td>和屏幕下方的色块条一致（1 起），<b>不是数组下标</b></td><td>3 号色块</td></tr>
   <tr><td><code>{m}</code></td><td>该色块总格数</td><td>固定格数，不含排除</td><td>7 格</td></tr>
-  <tr><td><code>{a}</code> <code>{a1}{a2}</code></td><td>该单位当前活格数</td><td>还没被排除的格数</td><td>3 格</td></tr>
+  <tr><td><code>{a}</code> <code>{a1} {a2}</code></td><td>该单位当前活格数</td><td>还没被排除的格数</td><td>3 格</td></tr>
   <tr><td><code>{c}</code></td><td>要划掉的格数</td><td>本次结论涉及的格子总数</td><td>4 格</td></tr>
   <tr><td><code>{n}</code></td><td>棋盘边长</td><td>4–16</td><td>8</td></tr>
 </table>

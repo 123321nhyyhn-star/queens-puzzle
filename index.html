@@ -680,6 +680,9 @@ button {
   animation: fadeIn .16s ease both;
 }
 
+/* 主线程即将被占满时用：直接整块出现，不做淡入（淡入会冻在半透明那帧） */
+.veil.is-instant { animation: none; }
+
 .veil-card {
   display: flex;
   flex-direction: column;
@@ -836,6 +839,51 @@ button {
   padding: 10px 0 2px;
   border-bottom: 1px dashed rgba(58, 51, 53, .14);
 }
+
+/* ---- 目标难度 ---- */
+.diff-row {
+  padding: 12px 0 10px;
+  border-bottom: 1px dashed rgba(58, 51, 53, .14);
+}
+
+.diff-opts {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.dbtn {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 30px;
+  padding: 2px 4px;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  background: var(--bg-card);
+  box-shadow: 0 2px 0 var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .02em;
+  cursor: pointer;
+  transition: transform var(--t-fast), box-shadow var(--t-fast), background var(--t-fast), color var(--t-fast);
+}
+
+.dbtn:active:not(.is-on) { transform: translateY(2px); box-shadow: none; }
+.dbtn.is-on { background: var(--ink); color: var(--bg-body); }
+
+.dbtn[data-level="easy"].is-on { background: #22B573; color: #fff; }
+.dbtn[data-level="mid"].is-on { background: var(--accent); color: var(--ink); }
+.dbtn[data-level="hard"].is-on { background: #F2762E; color: #fff; }
+.dbtn[data-level="extreme"].is-on { background: #E23B3B; color: #fff; }
+
+/* 目标难度生效时，尺寸控件交出控制权 */
+.diff-locked {
+  opacity: .45;
+  pointer-events: none;
+}
+
+.diff-locked .step-btn,
+.diff-locked .qbtn { box-shadow: none; }
 
 .quick-row .q-label {
   align-self: center;
@@ -1378,9 +1426,9 @@ button {
         </svg>
       </button>
     </div>
-    <p class="sheet-note">改尺寸会立即生成新的一局</p>
+    <p class="sheet-note" id="sheetNote">改尺寸会立即生成新的一局</p>
 
-    <div class="stepper">
+    <div class="stepper" id="sizeStepper">
       <div class="stepper-label">棋盘大小<small>4×4 到 16×16，每盘唯一解</small></div>
       <div class="stepper-ctl">
         <button class="step-btn" type="button" id="sizeMinus" aria-label="减小棋盘">−</button>
@@ -1396,6 +1444,17 @@ button {
       <button class="qbtn" type="button" data-size="10">10×10</button>
       <button class="qbtn" type="button" data-size="12">12×12</button>
       <button class="qbtn" type="button" data-size="15">15×15</button>
+    </div>
+
+    <div class="diff-row">
+      <div class="stepper-label">目标难度<small id="diffHint">选一个档位，之后每局都落在这里；「不限」就是现在这样</small></div>
+      <div class="diff-opts" id="diffOpts" role="group" aria-label="目标难度">
+        <button class="dbtn is-on" type="button" data-level="any" aria-pressed="true">不限</button>
+        <button class="dbtn" type="button" data-level="easy" aria-pressed="false">容易</button>
+        <button class="dbtn" type="button" data-level="mid" aria-pressed="false">中等</button>
+        <button class="dbtn" type="button" data-level="hard" aria-pressed="false">困难</button>
+        <button class="dbtn" type="button" data-level="extreme" aria-pressed="false">极难</button>
+      </div>
     </div>
 
     <div class="switch-row">
@@ -1523,8 +1582,19 @@ button {
   var STORE_SETTINGS = 'queens.settings.v1';
   var STORE_GAME = 'queens.game.v1';
 
+  /* 目标难度：每个档位实测下来只对应一段棋盘尺寸（见难度调研报告），
+   * 所以「选难度」实际就是「选尺寸区间」，不需要反复重试。 */
+  var DIFF_BANDS = {
+    easy: { name: '容易', lo: 4, hi: 5 },
+    mid: { name: '中等', lo: 6, hi: 8 },
+    hard: { name: '困难', lo: 9, hi: 12 },
+    extreme: { name: '极难', lo: 13, hi: 16 }
+  };
+  var DIFF_ORDER = ['any', 'easy', 'mid', 'hard', 'extreme'];
+
   var DEFAULT_SETTINGS = {
     size: 8,
+    difficulty: 'any',
     autoMark: true,
     conflict: true,
     forced: true,
@@ -1584,6 +1654,9 @@ button {
   var sizePlus = $('sizePlus');
   var sizeVal = $('sizeVal');
   var quickRow = $('quickRow');
+  var sheetNote = $('sheetNote');
+  var diffOpts = $('diffOpts');
+  var diffHint = $('diffHint');
 
   var shareCode = $('shareCode');
   var shareTag = $('shareTag');
@@ -1693,6 +1766,7 @@ button {
       var s = JSON.parse(raw);
       if (!s || typeof s !== 'object') return;
       settings.size = clamp(parseInt(s.size, 10) || 8, SIZE_MIN, SIZE_MAX);
+      settings.difficulty = DIFF_ORDER.indexOf(s.difficulty) >= 0 ? s.difficulty : 'any';
       settings.autoMark = s.autoMark !== false;
       settings.conflict = s.conflict !== false;
       settings.forced = s.forced !== false;
@@ -2526,25 +2600,82 @@ button {
 
   /* ==========================================================
      新一局
+     ----------------------------------------------------------
+     设了目标难度就按难度选尺寸（见 DIFF_BANDS）；没设就照旧用用户选的尺寸。
+     出题是同步的：算的时候主线程被占住，动画也会冻住，所以遮罩只是「告知」，
+     不是「装饰」。快的时候根本不该出现——见 showVeil 的 delay。
      ========================================================== */
-  function showVeil(n, label) {
-    if (n < 13) return;
-    veilTitle.textContent = label || ('正在生成 ' + n + '×' + n + ' 谜题');
-    veil.hidden = false;
+  var veilTimer = 0;
+
+  /* 每个尺寸上一局实际阻塞了多久（生成 + 难度分析）。
+   * 没测过就按 n^2.4 估：8×8≈2.5ms、16×16≈13ms —— 宁可估小，
+   * 估小了最多是「该露遮罩时没露」，估大了会在快机器上每次都闪一下。 */
+  var blockCost = {};
+  function estBlock(n) {
+    if (blockCost[n]) return blockCost[n];
+    return Math.pow(Math.max(n, 4) / 8, 2.4) * 2.5;
+  }
+  function veilDelayFor(n) {
+    return estBlock(n) >= 90 ? 0 : 90;
   }
 
-  function hideVeil() { veil.hidden = true; }
+  /* delay>0：先等一会儿再露脸，算得快就当没这回事（避免闪一下）。
+   * delay=0 ：立刻露脸，用于确定会卡住的场合，此时关掉淡入动画——
+   *           淡入是靠主线程跑的，一阻塞就会停在半透明那一帧。 */
+  function showVeil(n, label, delay) {
+    veilTitle.textContent = label || ('正在生成 ' + n + '×' + n + ' 谜题');
+    window.clearTimeout(veilTimer);
+    veil.classList.toggle('is-instant', !delay);
+    if (delay > 0) {
+      veil.hidden = true;
+      veilTimer = window.setTimeout(function () { veil.hidden = false; }, delay);
+    } else {
+      veil.hidden = false;
+    }
+  }
+
+  function hideVeil() {
+    window.clearTimeout(veilTimer);
+    veil.hidden = true;
+  }
+
+  /* 盘上有没有动过（叉或后）。用来判断「换档是否要立刻作废这一局」 */
+  function boardDirty() {
+    var m = state.marks;
+    for (var i = 0; i < m.length; i++) if (m[i]) return true;
+    return false;
+  }
+
+  function targetBand() {
+    var t = settings.difficulty;
+    return t && t !== 'any' && DIFF_BANDS[t] ? DIFF_BANDS[t] : null;
+  }
+
+  /* 在难度区间里随机取一个尺寸，尽量避开当前这盘，换局才有变化 */
+  function pickBandSize(band, avoid) {
+    var span = band.hi - band.lo + 1;
+    var n = band.lo + Math.floor(Math.random() * span);
+    if (span > 1 && n === avoid) n = band.lo + ((n - band.lo + 1) % span);
+    return n;
+  }
 
   function newGame(size, seed) {
-    var n = clamp(size || state.size, SIZE_MIN, SIZE_MAX);
+    var band = targetBand();
+    var n = band
+      ? pickBandSize(band, state.size)
+      : clamp(size || state.size, SIZE_MIN, SIZE_MAX);
 
     if (resultOpen) dismissResult();
     boardEl.classList.remove('is-won');
-    showVeil(n);
+
+    // 已知这一档会卡就立刻露遮罩，否则先等 90ms——算得快就当没这回事
+    var heavy = !!band || n >= 13;
+    if (heavy) showVeil(n, band ? '正在生成「' + band.name + '」' + n + '×' + n : null, veilDelayFor(n));
 
     var run = function () {
       var t0 = performance.now();
       var board = null;
+      var vibe = null;
       try {
         board = window.QueensEngine && window.QueensEngine.generate(n, seed);
       } catch (e) {
@@ -2556,17 +2687,39 @@ button {
         return;
       }
 
-      applyBoard(board.size, board.regions, board.solution, board.seed);
+      // 目标难度：万一这一盘没落进档位（尺寸映射被改动时才会发生），换个尺寸再来一次
+      if (band) {
+        vibe = computeVibe(board.size, board.regions, board.solution);
+        for (var retry = 0; retry < 2 && vibe && vibe.level !== band.name; retry++) {
+          var n2 = pickBandSize(band, board.size);
+          var b2 = null;
+          try { b2 = window.QueensEngine.generate(n2); } catch (e2) { b2 = null; }
+          if (!b2) break;
+          var v2 = computeVibe(b2.size, b2.regions, b2.solution);
+          if (!v2) break;
+          board = b2;
+          vibe = v2;
+          if (v2.level === band.name) break;
+        }
+      }
 
-      if (n >= 13) {
-        var cost = Math.round(performance.now() - t0);
-        if (cost > 320) flashHint('这局生成用了 ' + (cost / 1000).toFixed(1) + ' 秒', true, 1400);
+      // 记下这局真正占住主线程多久，下次同尺寸就知道要不要提前露遮罩
+      var cost = Math.round(performance.now() - t0);
+      blockCost[board.size] = Math.max(blockCost[board.size] || 0, cost);
+
+      applyBoard(board.size, board.regions, board.solution, board.seed, vibe);
+
+      if (band && vibe && vibe.level !== band.name) {
+        flashHint('这一盘最接近「' + band.name + '」：' + vibe.level + ' ' + vibe.score.toFixed(1), true, 1800);
+      } else if (n >= 13 && cost > 320) {
+        flashHint('这局生成用了 ' + (cost / 1000).toFixed(1) + ' 秒', true, 1400);
       }
       sfx('new');
-      announce('新一局：' + n + '×' + n + '，每行每列每个色块各一只皇后');
+      announce('新一局：' + board.size + '×' + board.size +
+        (band ? '，目标难度' + band.name : '') + '，每行每列每个色块各一只皇后');
     };
 
-    if (n >= 13) {
+    if (heavy) {
       window.requestAnimationFrame(function () {
         window.setTimeout(run, 30);
       });
@@ -2597,7 +2750,7 @@ button {
   }
 
   /* 把一副已经确定的棋盘装上（新生成 / 载入分享码 / 恢复存档共用） */
-  function applyBoard(n, regions, solution, seed) {
+  function applyBoard(n, regions, solution, seed, preVibe) {
     if (resultOpen) dismissResult();
     boardEl.classList.remove('is-won');
 
@@ -2605,7 +2758,7 @@ button {
     state.seed = seed || 0;
     state.regions = regions;
     state.solution = solution;
-    state.vibe = computeVibe(n, regions, solution);
+    state.vibe = preVibe || computeVibe(n, regions, solution);
     state.marks = new Uint8Array(n * n);
     state.hints = 0;
     state.moves = 0;
@@ -2780,7 +2933,7 @@ button {
     if (!out.ok) { shareReject(out.msg); return; }
 
     var n = out.size;
-    showVeil(n, '正在验证 ' + n + '×' + n + ' 棋盘');
+    showVeil(n, '正在验证 ' + n + '×' + n + ' 棋盘', veilDelayFor(n));
 
     var run = function () {
       var res = null;
@@ -2935,9 +3088,30 @@ button {
   }
 
   function syncSheet() {
+    var target = settings.difficulty && settings.difficulty !== 'any' ? settings.difficulty : null;
+    var band = target ? DIFF_BANDS[target] : null;
+
     sizeVal.textContent = String(settings.size);
     sizeMinus.disabled = settings.size <= SIZE_MIN;
     sizePlus.disabled = settings.size >= SIZE_MAX;
+
+    // 目标难度生效时，尺寸交给难度决定
+    $('sizeStepper').classList.toggle('diff-locked', !!target);
+    quickRow.classList.toggle('diff-locked', !!target);
+    sheetNote.textContent = target
+      ? '难度优先：下局起棋盘在 ' + band.lo + '×' + band.lo + '–' + band.hi + '×' + band.hi
+        + ' 间随机（当前 ' + settings.size + '×' + settings.size + '）'
+      : '改尺寸会立即生成新的一局';
+    diffHint.textContent = target
+      ? '「' + band.name + '」＝ ' + band.lo + '×' + band.lo + '–' + band.hi + '×' + band.hi + '，每局随机一档'
+      : '选好档位，之后每局都落在这里；「不限」保持现状';
+
+    var dbtns = diffOpts.querySelectorAll('.dbtn');
+    for (var d = 0; d < dbtns.length; d++) {
+      var on = dbtns[d].dataset.level === settings.difficulty;
+      dbtns[d].classList.toggle('is-on', on);
+      dbtns[d].setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
 
     $('swAuto').setAttribute('aria-checked', settings.autoMark ? 'true' : 'false');
     $('swConflict').setAttribute('aria-checked', settings.conflict ? 'true' : 'false');
@@ -3070,7 +3244,9 @@ button {
     else if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
   }
 
-  function applySize(n, immediate) {    n = clamp(n, SIZE_MIN, SIZE_MAX);
+  function applySize(n, immediate) {
+    if (targetBand()) return;   // 目标难度接管尺寸，手动改尺寸无效
+    n = clamp(n, SIZE_MIN, SIZE_MAX);
     if (n === settings.size && state.regions) return;
     settings.size = n;
     syncSheet();
@@ -3315,6 +3491,29 @@ button {
     var btn = e.target.closest ? e.target.closest('.qbtn') : null;
     if (!btn) return;
     applySize(parseInt(btn.dataset.size, 10), true);
+  });
+
+  /* 目标难度：盘上还空着就立刻按这个档位开一局；
+   * 已经下到一半就只记住选择，等他换一局时再生效——免得误点一下丢掉进度。 */
+  diffOpts.addEventListener('click', function (e) {
+    var btn = e.target.closest ? e.target.closest('.dbtn') : null;
+    if (!btn) return;
+    var lv = btn.dataset.level;
+    if (DIFF_ORDER.indexOf(lv) < 0) return;
+    if (lv === settings.difficulty) { closeSheet(); return; }
+
+    settings.difficulty = lv;
+    saveSettings();
+    syncSheet();
+    closeSheet();
+
+    var band = DIFF_BANDS[lv];
+    if (boardDirty()) {
+      flashHint(band ? '已设为「' + band.name + '」，换一局时生效' : '已取消难度限制，换一局时生效', true, 2000);
+    } else {
+      newGame(state.size);
+    }
+    announce(band ? '目标难度：' + band.name : '不限制难度');
   });
 
   /* ---- 分享棋盘 ---- */
