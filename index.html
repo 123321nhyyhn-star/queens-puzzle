@@ -250,6 +250,57 @@ button {
 .hint.is-alert { color: var(--ink); font-weight: 800; }
 .hint.is-ok { color: var(--ok); font-weight: 800; }
 
+/* ---- 提示行 + 难度标签（同一行：提示居中，难度靠右） ---- */
+.hint-row {
+  flex: 0 0 auto;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hint-row .hint {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.diff-chip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 22px;
+  padding: 0 8px;
+  border: 1.5px solid var(--hair);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-mute);
+  font-size: 10.5px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--t-fast), border-color var(--t-fast), transform var(--t-fast);
+}
+
+.diff-chip:active { transform: translateY(1px); }
+.diff-chip:hover { border-color: var(--ink); }
+
+.diff-chip b { color: var(--ink); font-weight: 900; }
+.diff-chip span { font-variant-numeric: tabular-nums; }
+
+.diff-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink-faint);
+}
+
+.diff-chip[data-tone="easy"] .diff-dot { background: #22B573; }
+.diff-chip[data-tone="mid"] .diff-dot { background: #E0A800; }
+.diff-chip[data-tone="hard"] .diff-dot { background: #F2762E; }
+.diff-chip[data-tone="extreme"] .diff-dot { background: #E23B3B; }
+
 /* ============================================================
    05. 棋盘
    ============================================================ */
@@ -859,6 +910,119 @@ button {
 .sheet-actions .btn { flex: 1 1 0; }
 .sheet-done { width: 100%; margin-top: 10px; }
 
+/* ---- 难度说明 ---- */
+.diff-hero {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 2px 0 4px;
+}
+
+.diff-score {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.diff-score b {
+  font-size: 42px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.diff-score span {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--ink-mute);
+}
+
+.diff-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  box-shadow: var(--shadow-pill);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: .04em;
+  background: var(--bg-card);
+}
+
+.diff-badge[data-tone="easy"] { background: #DFF5E8; }
+.diff-badge[data-tone="mid"] { background: var(--accent-soft); }
+.diff-badge[data-tone="hard"] { background: #FFE4D2; }
+.diff-badge[data-tone="extreme"] { background: #FFDDDD; }
+
+.diff-lead {
+  margin: 8px 0 14px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--ink-mute);
+}
+
+.diff-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin: 4px 0 14px;
+}
+
+.diff-step {
+  display: grid;
+  grid-template-columns: 76px 1fr 42px;
+  align-items: center;
+  gap: 9px;
+  font-size: 12.5px;
+}
+
+.diff-step .ds-name {
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.diff-step .ds-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--bg-neutral);
+  overflow: hidden;
+}
+
+.diff-step .ds-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--ink-faint);
+  transition: width .5s var(--spring);
+}
+
+.diff-step .ds-n {
+  text-align: right;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.diff-step.is-zero { opacity: .42; }
+.diff-step.is-key .ds-bar i { background: var(--accent); }
+.diff-step.is-probe .ds-bar i { background: #F2762E; }
+.diff-step.is-guess .ds-bar i { background: #E23B3B; }
+
+.diff-legend {
+  margin: 0 0 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--bg-neutral);
+  font-size: 11.5px;
+  line-height: 1.85;
+  color: var(--ink-mute);
+}
+
+.diff-legend b { color: var(--ink); font-weight: 800; }
+
 /* ---- 分享棋盘 ---- */
 .share {
   margin-top: 4px;
@@ -1174,7 +1338,12 @@ button {
   </header>
 
   <main class="stage" id="stage">
-    <p class="hint" id="hint">轻点标 ×，按住可整行整列连涂</p>
+    <div class="hint-row">
+      <p class="hint" id="hint">轻点标 ×，按住可整行整列连涂</p>
+      <button class="diff-chip" id="btnDiff" type="button" aria-haspopup="dialog" aria-expanded="false" hidden>
+        <i class="diff-dot" aria-hidden="true"></i><b id="diffLevel">中等</b><span id="diffScore">5.0</span>
+      </button>
+    </div>
 
     <div class="board" id="board">
       <div class="grid" id="grid" role="grid" aria-label="皇后棋盘"></div>
@@ -1278,6 +1447,39 @@ button {
   </div>
 </div>
 
+<div class="sheet-wrap" id="diffWrap" hidden>
+  <div class="sheet-backdrop" id="diffBackdrop"></div>
+  <div class="sheet" id="diffSheet" role="dialog" aria-modal="true" aria-labelledby="diffTitle" tabindex="-1">
+    <div class="sheet-head">
+      <h2 id="diffTitle">本局难度</h2>
+      <button class="icon-btn" id="btnCloseDiff" type="button" aria-label="关闭难度说明">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true">
+          <path d="M6 6l12 12M18 6L6 18"></path>
+        </svg>
+      </button>
+    </div>
+
+    <div class="diff-hero">
+      <div class="diff-score"><b id="diffBig">5.0</b><span>/ 10</span></div>
+      <span class="diff-badge" id="diffBadge" data-tone="mid">中等</span>
+    </div>
+
+    <p class="diff-lead" id="diffLead"></p>
+
+    <div class="diff-steps" id="diffSteps"></div>
+
+    <div class="diff-legend">
+      <b>开局可定</b> 一上手不用猜、直接就能落子的数目（0 = 一开始就得试）<br>
+      <b>区块封锁</b> 整块候选挤在同一行，这行别处就能排掉<br>
+      <b>集合计数</b> k 个色块只能落在 k 行里，这几行就被它们占满<br>
+      <b>假设试推</b> 假设这格放子，推两步就矛盾 → 划掉<br>
+      <b>试错落子</b> 前面都推不动，只能先落一只再看看
+    </div>
+
+    <button class="btn sheet-done" id="btnDiffDone" type="button">知道了</button>
+  </div>
+</div>
+
 <div class="result" id="result" hidden>
   <div class="result-card" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
     <p class="result-kicker">PUZZLE SOLVED</p>
@@ -1301,6 +1503,7 @@ button {
 </noscript>
 
 <script src="engine.js"></script>
+<script src="difficulty.js"></script>
 <script>
 (function () {
   'use strict';
@@ -1388,6 +1591,19 @@ button {
   var btnCopyCode = $('btnCopyCode');
   var btnLoadCode = $('btnLoadCode');
 
+  var btnDiff = $('btnDiff');
+  var diffLevelEl = $('diffLevel');
+  var diffScoreEl = $('diffScore');
+  var diffWrap = $('diffWrap');
+  var diffSheet = $('diffSheet');
+  var diffBackdrop = $('diffBackdrop');
+  var btnCloseDiff = $('btnCloseDiff');
+  var btnDiffDone = $('btnDiffDone');
+  var diffBig = $('diffBig');
+  var diffBadge = $('diffBadge');
+  var diffLead = $('diffLead');
+  var diffSteps = $('diffSteps');
+
   var resultEl = $('result');
   var resultSub = $('resultSub');
   var resSize = $('resSize');
@@ -1417,7 +1633,8 @@ button {
     conflicts: null,
     regionCounts: null,
     focus: 0,
-    lastTap: null
+    lastTap: null,
+    vibe: null          // 本局难度评估（由 difficulty.js 算，见 applyBoard）
   };
 
   var settings = Object.assign({}, DEFAULT_SETTINGS);
@@ -1428,6 +1645,7 @@ button {
   var undoStack = [];
   var redoStack = [];
   var sheetOpen = false;
+  var diffOpen = false;
   var resultOpen = false;
   var hintTimer = null;
   var saveTimer = null;
@@ -2101,7 +2319,7 @@ button {
      落子 / 标记
      ========================================================== */
   function canPlay() {
-    return state.status === 'playing' && !sheetOpen && !resultOpen;
+    return state.status === 'playing' && !sheetOpen && !diffOpen && !resultOpen;
   }
 
   function setMarks(next, anim) {
@@ -2292,7 +2510,8 @@ button {
     resSize.textContent = state.size + '×' + state.size;
     resTime.textContent = formatTime(state.elapsed);
     resHints.textContent = String(state.hints);
-    resultSub.textContent = state.size + '×' + state.size + ' · 用时 ' + formatTime(state.elapsed);
+    resultSub.textContent = state.size + '×' + state.size + ' · 用时 ' + formatTime(state.elapsed) +
+      (state.vibe ? ' · ' + state.vibe.level + ' ' + state.vibe.score.toFixed(1) : '');
     resultEl.hidden = false;
     window.setTimeout(function () { btnAgain.focus(); }, 80);
   }
@@ -2386,6 +2605,7 @@ button {
     state.seed = seed || 0;
     state.regions = regions;
     state.solution = solution;
+    state.vibe = computeVibe(n, regions, solution);
     state.marks = new Uint8Array(n * n);
     state.hints = 0;
     state.moves = 0;
@@ -2409,6 +2629,7 @@ button {
     render();
     hideVeil();
     updateStats();
+    updateDiffChip();
     save();
   }
 
@@ -2672,6 +2893,7 @@ button {
       state.seed = g.seed || 0;
       state.regions = regions;
       state.solution = solution;
+      state.vibe = computeVibe(n, regions, solution);
       state.marks = marks;
       state.hints = clamp(parseInt(g.hints, 10) || 0, 0, 999);
       state.moves = clamp(parseInt(g.moves, 10) || 0, 0, 99999);
@@ -2752,8 +2974,103 @@ button {
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
   }
 
-  function applySize(n, immediate) {
-    n = clamp(n, SIZE_MIN, SIZE_MAX);
+  /* ==========================================================
+     难度
+     ----------------------------------------------------------
+     difficulty.js 会用同一套推理器把这盘推一遍：先纯逻辑，卡住了就
+     假设试推，再不行才试错落子。这里只负责展示——提示行右边一个标签，
+     点开看分数、分级和「这局到底靠什么推出来的」。
+     ========================================================== */
+  var DIFF_ROWS = [
+    { key: 'openSingles', name: '开局可定', cls: 'is-key' },
+    { key: 'block', name: '区块封锁', cls: '' },
+    { key: 'count', name: '集合计数', cls: '' },
+    { key: 'probe', name: '假设试推', cls: 'is-probe' },
+    { key: 'guess', name: '试错落子', cls: 'is-guess' }
+  ];
+
+  function computeVibe(n, regions, solution) {
+    try {
+      if (!window.QueensDifficulty || !window.QueensDifficulty.vibe) return null;
+      return window.QueensDifficulty.vibe(n, regions, solution);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function updateDiffChip() {
+    var v = state.vibe;
+    if (!v) { btnDiff.hidden = true; return; }
+    btnDiff.hidden = false;
+    btnDiff.dataset.tone = v.tone;
+    diffLevelEl.textContent = v.level;
+    diffScoreEl.textContent = v.score.toFixed(1);
+    btnDiff.setAttribute('aria-label',
+      '本局难度' + v.level + '，' + v.score.toFixed(1) + ' 分，点按查看难度构成');
+  }
+
+  function renderDiff() {
+    var v = state.vibe;
+    if (!v) return;
+    var s = v.steps || {};
+
+    diffBig.textContent = v.score.toFixed(1);
+    diffBadge.textContent = v.level;
+    diffBadge.dataset.tone = v.tone;
+
+    var max = 1;
+    for (var i = 0; i < DIFF_ROWS.length; i++) {
+      var c = s[DIFF_ROWS[i].key] || 0;
+      if (c > max) max = c;
+    }
+
+    var html = '';
+    for (var j = 0; j < DIFF_ROWS.length; j++) {
+      var row = DIFF_ROWS[j], n2 = s[row.key] || 0;
+      var w = Math.max(n2 ? 6 : 0, Math.round(100 * n2 / max));
+      html += '<div class="diff-step ' + row.cls + (n2 ? '' : ' is-zero') + '">' +
+        '<span class="ds-name">' + row.name + '</span>' +
+        '<span class="ds-bar"><i style="width:' + w + '%"></i></span>' +
+        '<span class="ds-n">×' + n2 + '</span></div>';
+    }
+    diffSteps.innerHTML = html;
+
+    var n = v.metrics.n;
+    var lead = n + '×' + n + ' · 最大色块 ' + (s.areaMax || 0) + ' 格 · ';
+    if (s.solved && s.openSingles >= n) {
+      lead += '不猜不试，纯推理就能推完';
+    } else if (!s.openSingles) {
+      lead += '开局没有能直接落子的格，得靠试推';
+    } else {
+      lead += '开局推理能定 ' + s.openSingles + ' 只，其余靠试推';
+    }
+    if (s.guess) lead += '（其中 ' + s.guess + ' 只要硬猜）';
+    diffLead.textContent = lead;
+  }
+
+  function openDiff() {
+    if (diffOpen || !state.vibe) return;
+    diffOpen = true;
+    renderDiff();
+    diffWrap.hidden = false;
+    if ('inert' in HTMLElement.prototype) app.inert = true;
+    else app.setAttribute('aria-hidden', 'true');
+    btnDiff.setAttribute('aria-expanded', 'true');
+    diffSheet.focus();
+  }
+
+  function closeDiff(fromChip) {
+    if (!diffOpen) return;
+    diffOpen = false;
+    diffWrap.hidden = true;
+    if ('inert' in HTMLElement.prototype) app.inert = false;
+    app.removeAttribute('aria-hidden');
+    btnDiff.setAttribute('aria-expanded', 'false');
+    if (fromChip) btnDiff.focus();
+    else if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  }
+
+  function applySize(n, immediate) {    n = clamp(n, SIZE_MIN, SIZE_MAX);
     if (n === settings.size && state.regions) return;
     settings.size = n;
     syncSheet();
@@ -2971,6 +3288,11 @@ button {
   btnDone.addEventListener('click', closeSheet);
   sheetBackdrop.addEventListener('click', closeSheet);
 
+  btnDiff.addEventListener('click', openDiff);
+  btnCloseDiff.addEventListener('click', function () { closeDiff(true); });
+  btnDiffDone.addEventListener('click', function () { closeDiff(true); });
+  diffBackdrop.addEventListener('click', function () { closeDiff(true); });
+
   btnRestart.addEventListener('click', function () {
     closeSheet();
     restartCurrent();
@@ -3104,9 +3426,15 @@ button {
 
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
+      if (diffOpen) { e.preventDefault(); closeDiff(true); return; }
       if (sheetOpen) { e.preventDefault(); closeSheet(); return; }
       if (resultOpen) { e.preventDefault(); dismissResult(); return; }
       state.lastTap = null;
+    }
+
+    if (diffOpen) {
+      if (e.key === 'Tab') trapFocus(e, diffSheet);
+      return;
     }
 
     if (sheetOpen) {
@@ -3243,6 +3571,7 @@ button {
       relayout();
       render();
       updateStats();
+      updateDiffChip();
 
       if (state.status === 'won') {
         showResult();
@@ -3276,6 +3605,9 @@ button {
     useHint: useHint,
     clear: function () { clearBoard(true); },
     render: render,
+    vibe: function () { return state.vibe; },
+    openDiff: openDiff,
+    closeDiff: closeDiff,
     encode: function () {
       return state.regions ? encodeShare(state.size, state.regions, state.solution) : '';
     },

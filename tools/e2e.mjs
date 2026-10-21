@@ -584,6 +584,144 @@ check('载入后清掉 # 参数', hashLoad.hash === '', `hash=${hashLoad.hash}`)
 await p2.screenshot({ path: `${OUT}/12-share-hash.png` });
 await p2.close();
 
+// ---------- 难度标签 ----------
+log('\n--- 难度 ---');
+// 前面的分享用例把设置面板留在了打开状态（app 被 inert），先收起来
+await page.evaluate(() => {
+  if (!document.getElementById('sheetWrap').hidden) document.getElementById('btnDone').click();
+});
+await sleep(300);
+await page.evaluate(() => __QUEENS_DEBUG__.newGame(8));
+await page.waitForFunction('__QUEENS_DEBUG__.state.size === 8 && __QUEENS_DEBUG__.state.vibe', { timeout: 20000 });
+await sleep(400);
+
+const chip = await page.evaluate(() => {
+  const b = document.getElementById('btnDiff');
+  const v = __QUEENS_DEBUG__.state.vibe;
+  return {
+    hidden: b.hidden,
+    level: document.getElementById('diffLevel').textContent,
+    score: document.getElementById('diffScore').textContent,
+    aria: b.getAttribute('aria-label'),
+    vibe: { level: v.level, score: v.score, tone: v.tone, tier: v.tier },
+    steps: v.steps,
+    inRow: !!b.closest('.hint-row'),
+    chipBottom: b.getBoundingClientRect().bottom,
+    boardTop: document.getElementById('board').getBoundingClientRect().top
+  };
+});
+check('难度标签可见', !chip.hidden && chip.inRow);
+check('标签文案是常见分级', /^(容易|中等|困难|极难)$/.test(chip.level), chip.level);
+check('标签分数一位小数', /^\d(\.\d)?$/.test(chip.score), chip.score);
+check('标签与模型一致', chip.level === chip.vibe.level && chip.score === chip.vibe.score.toFixed(1));
+check('标签不压到棋盘', chip.chipBottom <= chip.boardTop + 1,
+  `chip=${Math.round(chip.chipBottom)} board=${Math.round(chip.boardTop)}`);
+check('无障碍标签带分数', /难度/.test(chip.aria) && /分/.test(chip.aria), chip.aria);
+await page.screenshot({ path: `${OUT}/13-diff-chip.png` });
+
+// 点开弹层
+await page.click('#btnDiff');
+await sleep(350);
+const sheet1 = await page.evaluate(() => {
+  const v = __QUEENS_DEBUG__.state.vibe;
+  const rows = Array.from(document.querySelectorAll('.diff-step'));
+  return {
+    open: !document.getElementById('diffWrap').hidden,
+    big: document.getElementById('diffBig').textContent,
+    badge: document.getElementById('diffBadge').textContent,
+    lead: document.getElementById('diffLead').textContent,
+    names: rows.map(r => r.querySelector('.ds-name').textContent),
+    counts: rows.map(r => r.querySelector('.ds-n').textContent),
+    bars: rows.map(r => r.querySelector('.ds-bar i').style.width),
+    steps: v.steps,
+    focus: document.activeElement && document.activeElement.id,
+    scrollable: document.getElementById('diffSheet').scrollHeight >
+      document.getElementById('diffSheet').clientHeight + 4
+  };
+});
+check('难度弹层打开', sheet1.open);
+check('弹层分数与标签一致', sheet1.big === chip.score && sheet1.badge === chip.level,
+  `${sheet1.big}/${sheet1.badge}`);
+check('弹层列出 5 类构成', sheet1.names.length === 5, sheet1.names.join('|'));
+check('每类都有次数', sheet1.counts.every(c => /^×\d+$/.test(c)), sheet1.counts.join(' '));
+check('次数与模型一致', sheet1.counts[0] === '×' + sheet1.steps.openSingles &&
+  sheet1.counts[3] === '×' + sheet1.steps.probe, sheet1.counts.join(' '));
+check('条形有长度且不超 100%', sheet1.bars.every(b => {
+  const w = parseFloat(b || '0');
+  return w >= 0 && w <= 100;
+}), sheet1.bars.join(' '));
+check('有一句难度来源说明', /8×8/.test(sheet1.lead) && /试推|推完/.test(sheet1.lead), sheet1.lead);
+check('弹层内容不溢出', !sheet1.scrollable);
+check('打开后焦点在弹层里', sheet1.focus === 'diffSheet', `focus=${sheet1.focus}`);
+await page.screenshot({ path: `${OUT}/14-diff-sheet.png` });
+
+// 弹层开着时棋盘点不动
+const locked = await page.evaluate(() => {
+  const d = __QUEENS_DEBUG__;
+  const cell = document.querySelectorAll('.cell')[0];
+  const before = d.state.marks[0];
+  cell.click();
+  return { before, after: d.state.marks[0] };
+});
+check('弹层打开时棋盘锁定', locked.before === locked.after, `${locked.before}→${locked.after}`);
+
+// Esc 关闭 + 焦点回到标签
+await page.keyboard.press('Escape');
+await sleep(300);
+const afterEsc = await page.evaluate(() => ({
+  hidden: document.getElementById('diffWrap').hidden,
+  focus: document.activeElement && document.activeElement.id,
+  expanded: document.getElementById('btnDiff').getAttribute('aria-expanded')
+}));
+check('Esc 关闭难度弹层', afterEsc.hidden);
+check('关闭后焦点回到标签', afterEsc.focus === 'btnDiff', `focus=${afterEsc.focus}`);
+check('aria-expanded 复位', afterEsc.expanded === 'false');
+
+// 点背景关闭（弹层面板盖住了背景中心，点上方空白处）
+await page.click('#btnDiff');
+await sleep(300);
+await page.mouse.click(195, 80);
+await sleep(300);
+check('点背景关闭', await page.evaluate(() => document.getElementById('diffWrap').hidden));
+
+// 关闭后可以继续落子
+const playable = await page.evaluate(() => {
+  const d = __QUEENS_DEBUG__;
+  document.querySelectorAll('.cell')[0].click();
+  return d.state.marks[0];
+});
+check('关闭后恢复操作', playable === 1, `marks[0]=${playable}`);
+await page.evaluate(() => __QUEENS_DEBUG__.clear());
+
+// 尺寸越大分数越高
+const ladders = [];
+for (const n of [4, 8, 16]) {
+  await page.evaluate((size) => __QUEENS_DEBUG__.newGame(size), n);
+  await page.waitForFunction(`__QUEENS_DEBUG__.state.size === ${n} && __QUEENS_DEBUG__.state.vibe`, { timeout: 30000 });
+  ladders.push(await page.evaluate(() => __QUEENS_DEBUG__.state.vibe.score));
+}
+check('分数随尺寸递增', ladders[0] < ladders[1] && ladders[1] < ladders[2], ladders.join(' < '));
+check('16×16 判为极难/困难', await page.evaluate(() =>
+  ['困难', '极难'].indexOf(__QUEENS_DEBUG__.state.vibe.level) >= 0), await page.evaluate(() => __QUEENS_DEBUG__.state.vibe.level));
+
+// 续玩（从存档恢复）也要有难度：新开一页会走 loadGame 分支
+await sleep(500);   // 等 save() 的 160ms 防抖落地
+const p4 = await browser.newPage();
+await p4.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+p4.on('pageerror', e => errors.push('restore: ' + e.message));
+await p4.goto(URL, { waitUntil: 'networkidle0' });
+await p4.waitForFunction('window.__QUEENS_DEBUG__ && __QUEENS_DEBUG__.state.vibe', { timeout: 20000 });
+await sleep(400);
+const resumed = await p4.evaluate(() => ({
+  size: __QUEENS_DEBUG__.state.size,
+  vibe: __QUEENS_DEBUG__.state.vibe && __QUEENS_DEBUG__.state.vibe.level,
+  chip: !document.getElementById('btnDiff').hidden,
+  text: document.getElementById('diffLevel').textContent
+}));
+check('续玩恢复后仍有难度', resumed.chip && resumed.size === 16 && resumed.vibe === resumed.text,
+  `size=${resumed.size} ${resumed.vibe}/${resumed.text}`);
+await p4.close();
+
 // ---------- 汇总 ----------
 log('\n--- console errors ---');
 log(errors.length ? errors.join('\n') : '(none)');

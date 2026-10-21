@@ -195,6 +195,7 @@
               // 这 picked 个色块被这些行/列完全容纳 → 其它色块在这些行/列上的格子全排除
               var set = {};
               for (var t = 0; t < idx.length; t++) set[regs[idx[t]]] = 1;
+              var kills = 0;
               for (var b = 0; b < n; b++) {
                 if (!(union & (1 << b))) continue;
                 if (doneArr[b]) continue;
@@ -205,8 +206,13 @@
                   if (set[ctx.region[cell]]) continue;
                   state.alive[cell] = 0;
                   changed = true;
-                  if (stat) stat.countElim++;
+                  kills++;
                 }
+              }
+              if (kills) {
+                if (stat) stat.countElim += kills;
+                // 一次推理（不是一格）：k=1 算「区块封锁」，k≥2 算「集合计数」
+                if (stat) { if (picked === 1) stat.k1++; else stat.k2++; }
               }
             } else if (bits < picked) {
               return; // 色块数多于可用行/列数，扩展下去只会更离谱
@@ -334,7 +340,162 @@
     return { ok: p3.ok, solved: p3.ok && p3.solved, probes: probes, steps: steps };
   }
 
-  /* ------------------------------------------------------------- 结构度量 */
+  /* ------------------------------------------------------- 解题过程记账
+   * 目的：给玩家看「这局是靠什么推出来的」。
+   * 沿一条人类会走的路径记账（不回溯计数），依次是：
+   *   1. 纯推理：唯一候选 / 区块封锁 / 集合计数
+   *   2. 假设试推：假设一格 → 立刻矛盾 → 划掉（人真的会这么干）
+   *   3. 试错落子：前两步都推不动，只能先落一只，错了再退（用真解引导，保证只记一次）
+   * 返回各技巧用了几次，以及是否推完。
+   */
+  function probePass(state, ctx, maxK, stat, cap) {
+    var eliminated = false;
+    for (var g = 0; g < ctx.n; g++) {
+      if (state.regDone[g]) continue;
+      var live = liveOf(state, ctx.regCells[g], []);
+      if (live.length < 2) continue;
+      for (var k = 0; k < live.length; k++) {
+        if (stat && cap && stat.probes >= cap) return eliminated;
+        var st2 = copyState(state);
+        place(st2, ctx, live[k]);
+        if (stat) stat.probes++;
+        var p2 = propagate(st2, ctx, maxK);
+        if (!p2.ok) {
+          state.alive[live[k]] = 0;
+          eliminated = true;
+        }
+      }
+      if (eliminated) break;
+    }
+    return eliminated;
+  }
+
+  function explain(n, regions, solution, opt) {
+    opt = opt || {};
+    var cap = opt.probeCap || 1200;
+    var ctx = makeCtx(n, regions);
+    var state = initState(ctx);
+    var stat = { singles: 0, k1: 0, k2: 0, probes: 0, guesses: 0, countElim: 0 };
+    var p = propagate(state, ctx, 3, stat);
+    var openSingles = stat.singles;   // 开局纯推理能直接定下的子
+    var guard = 0;
+
+    // 1) 纯逻辑推 + 2) 假设试推，交替到推不动
+    while (p.ok && !p.solved && guard++ < 4 * n && stat.probes < cap) {
+      if (!probePass(state, ctx, 3, stat, cap)) break;
+      p = propagate(state, ctx, 3, stat);
+    }
+
+    // 3) 还推不动 → 试错落子（用真解指路，保证走的是「最终成功」的那条路）
+    if (p.ok && !p.solved) {
+      var solCell = new Array(n);
+      for (var r = 0; r < n; r++) solCell[regions[r * n + solution[r]]] = r * n + solution[r];
+      var g2guard = 0;
+      while (p.ok && !p.solved && g2guard++ < n) {
+        var bestG = -1, bestList = null;
+        for (var g = 0; g < n; g++) {
+          if (state.regDone[g]) continue;
+          var live = liveOf(state, ctx.regCells[g], []);
+          if (!bestList || live.length < bestList.length) { bestG = g; bestList = live; }
+        }
+        if (bestG < 0 || !bestList || !bestList.length) break;
+        var target = solCell[bestG];
+        if (bestList.indexOf(target) < 0) break;   // 真解被误伤说明模型有问题，直接收手
+        stat.guesses++;
+        place(state, ctx, target);
+        p = propagate(state, ctx, 3, stat);
+        var guard2 = 0;
+        while (p.ok && !p.solved && guard2++ < 4 * n && stat.probes < cap) {
+          if (!probePass(state, ctx, 3, stat, cap)) break;
+          p = propagate(state, ctx, 3, stat);
+        }
+      }
+    }
+
+    var areas = new Array(n).fill(0);
+    for (var i = 0; i < n * n; i++) areas[regions[i]]++;
+    var areaMax = 0;
+    for (var a = 0; a < n; a++) if (areas[a] > areaMax) areaMax = areas[a];
+
+    return {
+      n: n,
+      solved: !!(p.ok && p.solved),
+      openSingles: openSingles,
+      singles: stat.singles,
+      block: stat.k1,
+      count: stat.k2,
+      probe: stat.probes,
+      guess: stat.guesses,
+      areaMax: areaMax
+    };
+  }
+
+  /* ------------------------------------------------------------ 人类视角分
+   * 0–100 的原始分适合做排序，但不适合给玩家看：它压在 43–83 之间，
+   * 说白了主要是「尺寸计」。这里换成 1.0–10.0 的体感分：
+   *   基线由尺寸决定（4×4 ≈ 1.8，16×16 ≈ 9.2，对数插值），
+   *   再用「需要多深的推理」做 ±0.6 的修正。
+   * 分级：容易 < 3.2 ≤ 中等 < 5.6 ≤ 困难 < 7.6 ≤ 极难
+   */
+  var LEVELS = [
+    { level: '容易', tone: 'easy' },
+    { level: '中等', tone: 'mid' },
+    { level: '困难', tone: 'hard' },
+    { level: '极难', tone: 'extreme' }
+  ];
+
+  function levelOf(v) {
+    if (v < 3.2) return LEVELS[0];
+    if (v < 5.6) return LEVELS[1];
+    if (v < 7.6) return LEVELS[2];
+    return LEVELS[3];
+  }
+
+  function display(n, m, tier, extra) {
+    var sizePart = 1.8 + 7.4 * (Math.log(n / 4) / Math.log(4));
+    var adj = 0;
+
+    if (tier === 1) adj -= 0.5;
+    else if (tier === 2) adj -= 0.35;
+    else if (tier === 3) adj -= 0.2;
+    else if (tier === 5) adj += 0.4;
+
+    var gd = extra && extra.guess != null ? extra.guess : (m.guessDepth || 0);
+    adj += 0.1 * Math.max(-2, Math.min(2, (gd || 0) - 2));
+
+    var probes = extra && extra.probe != null ? extra.probe : m.probes;
+    adj += 0.06 * Math.max(-2, Math.min(2, Math.log(probes + 1) / Math.LN2 - 5));
+
+    var areaMax = extra && extra.areaMax != null ? extra.areaMax : m.areaMax;
+    adj += 0.08 * Math.max(-1, Math.min(1, (areaMax / m.n - 2) / 2));
+
+    adj = Math.max(-0.6, Math.min(0.6, adj));
+
+    var v = sizePart + adj;
+    v = Math.max(1, Math.min(9.9, v));
+    v = Math.round(v * 10) / 10;
+    var lv = levelOf(v);
+    return { score: v, level: lv.level, tone: lv.tone };
+  }
+
+  /* 一步到位：算指标 → 记账 → 出人类视角结论 */
+  function vibe(n, regions, solution, opt) {
+    var m = analyze(n, regions, solution, opt);
+    var rt = score(m);
+    var ex = explain(n, regions, solution, opt);
+    var dp = display(n, m, rt.tier, ex);
+    return {
+      score: dp.score,
+      level: dp.level,
+      tone: dp.tone,
+      raw: rt.score,
+      tier: rt.tier,
+      label: rt.label,
+      steps: ex,
+      metrics: m
+    };
+  }
+
   function structure(ctx) {
     var n = ctx.n, N = ctx.N;
     var areas = new Array(n).fill(0);
@@ -520,6 +681,9 @@
     analyze: analyze,
     score: score,
     rate: rate,
+    explain: explain,
+    display: display,
+    vibe: vibe,
     // 供工具使用的内部件
     makeCtx: makeCtx,
     propagate: propagate,

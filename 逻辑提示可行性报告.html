@@ -54,7 +54,7 @@
   td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
   tr.hi td{background:#FFF8E1}
   tr.bad td{background:#FFF0F0}
-  .tag{display:inline-block;font:600 11px/1 var(--mono);padding:4px 7px;border-radius:6px;border:1px solid var(--ink);background:#fff}
+  .tag{display:inline-block;font:600 11px/1 var(--mono);padding:4px 7px;border-radius:6px;border:1px solid var(--ink);background:#fff;white-space:nowrap}
   .tag.g{background:#DFF5E8;border-color:#1E7A4C}
   .tag.y{background:var(--accent-soft)}
   .tag.r{background:#FFE1E1;border-color:#B33}
@@ -351,6 +351,59 @@ placeQueen(target);                    <span class="c">// 从上往下补第一�
   <b class="lbl">L4 话术示例</b>
   「色块 6 现在只剩两个位置：第 3 行第 2 列、或第 4 行第 6 列。先试第一个 —— 如果皇后在这儿，第 3 行第 4 列和第 4 行第 1、2 列就都被封住，色块 2 会一个位置都不剩，矛盾。所以只能是第二个。」
 </div>
+
+<h3>3.6 那还有没有第三条规则？（含你举的「两行两色」）</h3>
+
+<p>先说结论：<b>「色块 ↔ 线」这个家族里只有 A 和 B 两个方向，k 取到 n 就完备了，不存在第三条。</b>你这次的例子，两种读法正好落在 k=2 上：</p>
+
+<table>
+  <thead><tr><th>你的说法</th><th>形式化</th><th>对应规则</th><th>10 盘累计产出</th></tr></thead>
+  <tbody>
+    <tr class="hi"><td style="text-align:left">两行里包含了两个颜色的全部格子<br>→ 这两行的其它颜色不可能有皇后</td><td style="text-align:left">这两行的活格只属于 2 个色块 → 这 2 个色块的皇后都被锁在这两行 → 它们在这两行<b>之外</b>的格子可以划掉</td><td style="text-align:left"><span class="tag r">B (k=2)</span></td><td style="text-align:left">成立 1–3 次，共划 19–142 格</td></tr>
+    <tr><td style="text-align:left">两个颜色的格子全被两行包住<br>→ 这两行的其它颜色不可能有皇后</td><td style="text-align:left">这 2 个色块的活格全在这两行 → 这两行被它们占满 → 行内<b>其它色块</b>的格子可以划掉</td><td style="text-align:left"><span class="tag y">A (k=2)</span></td><td style="text-align:left">成立 4–14 次，共划 35–352 格</td></tr>
+  </tbody>
+</table>
+
+<p class="cap">测法：只开 S1 推到不动点（避免 A/B 已经先把构型吃掉），再逐个数成立次数和可划格数。两种读法都真能划到格子 —— 所以你的直觉是对的、有用的，只是它没有走出 A/B 这两条方向：k=1 就是上一节那个「整行单色」，k=2 就是你现在举的这个。</p>
+
+<p>顺带把 k 的分档拆开看，各档的边际贡献是这样的（10 盘累加，单位：格）：</p>
+
+<table>
+  <thead><tr><th>n</th><th>A(k=1)</th><th>A(k=2)</th><th>A(k=3)</th><th>B(k=1)</th><th>B(k=2)</th><th>B(k=3)</th></tr></thead>
+  <tbody>
+    <tr><td>8</td><td class="num">56</td><td class="num">45</td><td class="num">78</td><td class="num">21</td><td class="num">16</td><td class="num">41</td></tr>
+    <tr><td>10</td><td class="num">75</td><td class="num">78</td><td class="num">188</td><td class="num">16</td><td class="num">49</td><td class="num">60</td></tr>
+    <tr><td>12</td><td class="num">124</td><td class="num">88</td><td class="num">442</td><td class="num">41</td><td class="num">46</td><td class="num">109</td></tr>
+    <tr class="hi"><td>16</td><td class="num">149</td><td class="num">237</td><td class="num">776</td><td class="num">24</td><td class="num">136</td><td class="num">280</td></tr>
+  </tbody>
+</table>
+<p class="cap"><b>A(k=3) 是绝对主力</b>；B 的高档（k=2、3）随尺寸增长明显，这就是大盘上补 B 收益更大的原因。</p>
+
+<p>那么，有没有<b>真正独立</b>的第三个家族？有 —— <b>「行 ↔ 列」计数</b>：把「行」当单元、「列」当线，完全绕开色块。k 行的活格只落在 k 列里 → 这 k 行正好占满这 k 列 → 别的行在这些列上的格子全排除。它在数学上成立（行与列之间本来就是一个置换问题），现有代码里也确实没有。我把它实现出来测了一遍：</p>
+
+<table>
+  <thead><tr><th>n</th><th>只 A+B：落子</th><th>加 C：落子</th><th>C 全程排除格</th><th>「只有 C 能推」的轮次</th></tr></thead>
+  <tbody>
+    <tr><td>8</td><td class="num">0.8</td><td class="num">0.8</td><td class="num">12</td><td class="num">0</td></tr>
+    <tr><td>10</td><td class="num">2.8</td><td class="num">2.8</td><td class="num">57</td><td class="num">0</td></tr>
+    <tr><td>12</td><td class="num">3.7</td><td class="num">3.7</td><td class="num">71</td><td class="num">0</td></tr>
+    <tr><td>16</td><td class="num">8.0</td><td class="num">8.0</td><td class="num">238</td><td class="num">0</td></tr>
+  </tbody>
+</table>
+
+<p><b>正确，但没用。</b>它能划格子，却从不单独生效（0 轮），落子数一成不变。原因很干脆：k=1 会被 S1 先吃掉；k≥2 要求某行只剩两三列可选，那得等前面推得很深才会出现，而到那时候 B 已经把局面吃干净了。</p>
+
+<p>还有一类「看起来该有」的规则是<b>纯邻接推理</b>，例如「相邻两行的候选列都只有 {c, c+1} → 这两行放不下两只皇后」。它可以被证明在 sound 状态下<b>永不触发</b>：sound 状态一定包含真解，而真解本身满足邻接约束。实测 347 个中局状态，触发 <b>0</b> 次。邻接只能活在「假设」里面 —— 放下某只皇后之后连锁排除，也正是 <code>place()</code> 里那个 3×3 在做的事。</p>
+
+<p class="lead">所以，真正缺的不是规则，是假设：</p>
+
+<div class="grid3">
+  <div class="kpi"><b>60.6%</b><span>纯逻辑卡住时，剩余活格里有这么多能被「假设→矛盾」一次否掉（864/1426）</span></div>
+  <div class="kpi"><b>7–10 只</b><span>把这些否掉之后，每盘还能再补出这么多皇后</span></div>
+  <div class="kpi"><b>130/130</b><span>迭代「假设→矛盾」能把全部棋盘解完（<code>difficulty.js</code> 的 probe 层）</span></div>
+</div>
+
+<p>换句话说：A+B 推到卡住那一刻，桌上还压着一大半可推的东西，而它们<b>全部</b>只能通过「假设 A → 推崩 → 所以不是 A」拿到。继续往规则库里加计数变体，边际收益接近零；把 L4 做成一等公民，才是真正解锁提示可用性的那一步。</p>
 
 <h2><span class="no">4</span>推荐方案：新增一个 <code>hint.js</code>，三个老文件基本不动</h2>
 
