@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>皇后 Queens · 难度调研报告</title>
+<style>
+  :root{
+    --bg:#FEF3E2; --card:#FFFFFF; --ink:#3A3335; --mute:#8D8285; --faint:#C9BCA8;
+    --hair:rgba(58,51,53,.16); --accent:#FFD93D; --accent-soft:#FFF0B8;
+    --ok:#22B573; --warn:#FF9F43; --bad:#FF5C5C; --blue:#7FA6D9;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Courier New",monospace;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:15px/1.75 -apple-system,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:960px;margin:0 auto;padding:48px 24px 96px}
+  header{margin-bottom:36px}
+  .kicker{font:600 12px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--mute)}
+  h1{font-size:34px;line-height:1.25;margin:10px 0 8px;letter-spacing:-.02em}
+  .sub{color:var(--mute);font-size:14px}
+  h2{font-size:22px;margin:56px 0 6px;letter-spacing:-.01em}
+  h2 .no{
+    display:inline-block;width:28px;height:28px;line-height:28px;text-align:center;
+    background:var(--accent);border:2px solid var(--ink);border-radius:9px;
+    font:700 14px/24px var(--mono);margin-right:10px;vertical-align:2px;
+    box-shadow:0 2px 0 var(--ink);
+  }
+  h3{font-size:16px;margin:28px 0 8px}
+  p{margin:10px 0}
+  .lead{font-size:15.5px;color:#4A4247}
+  ul,ol{margin:10px 0;padding-left:22px}
+  li{margin:5px 0}
+  code{font:13px/1.4 var(--mono);background:#F1E8DA;padding:1px 5px;border-radius:5px}
+  .card{
+    background:var(--card);border:2px solid var(--ink);border-radius:16px;
+    padding:20px 22px;box-shadow:0 4px 0 var(--ink);margin:18px 0;
+  }
+  .card.tight{padding:16px 18px}
+  .verdict{border-left:6px solid var(--accent)}
+  .verdict strong{background:linear-gradient(transparent 62%,var(--accent-soft) 62%)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .kpi{background:#FBF6EC;border:1px solid var(--hair);border-radius:12px;padding:12px 14px}
+  .kpi b{display:block;font:700 24px/1.2 var(--mono);letter-spacing:-.02em}
+  .kpi span{font-size:12.5px;color:var(--mute)}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.5px}
+  th,td{padding:7px 9px;text-align:right;border-bottom:1px solid var(--hair);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  th{font:600 12px/1.3 var(--mono);color:var(--mute);letter-spacing:.04em;border-bottom:2px solid var(--ink)}
+  td.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  tr.hi td{background:#FFF8E1}
+  .tag{display:inline-block;font:600 11px/1 var(--mono);padding:4px 7px;border-radius:6px;border:1px solid var(--ink);background:#fff}
+  .tag.g{background:#DFF5E8;border-color:#1E7A4C}
+  .tag.y{background:var(--accent-soft)}
+  .tag.r{background:#FFE1E1;border-color:#B33}
+  .tag.b{background:#E6F0FB;border-color:#3B6EA5}
+  .chart{margin:10px 0 4px;overflow-x:auto}
+  .cap{font-size:12px;color:var(--mute);margin-top:4px}
+  .note{font-size:13px;color:var(--mute)}
+  .formula{
+    font:13px/1.9 var(--mono);background:#FBF6EC;border:1px dashed var(--hair);
+    border-radius:10px;padding:12px 14px;overflow-x:auto;
+  }
+  hr{border:0;border-top:1px solid var(--hair);margin:44px 0}
+  footer{margin-top:56px;font-size:12.5px;color:var(--faint)}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--mute);margin-top:6px}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:0}
+  @media(max-width:720px){
+    .grid2,.grid3{grid-template-columns:1fr}
+    h1{font-size:26px}
+    .wrap{padding:32px 16px 64px}
+    table{font-size:12.5px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">Queens Puzzle · Difficulty Study</div>
+  <h1>这个局面到底有多难？<br>——难度量化、尺寸上限与加难可行性</h1>
+  <div class="sub">测量对象：<code>engine.js</code> 出题引擎 + <code>index.html</code> 呈现层 · 共采样 130 张 4–16 棋盘、17–26 共 12 张超界盘、4 组对照变体<br>本报告只做验证，未修改游戏任何文件。</div>
+</header>
+
+<div class="card verdict">
+  <h3 style="margin-top:0">三句话结论</h3>
+  <ol style="margin-bottom:0">
+    <li><strong>能量化</strong>，而且可以验证「量得对」：难度可以拆成 5 层推理技巧 + 4 个结构量，分数随尺寸严格单调（Spearman 0.995），推理层零误伤。</li>
+    <li><strong>16 之后能跑但不好用</strong>：出题耗时按 n<sup>6.7</sup> 爆炸（n=24 已 1.7 秒、n=25 近 10 秒），最大色块涨到均面积的 5–10 倍，n≥18 出现相邻同色，手机端 n&gt;22 直接溢出。</li>
+    <li><strong>「加难度」目前只有尺寸一个真旋钮</strong>：面积再均衡、挑种子都试过，分数分别 −1 分和 +2 分；因为 95% 的盘本来就必须假设试推——难度上限被「缺少逻辑入口」这件事锁死了。</li>
+  </ol>
+</div>
+
+<h2><span class="no">1</span>能不能用数字指标量化一局的难度？</h2>
+
+<p class="lead">能。但先要承认一件事：<b>「电脑解得快」不等于「人解得难」</b>。这个题型（Star Battle 单星变体）的人类技巧链是清楚的，我按技巧谱系建了 5 个档位，再用一个不带任何搜索的传播器去跑，看它卡在哪一档。</p>
+
+<h3>1.1 度量模型：5 个技巧档 + 4 个结构量</h3>
+
+<table>
+  <thead><tr><th>档</th><th>名称</th><th>玩家实际在做的事</th><th>判定方式</th></tr></thead>
+  <tbody>
+    <tr><td><span class="tag g">1</span></td><td class="num" style="text-align:left">直觉型</td><td style="text-align:left">某色块/行/列只剩一个空格，直接落子</td><td style="text-align:left">只开「唯一候选」规则就能解完</td></tr>
+    <tr><td><span class="tag g">2</span></td><td class="num" style="text-align:left">封锁型</td><td style="text-align:left">某色块全挤在一行里 → 这一行别处全排除</td><td style="text-align:left">+ k=1 的区块封锁</td></tr>
+    <tr><td><span class="tag y">3</span></td><td class="num" style="text-align:left">计数型</td><td style="text-align:left">3 个色块只能落在 3 行里 → 这 3 行被它们占满</td><td style="text-align:left">+ k≤3 的集合计数（列同理）</td></tr>
+    <tr><td><span class="tag y">4</span></td><td class="num" style="text-align:left">试推型</td><td style="text-align:left">「假如放这儿…立刻矛盾，划掉」，反复假设</td><td style="text-align:left">+ 单层失败文字探测（failed literal）</td></tr>
+    <tr><td><span class="tag r">5</span></td><td class="num" style="text-align:left">试错型</td><td style="text-align:left">真猜，猜错回退重来</td><td style="text-align:left">以上都推不完，必须回溯搜索</td></tr>
+  </tbody>
+</table>
+
+<div class="formula">
+score = 34·sizeBase + 20·shape + 10·gift + 36·logic<br>
+&nbsp;&nbsp;sizeBase = log(n/3.2) / log(16/3.2)&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#8D8285">// 尺寸基线</span><br>
+&nbsp;&nbsp;shape&nbsp;&nbsp;&nbsp;&nbsp;= ½·min(1, areaCV/0.55) + ½·min(1, (areaMax/n)/2.6)&nbsp;&nbsp;<span style="color:#8D8285">// 色块畸变</span><br>
+&nbsp;&nbsp;gift&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= 1 − min(1, 单格色块数 / 0.25n)&nbsp;&nbsp;<span style="color:#8D8285">// 白送的已知子</span><br>
+&nbsp;&nbsp;logic&nbsp;&nbsp;&nbsp;&nbsp;= 档1→0.06 / 档2→0.22 / 档3→0.42 / 档4→0.60 / 档5→0.76+0.05·猜测深度
+</div>
+
+<p>权重不是拍脑袋定的：<code>sizeBase</code> 用对数是因为玩家感受到的负担更像「一眼要扫多少格」，而不是格数的平方；<code>logic</code> 给 36% 是因为档位一跳，人就要换一套思维方式。</p>
+
+<h3>1.2 先验证「量得对不对」：三道关</h3>
+
+<div class="grid3">
+  <div class="kpi"><b>104</b><span>盘唯一性被独立复核（13 尺寸 × 8 盘），异常 0 盘</span></div>
+  <div class="kpi"><b>0 / 0</b><span>推理层误划 / 错子（共 392 个色块 × 3 档 + 试推层）</span></div>
+  <div class="kpi"><b>0.995</b><span>Spearman(均分, 尺寸)，13 个尺寸全部单调</span></div>
+</div>
+
+<ul>
+  <li><b>唯一性复核</b>：另写了一个<b>完全不使用位掩码</b>的参考求解器（<code>tools/refsolve.mjs</code>）重数解，逐盘比对解向量。n=16 时最坏搜索节点 1757，说明「唯一解」这个前提是真的，不是引擎自说自话。</li>
+  <li><b>推理层无误伤</b>：这是最容易出错的地方——推理器一旦「划掉」本该放皇后的格子，整盘就废了。逐盘检查：凡是推理器落下的子，必须与真解一致；凡是没解完的色块，真解所在格必须还活着。三个档位全部 0 违例。</li>
+  <li><b>单调性</b>：均分 43（n=4）→ 83（n=16），中间的每一级都比上一级高，没有回头。</li>
+</ul>
+
+<h3>1.3 再说「量得有多细」：同尺寸内其实没什么可分辨的</h3>
+
+<p>这是本报告最需要如实交代的一段。分数随尺寸非常准，但<b>把尺寸固定住之后，分数能提供的信息很有限</b>：同尺寸标准差只有 1.0–7.8 分（13 个尺寸平均 2.9 分），8 盘里的极差通常 3–8 分。</p>
+
+<table>
+  <thead><tr><th>n</th><th>均分</th><th>标准差</th><th>最低–最高</th><th>档位分布 1/2/3/4/5</th></tr></thead>
+  <tbody>
+    <tr><td>8</td><td class="num">67.1</td><td class="num">2.4</td><td class="num">64–69</td><td class="num">0/0/0/8/0</td></tr>
+    <tr><td>10</td><td class="num">72.9</td><td class="num">2.0</td><td class="num">70–76</td><td class="num">0/0/0/8/0</td></tr>
+    <tr><td>12</td><td class="num">76.9</td><td class="num">2.5</td><td class="num">71–79</td><td class="num">0/0/1/7/0</td></tr>
+    <tr class="hi"><td>14</td><td class="num">78.4</td><td class="num">7.8</td><td class="num">58–83</td><td class="num">1/0/0/7/0</td></tr>
+    <tr><td>16</td><td class="num">83.1</td><td class="num">2.5</td><td class="num">77–86</td><td class="num">0/0/1/7/0</td></tr>
+  </tbody>
+</table>
+
+<p class="note">n=14 那 7.8 分标准差来自一张「恰好有单格色块」的盘（档 1，58 分），是唯一一次难度明显偏低的情况——单格色块等于白送一只皇后，后面整条推理链会连锁点亮。</p>
+
+<p>换成秩相关看，同尺寸内分数与各项指标的关系是：</p>
+
+<table>
+  <thead><tr><th>对照指标</th><th>Spearman（固定 n 后）</th><th>解读</th></tr></thead>
+  <tbody>
+    <tr><td style="text-align:left">猜测深度 guessDepth</td><td class="num">0.57</td><td style="text-align:left">最靠谱的同尺寸信号：要连着猜几层</td></tr>
+    <tr><td style="text-align:left">试推步数 probes</td><td class="num">0.42</td><td style="text-align:left">中等，且分布极度右偏（0–236 步）</td></tr>
+    <tr><td style="text-align:left">最大色块 areaMax</td><td class="num">0.29</td><td style="text-align:left">弱</td></tr>
+    <tr><td style="text-align:left">面积变异 areaCV</td><td class="num">0.16</td><td style="text-align:left">几乎无</td></tr>
+    <tr><td style="text-align:left">集合计数排除 l3Elim</td><td class="num">0.04</td><td style="text-align:left">无（它衡量的是「可推性」，不是难度）</td></tr>
+  </tbody>
+</table>
+
+<div class="card tight">
+  <b>所以第 1 题的答案是：能量化，但要分两层用。</b>
+  <ul style="margin-bottom:0">
+    <li><b>绝对难度</b>（跨尺寸比较）→ 现在的分数够用，误差约 ±3 分，排序可靠。</li>
+    <li><b>相对难度</b>（同尺寸比两张盘）→ 别用 0–100 的分数，直接用 <code>guessDepth</code>（要猜几层）和 <code>probes</code>（要假设多少次）这两个原始量更诚实。分数在同尺寸内的分辨力只有 ρ≈0.5。</li>
+  </ul>
+</div>
+
+<h3>1.4 一个意外的发现：95% 的盘根本没有「逻辑入口」</h3>
+
+<div class="chart" id="chart-tier"></div>
+<div class="cap">130 张盘（4–16 各 10 张）的技巧档分布。档 4 = 必须做「假设→矛盾」，档 5 = 必须真猜。</div>
+
+<p>把 130 张盘全跑一遍：<b>档 1 只有 1 张、档 2 只有 1 张、档 3 有 7 张、档 4 有 121 张</b>（93%）。也就是说，<b>93% 的局面在「唯一候选 + 区块封锁 + 集合计数」这套纯逻辑里一步都推不动</b>——不是玩家不会推，是盘面上真的没有可推的东西。</p>
+
+<p>原因在生成算法：每只皇后先占住自己色块的种子格，再让色块往外长，长成细长锯齿状（<code>scoreOf</code> 里 <code>diff − 1.5·same</code> 的偏好），并且允许单个色块长到 <code>2.4n</code> 格。结果是每个色块都横跨 3–5 行、3–5 列，<b>既不会「全挤在一行里」也不会「几个色块共用几行」</b>，计数推理的触发条件永远不成立。真正能当入口的只有一种：面积恰好为 1 的色块（白送一只皇后）。</p>
+
+<div class="card tight verdict">
+  <strong>这解释了一个直觉上的怪现象</strong>：4×4 和 16×16 在玩家体感上都「一开始不知道从哪下手」，只是 16×16 要假设的次数更多（平局猜测深度 1 → 3.7 层）。
+</div>
+
+<h2><span class="no">2</span>能不能继续扩大棋盘？超过 16×16 是什么表现？</h2>
+
+<p class="lead">技术上能，我实测到 26×26 都还能出唯一解。但四个层面会依次撞墙，而且撞的顺序很明确：<b>先是出题耗时，然后是色块畸变，然后是配色和布局，最后是 32 位掩码</b>。</p>
+
+<h3>2.1 出题耗时：按 n<sup>6.7</sup> 爆炸</h3>
+
+<div class="chart" id="chart-time"></div>
+<div class="cap">中位数耗时，n=16 起每级 2 个种子；n=25/26 为单种子实测（9853ms / 3606ms 波动极大）。</div>
+
+<table>
+  <thead><tr><th>n</th><th>出题耗时</th><th>最大色块 / 均面积</th><th>最小色块</th><th>结论</th></tr></thead>
+  <tbody>
+    <tr><td>16</td><td class="num">88 ms</td><td class="num">3.00</td><td class="num">1</td><td style="text-align:left">现役上限，尚可</td></tr>
+    <tr><td>17</td><td class="num">191 ms</td><td class="num">3.82</td><td class="num">5</td><td style="text-align:left">开始能感知到卡顿</td></tr>
+    <tr><td>18</td><td class="num">233 ms</td><td class="num">3.78</td><td class="num">2</td><td style="text-align:left">配色开始重复</td></tr>
+    <tr class="hi"><td>20</td><td class="num">433 ms</td><td class="num">4.10</td><td class="num">1</td><td style="text-align:left">手机单格只剩 17px</td></tr>
+    <tr><td>22</td><td class="num">2024 ms</td><td class="num">5.00</td><td class="num">3</td><td style="text-align:left">遮挡层会「冻住」2 秒</td></tr>
+    <tr class="hi"><td>24</td><td class="num">1749 ms</td><td class="num">5.21</td><td class="num">1</td><td style="text-align:left">iPhone SE 已溢出</td></tr>
+    <tr><td>26</td><td class="num">3606 ms</td><td class="num">10.12</td><td class="num">1</td><td style="text-align:left">出现 263 格巨块，视觉上等于没分块</td></tr>
+  </tbody>
+</table>
+
+<p>为什么会这么陡？因为 <code>buildRegions</code> 每染一格就要解一次盘验唯一性，落子次数是 <code>n²−n</code>（n=24 时 552 次），每次求解的上限是 12 万节点。棋盘一大，「唯一解」这件事本身变难证明，求解器更容易吃满预算、判为失败，于是回溯变多，耗时就滚起来了。拟合出来的指数是 <b>6.72</b>，外推 n=32 约 <b>13 秒</b>——而这个数字还是单线程阻塞主进程的耗时，界面上就是「点了一下，页面对着动画开始卡住」。</p>
+
+<h3>2.2 色块会「长残」：巨块吞掉半个盘</h3>
+
+<div class="chart" id="chart-area"></div>
+<div class="cap">最大色块面积 ÷ 平均面积（= n）。1.0 表示所有色块等大，5 表示最大块是平均的 5 倍。</div>
+
+<p>n=13 起这条线从 2.1 跳到 3.0 以上，n=26 直接到 10。原因还是同一个：生成时只看「唯一解」，面积上限 <code>maxAllowed = 2.4n</code> 只在收尾时用来「够用就收工」，<code>rebalance</code> 的预算又只有 40 次检查。棋盘越大，一次长歪的色块越难被拉回来，最后就出现「一个色块占 263 格、剩下 25 个色块挤在角落」的极端局面——玩家看到的不是推理题，而是一张几乎没分块的棋盘。</p>
+
+<h3>2.3 呈现层：配色、点按、溢出三个硬约束</h3>
+
+<div class="grid2">
+  <div>
+    <h3>配色只有 16 种</h3>
+    <p><code>REGION_COLORS</code> 共 16 个颜色，取色用的是 <code>g % 16</code>。所以 <b>n=17 必然有一对色块共用同一个颜色</b>，n=18 有两对。实测相邻同色（两色块边界因为同色而消失）：</p>
+    <table>
+      <thead><tr><th>n</th><th>相邻同色 / 盘</th></tr></thead>
+      <tbody>
+        <tr><td>16</td><td class="num">0.0</td></tr>
+        <tr><td>17</td><td class="num">0.0</td></tr>
+        <tr class="hi"><td>18</td><td class="num">4.0</td></tr>
+        <tr class="hi"><td>20</td><td class="num">4.5</td></tr>
+      </tbody>
+    </table>
+    <p class="note">n=17 侥幸为 0，是因为唯一重复的那一对恰好没挨着；一旦挨着，玩家就分不清哪里是色块边界，题目直接不可解。</p>
+  </div>
+  <div>
+    <h3>单格尺寸与溢出</h3>
+    <p>布局用 <code>cell = clamp(floor((availW−6)/n), 13, 78)</code>，<b>下限 13px 是硬编码的</b>。当 <code>13n &gt; availW</code> 时格子不再缩小，棋盘直接撑破容器：</p>
+    <table>
+      <thead><tr><th>设备</th><th>可用宽</th><th>n=20</th><th>溢出临界</th></tr></thead>
+      <tbody>
+        <tr class="hi"><td>iPhone SE</td><td class="num">302</td><td class="num">14px</td><td class="num">n&gt;22</td></tr>
+        <tr><td>iPhone 13</td><td class="num">357</td><td class="num">17px</td><td class="num">n&gt;27</td></tr>
+        <tr><td>Pro Max</td><td class="num">412</td><td class="num">20px</td><td class="num">n&gt;31</td></tr>
+        <tr><td>iPad</td><td class="num">750</td><td class="num">37px</td><td class="num">n&gt;57</td></tr>
+      </tbody>
+    </table>
+    <p class="note">可点按尺寸的通行推荐是 ≥44px。n=16 在 iPhone 13 上单格 21px，已经偏小；n=20 的 17px 意味着「双击标记」的误触率会明显上升。</p>
+  </div>
+</div>
+
+<h3>2.4 算法天花板的真实位置：n = 32</h3>
+
+<p>求解器和推理层都用 <code>rowMask |= (1 &lt;&lt; r)</code> 这样的 32 位整数掩码，每行/列/色块占一位。JS 的移位按 32 取模，所以：</p>
+
+<div class="formula">
+1 &lt;&lt; 31 = -2147483648&nbsp;&nbsp;&nbsp;(1&lt;&lt;31) &amp; 1 = 0&nbsp;&nbsp;&nbsp;<span style="color:#8D8285">// 安全：符号位也能正常当标记用</span><br>
+1 &lt;&lt; 32 = 1&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(1&lt;&lt;32) &amp; 1 = 1&nbsp;&nbsp;&nbsp;<span style="color:#B33">// 第 33 行撞上第 1 行</span>
+</div>
+
+<p>实测反例：构造一个「每个色块 = 一整行」的棋盘（必然有多解），用参考求解器与引擎分别数解——</p>
+
+<table>
+  <thead><tr><th>n</th><th>参考求解器（无掩码）</th><th>引擎 solve()</th><th>判定</th></tr></thead>
+  <tbody>
+    <tr><td>32</td><td class="num">2 解</td><td class="num">2 解</td><td><span class="tag g">一致</span></td></tr>
+    <tr class="hi"><td>33</td><td class="num">2 解</td><td class="num">0 解（预算耗尽）</td><td><span class="tag r">结论错误</span></td></tr>
+  </tbody>
+</table>
+
+<p>所以 <b>n ≤ 32 是位宽安全区，n ≥ 33 求解器会给出错误结论</b>（实践中表现为「永远证明不了唯一解」，于是出题一直失败）。不过这个墙远在布局和耗时的墙之后，属于理论边界，不是现实瓶颈。</p>
+
+<div class="card tight verdict">
+  <b>第 2 题的答案</b>：
+  <ul style="margin-bottom:0">
+    <li><b>桌面/平板</b>：n=18–20 可用（耗时 &lt;0.5s，格子 37–58px），代价是偶尔出现巨块和同色相邻，需要同时改配色表与面积上限。</li>
+    <li><b>手机</b>：n=16 已经是舒适上限，18 勉强，20 起单格 &lt;20px 且 iPhone SE 会溢出。</li>
+    <li><b>不加架构改动</b>：16 就是天花板。要往上走得先做三件事——异步出题（换 Worker，避免主线程冻结）、扩配色（≥n 色或改用图案/边框区分）、给 <code>rebalance</code> 加足预算压住巨块。</li>
+  </ul>
+</div>
+
+<h2><span class="no">3</span>增加棋盘难度的可行性</h2>
+
+<p class="lead">我在临时副本里试了三种旋钮（未改动 <code>engine.js</code>），同尺寸、同种子对比。结论先说：<b>只有尺寸是真旋钮，其余两个都是噪声级</b>。</p>
+
+<h3>3.1 三个旋钮的实测效果</h3>
+
+<table>
+  <thead><tr><th>变体</th><th>n</th><th>均分</th><th>分差区间</th><th>最大色块/均面积</th><th>试推步数</th><th>耗时</th></tr></thead>
+  <tbody>
+    <tr><td style="text-align:left">基线</td><td class="num">10</td><td class="num">72</td><td class="num">67–75</td><td class="num">2.13</td><td class="num">12</td><td class="num">3 ms</td></tr>
+    <tr><td style="text-align:left">A 面积上限 2.4n→1.6n</td><td class="num">10</td><td class="num">72</td><td class="num">69–74</td><td class="num">2.02</td><td class="num">13</td><td class="num">6 ms</td></tr>
+    <tr><td style="text-align:left">B A + 强再均衡</td><td class="num">10</td><td class="num">71</td><td class="num">68–73</td><td class="num">1.70</td><td class="num">20</td><td class="num">6 ms</td></tr>
+    <tr><td style="text-align:left">C 同批挑最难</td><td class="num">10</td><td class="num">75</td><td class="num">±2.9</td><td class="num">2.40</td><td class="num">10</td><td class="num">3 ms</td></tr>
+    <tr><td style="text-align:left">基线</td><td class="num">14</td><td class="num">81</td><td class="num">75–83</td><td class="num">2.79</td><td class="num">63</td><td class="num">33 ms</td></tr>
+    <tr><td style="text-align:left">A 面积上限收紧</td><td class="num">14</td><td class="num">80</td><td class="num">75–83</td><td class="num">2.33</td><td class="num">39</td><td class="num">44 ms</td></tr>
+    <tr class="hi"><td style="text-align:left">B A + 强再均衡</td><td class="num">14</td><td class="num">79</td><td class="num">70–94</td><td class="num">1.91</td><td class="num">140</td><td class="num">123 ms</td></tr>
+    <tr><td style="text-align:left">C 同批挑最难 / 最易</td><td class="num">14</td><td class="num">83 / 75</td><td class="num">±2.6</td><td class="num">3.36 / 2.14</td><td class="num">153 / 2</td><td class="num">33 ms</td></tr>
+  </tbody>
+</table>
+
+<ul>
+  <li><b>面积再均衡（A/B）不涨分数</b>：最大色块从 2.79 压到 1.91，观感确实更整齐，但分数 81→79。副作用倒是明确：n=14 的试推步数从 63 涨到 140，出题耗时翻近 4 倍（33→123ms）。它改变的是「结构是否好看」，不是「档位」。</li>
+  <li><b>挑种子（C）只能微调</b>：同尺寸 8 盘里的可挑选区间只有 8 分，挑最难也只比均值高 2 分。想靠「多生成几张挑一张」跨档是不可能的。</li>
+  <li><b>尺寸是唯一强旋钮</b>：n 每 +1，均分约 +3.5（4→16 是 43→83），而且提升是单调、稳定、不需要改算法的。</li>
+</ul>
+
+<h3>3.2 为什么其余旋钮无效：难度上限被「没有入口」锁死</h3>
+
+<p>回到 1.4 的发现：93% 的盘在纯逻辑层面推不动第一步。这意味着<b>所有盘都被顶到「档 4」这个平台上</b>，而档位只有 5 个，一旦大家挤在同一档，分数就只能在 <code>shape</code>（结构噪声）里浮动——这也解释了为什么 <code>areaMax</code> 与分数的相关系数高达 0.93，却依然调不动难度：它和 n 一起涨，属于共线，不是因果。</p>
+
+<p>换句话说：<b>想让难度真的上升，必须让盘面出现「更深的推理需求」，而不是让色块变瘦或变大。</b>这需要改的是生成目标，不是后处理参数。</p>
+
+<h3>3.3 按性价比排序的可行方案</h3>
+
+<table>
+  <thead><tr><th>方案</th><th>做法</th><th>预期效果</th><th>成本</th><th>风险</th></tr></thead>
+  <tbody>
+    <tr>
+      <td style="text-align:left"><span class="tag g">推荐</span> 目标分挑选</td>
+      <td style="text-align:left">生成时算 <code>difficulty.score()</code>，每档尺寸维护「简单/标准/困难」三条分数线，用重试或种子池凑够目标分</td>
+      <td style="text-align:left">可控幅度 ±4 分；能把 8% 的低档盘筛出去</td>
+      <td style="text-align:left">低（纯增量，不动生成逻辑）</td>
+      <td style="text-align:left">出题耗时 +20–40%</td>
+    </tr>
+    <tr>
+      <td style="text-align:left"><span class="tag b">有效</span> 引入推理深度门槛</td>
+      <td style="text-align:left">出题后跑一遍推理器，<b>拒绝</b>「档 1/2 就能解完」的盘（太简单），并要求 <code>guessDepth ≥ k</code>（够难）</td>
+      <td style="text-align:left">难度下限可保证，上限由 k 决定</td>
+      <td style="text-align:left">中（多一次分析，约 1–30ms）</td>
+      <td style="text-align:left">门槛过严会导致大量重试</td>
+    </tr>
+    <tr>
+      <td style="text-align:left"><span class="tag y">有效</span> 放宽尺寸到 18–20</td>
+      <td style="text-align:left">只给桌面/平板放开；手机保持 16</td>
+      <td style="text-align:left">难度稳定 +7～+11 分</td>
+      <td style="text-align:left">低（改上限 + 配色表 + 异步出题）</td>
+      <td style="text-align:left">手机端体验断崖</td>
+    </tr>
+    <tr>
+      <td style="text-align:left"><span class="tag y">中等</span> 加规则变体</td>
+      <td style="text-align:left">双星（每行每列每块 2 只皇后）、或每天追加一个禁放格</td>
+      <td style="text-align:left">难度维度直接翻倍，且不依赖尺寸</td>
+      <td style="text-align:left">高（求解器、生成器、UI 都要改）</td>
+      <td style="text-align:left">玩家需要重新学规则</td>
+    </tr>
+    <tr>
+      <td style="text-align:left"><span class="tag r">不推荐</span> 收紧面积上限</td>
+      <td style="text-align:left">maxAllowed 2.4n→1.6n、rebalance 加预算</td>
+      <td style="text-align:left">分数 −1；只让盘面变整齐</td>
+      <td style="text-align:left">低</td>
+      <td style="text-align:left">耗时最高涨 4 倍，收益为负</td>
+    </tr>
+    <tr>
+      <td style="text-align:left"><span class="tag r">不推荐</span> 继续加大棋盘</td>
+      <td style="text-align:left">24×24 以上</td>
+      <td style="text-align:left">分数 +4，但巨块、同色、溢出、冻结全来了</td>
+      <td style="text-align:left">高（要重写呈现层）</td>
+      <td style="text-align:left">玩家感知瓶颈变成「看不过来」，不是「想不出来」</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>3.4 一个容易被忽略的事实：难度≠耐玩</h3>
+
+<p>现在的盘面有 93% 需要「假设→矛盾」才能推进，这对新手已经不友好；再往上加难度，边际收益很低，因为玩家真正的卡点会从「推理不够」变成「盘面太大、眼睛跟不上」。相比之下，<b>把档位分布拉开</b>（比如一半盘能在「封锁型/计数型」解决，一半需要试推）比整体抬高难度更能留住人。</p>
+
+<p>另外提醒一句：UI 里的「自动标记 / 冲突提示 / 强制落子」三个开关会显著改变实际难度。<code>forced</code> 打开时等于把「唯一候选」这一步白送，也就是把档 1、档 2 的工作量抹掉。所以记录难度时应该<b>和辅助开关一起记</b>，否则同一张盘在两种设置下的体感完全不同。</p>
+
+<hr>
+
+<h2>附：验证产物与复现方式</h2>
+
+<table>
+  <thead><tr><th>文件</th><th>作用</th></tr></thead>
+  <tbody>
+    <tr><td style="text-align:left"><code>difficulty.js</code></td><td style="text-align:left">难度度量模块（5 档推理 + 结构量 + 评分），UMD，浏览器/Node 通用；只读棋盘，不参与出题</td></tr>
+    <tr><td style="text-align:left"><code>tools/refsolve.mjs</code></td><td style="text-align:left">不依赖位掩码的参考求解器，用于独立复核唯一性（任意 n）</td></tr>
+    <tr><td style="text-align:left"><code>tools/verify-theory.mjs</code></td><td style="text-align:left">唯一性复核、推理层无误伤、单调性、同尺寸分辨力、位宽上限</td></tr>
+    <tr><td style="text-align:left"><code>tools/verify-limits.mjs</code></td><td style="text-align:left">17–24 的耗时/面积/配色/布局上限，耗时指数拟合</td></tr>
+    <tr><td style="text-align:left"><code>tools/verify-knobs.mjs</code></td><td style="text-align:left">面积上限、再均衡、挑种子三种旋钮的对照实验（临时副本）</td></tr>
+    <tr><td style="text-align:left"><code>tools/difficulty-probe.mjs</code></td><td style="text-align:left">批量采样，输出 <code>difficulty-data.json / .csv</code></td></tr>
+  </tbody>
+</table>
+
+<div class="formula">
+node tools/verify-theory.mjs 8&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#8D8285"># 理论验证（唯一性 / 无误伤 / 单调性 / 分辨力 / 位宽）</span><br>
+node tools/verify-limits.mjs&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#8D8285"># 超界行为（耗时 / 面积 / 配色 / 布局）</span><br>
+node tools/verify-knobs.mjs&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#8D8285"># 旋钮对照实验</span><br>
+node tools/difficulty-probe.mjs --sizes=4-16 --per=10&nbsp;&nbsp;<span style="color:#8D8285"># 采样并写 JSON/CSV</span>
+</div>
+
+<p class="note">所有实验都只读取 <code>engine.js</code>；需要改参数的变体写在 <code>tools/.tmp-*.cjs</code> 临时副本里，游戏本体（<code>index.html</code> / <code>engine.js</code>）未做任何修改。</p>
+
+<footer>皇后 Queens · 难度调研 · 采样 2026-10-21 · 数据源：130 张 4–16 棋盘 + 12 张 17–26 超界盘</footer>
+</div>
+
+<script>
+/* ---------------- 数据 ---------------- */
+const N = [4,5,6,7,8,9,10,11,12,13,14,15,16];
+const SCORE = [42,51,57,64,67,69,72,75,76,80,79,80,82];
+const TIERS = {1:1,2:1,3:7,4:121,5:0};
+const BIG = [
+  {n:16, ms:88,   ratio:3.00},
+  {n:17, ms:191,  ratio:3.82},
+  {n:18, ms:233,  ratio:3.78},
+  {n:19, ms:391,  ratio:7.21},
+  {n:20, ms:433,  ratio:4.10},
+  {n:21, ms:1177, ratio:5.81},
+  {n:22, ms:2024, ratio:5.00},
+  {n:23, ms:791,  ratio:5.17},
+  {n:24, ms:1749, ratio:5.21}
+];
+
+const INK = '#3A3335', MUTE = '#8D8285', HAIR = 'rgba(58,51,53,.16)';
+const ACC = '#FFD93D', OK = '#22B573', BAD = '#FF5C5C', BLUE = '#7FA6D9';
+
+function svg(w, h, inner) {
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" style="max-width:${w}px;display:block" xmlns="http://www.w3.org/2000/svg">
+    <style>text{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;}</style>${inner}</svg>`;
+}
+
+/* --------- 图 1：档位堆叠条 --------- */
+(function tierChart() {
+  const W = 860, H = 150, L = 96, R = 24, T = 26, B = 40;
+  const bw = W - L - R, bh = 34;
+  const total = Object.values(TIERS).reduce((a, b) => a + b, 0);
+  const cols = ['#8FD3A8', '#B7E08E', ACC, '#FFB86B', BAD];
+  let x = L, inner = '';
+  Object.keys(TIERS).forEach((k, i) => {
+    const v = TIERS[k], w = bw * v / total;
+    if (v > 0) {
+      inner += `<rect x="${x}" y="${T}" width="${Math.max(w, 1)}" height="${bh}" fill="${cols[i]}" stroke="${INK}" stroke-width="1.5"/>
+        <text x="${x + w / 2}" y="${T + bh / 2 + 4}" text-anchor="middle" font-size="${w > 26 ? 12 : 10}" font-weight="700" fill="${INK}">${v}</text>`;
+    }
+    x += w;
+  });
+  inner += `<rect x="${L}" y="${T}" width="${bw}" height="${bh}" fill="none" stroke="${INK}" stroke-width="2" rx="2"/>`;
+  inner += `<text x="${L - 10}" y="${T + bh / 2 + 4}" text-anchor="end" font-size="12" fill="${MUTE}">130 张盘</text>`;
+  const labels = ['档1 直觉', '档2 封锁', '档3 计数', '档4 试推', '档5 试错'];
+  const counts = [1, 1, 7, 121, 0];
+  let lx = L;
+  labels.forEach((lb, i) => {
+    const v = counts[i], w = bw * v / total;
+    if (v > 0) {
+      inner += `<rect x="${lx}" y="${T + bh + 12}" width="9" height="9" fill="${cols[i]}" stroke="${INK}" stroke-width="1.2"/>`;
+      inner += `<text x="${lx + 13}" y="${T + bh + 20}" font-size="11" fill="${INK}">${lb} · ${(100 * v / total).toFixed(0)}%</text>`;
+    }
+    lx += Math.max(w, 0);
+  });
+  inner += `<text x="${L}" y="${H - 8}" font-size="11" fill="${MUTE}">93% 的盘在纯逻辑层面一步都推不动——不是玩家的问题，是盘面没有逻辑入口</text>`;
+  document.getElementById('chart-tier').innerHTML = svg(W, H, inner);
+})();
+
+/* --------- 图 2：出题耗时 --------- */
+(function timeChart() {
+  const pts = BIG;
+  const W = 860, H = 240, L = 62, R = 20, T = 20, B = 46;
+  const pw = W - L - R, ph = H - T - B;
+  const maxY = 2200, minX = 16, maxX = 24;
+  const X = n => L + (n - minX) / (maxX - minX) * pw;
+  const Y = v => T + ph - Math.min(v, maxY) / maxY * ph;
+  let inner = '';
+  for (let i = 0; i <= 4; i++) {
+    const v = maxY * i / 4, y = Y(v);
+    inner += `<line x1="${L}" y1="${y}" x2="${L + pw}" y2="${y}" stroke="${HAIR}"/>
+      <text x="${L - 8}" y="${y + 4}" text-anchor="end" font-size="11" fill="${MUTE}">${v >= 1000 ? (v / 1000).toFixed(1) + 's' : v + 'ms'}</text>`;
+  }
+  let path = '';
+  pts.forEach((p, i) => { path += (i ? 'L' : 'M') + X(p.n) + ' ' + Y(p.ms) + ' '; });
+  inner += `<path d="${path}" fill="none" stroke="${BAD}" stroke-width="2.5" stroke-linejoin="round"/>`;
+  pts.forEach(p => {
+    inner += `<circle cx="${X(p.n)}" cy="${Y(p.ms)}" r="4" fill="#fff" stroke="${BAD}" stroke-width="2"/>
+      <text x="${X(p.n)}" y="${Y(p.ms) - 10}" text-anchor="middle" font-size="10" fill="${MUTE}">${p.ms}</text>
+      <text x="${X(p.n)}" y="${T + ph + 18}" text-anchor="middle" font-size="11" fill="${INK}">${p.n}</text>`;
+  });
+  inner += `<text x="${L}" y="${H - 8}" font-size="11" fill="${MUTE}">拟合 耗时 ≈ n^6.7（外推 n=32 约 13 秒，且全程阻塞主线程）</text>`;
+  document.getElementById('chart-time').innerHTML = svg(W, H, inner);
+})();
+
+/* --------- 图 3：面积畸变 --------- */
+(function areaChart() {
+  const W = 860, H = 200, L = 62, R = 20, T = 20, B = 46;
+  const pw = W - L - R, ph = H - T - B;
+  const pts = N.map((n, i) => ({ n, r: [1.25,1.40,1.83,2.14,2.13,2.11,2.10,2.18,2.17,3.15,2.93,2.87,2.63][i] }))
+    .concat(BIG.map(b => ({ n: b.n, r: b.ratio })));
+  const maxY = 8, minX = 4, maxX = 24;
+  const X = n => L + (n - minX) / (maxX - minX) * pw;
+  const Y = v => T + ph - Math.min(v, maxY) / maxY * ph;
+  let inner = '';
+  for (let i = 0; i <= 4; i++) {
+    const v = maxY * i / 4, y = Y(v);
+    inner += `<line x1="${L}" y1="${y}" x2="${L + pw}" y2="${y}" stroke="${HAIR}"/>
+      <text x="${L - 8}" y="${y + 4}" text-anchor="end" font-size="11" fill="${MUTE}">${v}×</text>`;
+  }
+  // 分界：16 之前 / 之后
+  inner += `<rect x="${X(16.5)}" y="${T}" width="${L + pw - X(16.5)}" height="${ph}" fill="#FFF3D0" opacity=".7"/>`;
+  inner += `<line x1="${X(16.5)}" y1="${T}" x2="${X(16.5)}" y2="${T + ph}" stroke="${INK}" stroke-dasharray="4 4" stroke-width="1.5"/>`;
+  inner += `<text x="${X(16.5) + 6}" y="${T + 14}" font-size="11" fill="${MUTE}">现役上限 16</text>`;
+  let path = '';
+  pts.forEach((p, i) => { path += (i ? 'L' : 'M') + X(p.n) + ' ' + Y(p.r) + ' '; });
+  inner += `<path d="${path}" fill="none" stroke="${BLUE}" stroke-width="2.5" stroke-linejoin="round"/>`;
+  pts.forEach(p => { inner += `<circle cx="${X(p.n)}" cy="${Y(p.r)}" r="3.2" fill="${BLUE}" stroke="#fff" stroke-width="1.5"/>`; });
+  [4, 8, 12, 16, 20, 24].forEach(n => {
+    inner += `<text x="${X(n)}" y="${T + ph + 18}" text-anchor="middle" font-size="11" fill="${INK}">${n}</text>`;
+  });
+  inner += `<text x="${L}" y="${H - 8}" font-size="11" fill="${MUTE}">最大色块 ÷ 平均面积：1.0 = 整齐，5 = 最大块是平均的 5 倍（n=26 实测已达 10.1）</text>`;
+  document.getElementById('chart-area').innerHTML = svg(W, H, inner);
+})();
+</script>
+</body>
+</html>
