@@ -357,7 +357,7 @@ const forcedOn = await page.evaluate(() => ({
 }));
 check('再打开恢复提示', forcedOn.on === true && forcedOn.cells === 1 && forcedOn.saved === true,
   `cells=${forcedOn.cells} saved=${forcedOn.saved}`);
-await page.click('#btnDone');
+await page.click('#btnCloseSheet');
 await sleep(420);
 
 // ---------- 9. 完整解盘 → 胜利 ----------
@@ -409,10 +409,16 @@ check('快捷尺寸', sheet.quick >= 5, `quick=${sheet.quick}`);
 await page.screenshot({ path: `${OUT}/06-settings.png` });
 
 // ---------- 11. 改尺寸到 12 ----------
+// 新规则：改尺寸只写「待生效」，点「换一局」才真的开新盘
 for (let k = 0; k < 4; k++) { await page.click('#sizePlus'); await sleep(60); }
-s = await page.evaluate(() => ({ want: __QUEENS_DEBUG__.settings.size, val: document.getElementById('sizeVal').textContent.trim() }));
-check('步进器 +4', s.want === 12 && s.val === '12', `settings=${s.want} val=${s.val}`);
-await page.click('#btnDone');
+s = await page.evaluate(() => ({
+  val: document.getElementById('sizeVal').textContent.trim(),
+  board: __QUEENS_DEBUG__.state.size,
+  pending: document.getElementById('btnShuffle').classList.contains('is-pending')
+}));
+check('步进器 +4（只改待生效值）', s.val === '12' && s.board === 8 && s.pending === true,
+  `val=${s.val} board=${s.board} pending=${s.pending}`);
+await page.click('#btnShuffle');
 await sleep(1600);
 const n12 = await page.evaluate(() => ({
   size: __QUEENS_DEBUG__.state.size,
@@ -505,7 +511,7 @@ check('复制后有提示', copied.good && /已复制/.test(copied.text), copied
 await page.screenshot({ path: `${OUT}/10-share-copy.png` });
 
 // 换一局，再用粘贴还原
-await page.click('#btnDone');
+await page.click('#btnCloseSheet');
 await sleep(260);
 await page.evaluate(() => __QUEENS_DEBUG__.newGame(10));
 await sleep(1100);
@@ -589,7 +595,7 @@ await p2.close();
 log('\n--- 难度 ---');
 // 前面的分享用例把设置面板留在了打开状态（app 被 inert），先收起来
 await page.evaluate(() => {
-  if (!document.getElementById('sheetWrap').hidden) document.getElementById('btnDone').click();
+  if (!document.getElementById('sheetWrap').hidden) document.getElementById('btnCloseSheet').click();
 });
 await sleep(300);
 await page.evaluate(() => __QUEENS_DEBUG__.newGame(8));

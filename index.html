@@ -231,10 +231,25 @@ button {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 8px;
   padding: 0 12px calc(10px + env(safe-area-inset-bottom, 0px));
 }
+
+/* 上下两块弹性空白，把「提示 + 棋盘 + 调色板」这一串贴在一起，
+   只让工具栏落到底部。比例 1:3 —— 上面留一点气，下面就够拇指按。
+   都写成 0 基准，空间紧张时它们会先缩到 0，不占棋盘的地方。 */
+.stage::before,
+.stage::after {
+  content: "";
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.stage::after { flex-grow: 3; }
+
+/* 工具栏排在这两块空白之后，自然被顶到最下面 */
+.stage .toolbar { order: 2; }
 
 .hint {
   min-height: 18px;
@@ -594,7 +609,7 @@ button {
   gap: 4px;
   min-height: 20px;
   max-width: 100%;
-  padding: 0 4px;
+  padding: 4px 4px;
 }
 
 .chip {
@@ -949,13 +964,39 @@ button {
 .switch[aria-checked="true"] { background: var(--ok); }
 .switch[aria-checked="true"]::after { transform: translateX(22px); }
 
-.sheet-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 14px;
+/* ---- 换一局（分隔线以上：改了要点这里才生效） ---- */
+.shuffle-row {
+  padding: 12px 0 10px;
+  border-bottom: 1px dashed rgba(58, 51, 53, .14);
 }
 
-.sheet-actions .btn { flex: 1 1 0; }
+.shuffle-row .btn {
+  width: 100%;
+  min-height: 42px;
+  letter-spacing: 1px;
+}
+
+.shuffle-row .btn.is-pending {
+  animation: pendingNudge 2.4s ease-in-out infinite;
+}
+
+@keyframes pendingNudge {
+  0%, 100% { box-shadow: var(--shadow-btn); }
+  50% { box-shadow: 0 3px 0 var(--ink), 0 0 0 3px rgba(255, 217, 61, .55); }
+}
+
+.shuffle-hint {
+  margin: 7px 0 0;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--ink-faint);
+  transition: color var(--t-fast);
+}
+
+.shuffle-hint.is-pending { color: var(--ink); }
+
 .sheet-done { width: 100%; margin-top: 10px; }
 
 /* ---- 难度说明 ---- */
@@ -1426,7 +1467,7 @@ button {
         </svg>
       </button>
     </div>
-    <p class="sheet-note" id="sheetNote">改尺寸会立即生成新的一局</p>
+    <p class="sheet-note" id="sheetNote">当前这局：8×8</p>
 
     <div class="stepper" id="sizeStepper">
       <div class="stepper-label">棋盘大小<small>4×4 到 16×16，每盘唯一解</small></div>
@@ -1447,7 +1488,7 @@ button {
     </div>
 
     <div class="diff-row">
-      <div class="stepper-label">目标难度<small id="diffHint">选一个档位，之后每局都落在这里；「不限」就是现在这样</small></div>
+      <div class="stepper-label">目标难度<small id="diffHint">选好档位，点下面「换一局」生效</small></div>
       <div class="diff-opts" id="diffOpts" role="group" aria-label="目标难度">
         <button class="dbtn is-on" type="button" data-level="any" aria-pressed="true">不限</button>
         <button class="dbtn" type="button" data-level="easy" aria-pressed="false">容易</button>
@@ -1455,6 +1496,11 @@ button {
         <button class="dbtn" type="button" data-level="hard" aria-pressed="false">困难</button>
         <button class="dbtn" type="button" data-level="extreme" aria-pressed="false">极难</button>
       </div>
+    </div>
+
+    <div class="shuffle-row">
+      <button class="btn btn-hint" id="btnShuffle" type="button">换一局</button>
+      <p class="shuffle-hint" id="shuffleHint">换一幅新棋盘，上面的棋盘大小与目标难度一起生效</p>
     </div>
 
     <div class="switch-row">
@@ -1496,13 +1542,6 @@ button {
       </div>
       <p class="share-status" id="shareStatus" aria-live="polite"></p>
     </div>
-
-    <div class="sheet-actions">
-      <button class="btn" id="btnRestart" type="button">重开本局</button>
-      <button class="btn btn-hint" id="btnShuffle" type="button">换一局</button>
-    </div>
-
-    <button class="btn sheet-done" id="btnDone" type="button">好了</button>
   </div>
 </div>
 
@@ -1647,9 +1686,8 @@ button {
   var sheet = $('sheet');
   var sheetBackdrop = $('sheetBackdrop');
   var btnCloseSheet = $('btnCloseSheet');
-  var btnDone = $('btnDone');
-  var btnRestart = $('btnRestart');
   var btnShuffle = $('btnShuffle');
+  var shuffleHint = $('shuffleHint');
   var sizeMinus = $('sizeMinus');
   var sizePlus = $('sizePlus');
   var sizeVal = $('sizeVal');
@@ -1707,10 +1745,16 @@ button {
     regionCounts: null,
     focus: 0,
     lastTap: null,
-    vibe: null          // 本局难度评估（由 difficulty.js 算，见 applyBoard）
+    vibe: null,         // 本局难度评估（由 difficulty.js 算，见 applyBoard）
+    diffApplied: 'any'  // 本局真正用到的目标难度档（用来判断设置里是否有改动待生效）
   };
 
   var settings = Object.assign({}, DEFAULT_SETTINGS);
+
+  /* 设置面板上半部分（棋盘大小 / 目标难度）只是「意向」，选完不立刻作废当前这局，
+   * 点「换一局」才把 pending 落到 settings 上并真的出一盘新的。
+   * 下半部分的开关是即时生效的，所以放在分隔线以下。 */
+  var pending = { size: 8, difficulty: 'any' };
 
   var cellEls = [];
   var chipEls = [];
@@ -1722,7 +1766,6 @@ button {
   var resultOpen = false;
   var hintTimer = null;
   var saveTimer = null;
-  var sizeTimer = null;
   var ticker = null;
   var lastConflictCount = 0;
 
@@ -2300,6 +2343,8 @@ button {
   function relayout() {
     var n = state.size;
     var availW = stage.clientWidth - 18;
+    // 上下那两块弹性空白在棋盘吃满时会缩到 0，所以可用高度就是
+    // 「舞台高度 − 提示行 − 调色板 − 工具栏 − 间距」
     var availH = stage.clientHeight - hintEl.offsetHeight - regionsEl.offsetHeight -
       toolbarEl.offsetHeight - 30;
 
@@ -2639,13 +2684,6 @@ button {
     veil.hidden = true;
   }
 
-  /* 盘上有没有动过（叉或后）。用来判断「换档是否要立刻作废这一局」 */
-  function boardDirty() {
-    var m = state.marks;
-    for (var i = 0; i < m.length; i++) if (m[i]) return true;
-    return false;
-  }
-
   function targetBand() {
     var t = settings.difficulty;
     return t && t !== 'any' && DIFF_BANDS[t] ? DIFF_BANDS[t] : null;
@@ -2728,27 +2766,6 @@ button {
     }
   }
 
-  function restartCurrent() {
-    if (state.status === 'won') {
-      // 通关后重开：保留棋盘、清空标记
-      state.status = 'playing';
-      state.elapsed = 0;
-      state.runningSince = 0;
-      state.hints = 0;
-      state.moves = 0;
-      state.marks = new Uint8Array(state.size * state.size);
-      undoStack = [];
-      redoStack = [];
-      lastConflictCount = 0;
-      boardEl.classList.remove('is-won');
-      render();
-      save();
-      return;
-    }
-    clearBoard(true);
-    flashHint('已重新开始本局');
-  }
-
   /* 把一副已经确定的棋盘装上（新生成 / 载入分享码 / 恢复存档共用） */
   function applyBoard(n, regions, solution, seed, preVibe) {
     if (resultOpen) dismissResult();
@@ -2769,6 +2786,8 @@ button {
     state.lastTap = null;
     state.conflicts = { pairs: [], cells: new Set(), count: 0 };
     state.forced = null;
+    // 记下这盘实际用到的难度档，用来判断设置面板里选的东西「是否还没生效」
+    state.diffApplied = settings.difficulty;
     lastConflictCount = 0;
     undoStack = [];
     redoStack = [];
@@ -3087,28 +3106,30 @@ button {
     }
   }
 
+  /* 面板上半部分（尺寸 / 难度）只写 pending，不碰正在玩的这一局 */
   function syncSheet() {
-    var target = settings.difficulty && settings.difficulty !== 'any' ? settings.difficulty : null;
+    var diff = pending.difficulty;
+    var target = diff && diff !== 'any' ? diff : null;
     var band = target ? DIFF_BANDS[target] : null;
 
-    sizeVal.textContent = String(settings.size);
-    sizeMinus.disabled = settings.size <= SIZE_MIN;
-    sizePlus.disabled = settings.size >= SIZE_MAX;
+    sizeVal.textContent = String(pending.size);
+    sizeMinus.disabled = pending.size <= SIZE_MIN;
+    sizePlus.disabled = pending.size >= SIZE_MAX;
 
-    // 目标难度生效时，尺寸交给难度决定
+    // 目标难度接管尺寸，手动改尺寸没有意义
     $('sizeStepper').classList.toggle('diff-locked', !!target);
     quickRow.classList.toggle('diff-locked', !!target);
-    sheetNote.textContent = target
-      ? '难度优先：下局起棋盘在 ' + band.lo + '×' + band.lo + '–' + band.hi + '×' + band.hi
-        + ' 间随机（当前 ' + settings.size + '×' + settings.size + '）'
-      : '改尺寸会立即生成新的一局';
+
+    sheetNote.textContent = '当前这局：' + state.size + '×' + state.size +
+      (state.vibe ? ' · ' + state.vibe.level + ' ' + state.vibe.score.toFixed(1) : '');
+
     diffHint.textContent = target
       ? '「' + band.name + '」＝ ' + band.lo + '×' + band.lo + '–' + band.hi + '×' + band.hi + '，每局随机一档'
-      : '选好档位，之后每局都落在这里；「不限」保持现状';
+      : '选好档位，点下面「换一局」生效';
 
     var dbtns = diffOpts.querySelectorAll('.dbtn');
     for (var d = 0; d < dbtns.length; d++) {
-      var on = dbtns[d].dataset.level === settings.difficulty;
+      var on = dbtns[d].dataset.level === diff;
       dbtns[d].classList.toggle('is-on', on);
       dbtns[d].setAttribute('aria-pressed', on ? 'true' : 'false');
     }
@@ -3122,13 +3143,38 @@ button {
 
     var chips = quickRow.querySelectorAll('.qbtn');
     for (var i = 0; i < chips.length; i++) {
-      chips[i].classList.toggle('is-on', parseInt(chips[i].dataset.size, 10) === settings.size);
+      chips[i].classList.toggle('is-on', parseInt(chips[i].dataset.size, 10) === pending.size);
     }
+
+    syncShuffleRow();
+  }
+
+  /* 换一局按钮下方的说明：有改动没落地就把改动列出来，顺带把按钮点亮 */
+  function syncShuffleRow() {
+    var bits = [];
+    if (!pending.difficulty || pending.difficulty === 'any') {
+      if (pending.size !== state.size) bits.push(pending.size + '×' + pending.size);
+    }
+    if (pending.difficulty !== state.diffApplied) {
+      bits.push(pending.difficulty === 'any'
+        ? '不限难度'
+        : DIFF_BANDS[pending.difficulty].name);
+    }
+
+    var hasPending = bits.length > 0;
+    btnShuffle.classList.toggle('is-pending', hasPending);
+    shuffleHint.classList.toggle('is-pending', hasPending);
+    shuffleHint.textContent = hasPending
+      ? '点这里生效：' + bits.join(' · ')
+      : '换一幅新棋盘，上面的棋盘大小与目标难度一起生效';
   }
 
   function openSheet() {
     if (sheetOpen) return;
     sheetOpen = true;
+    // 每次打开都从「这一局实际是什么」重新起算，上次没落地的改动就作废
+    pending.size = state.size;
+    pending.difficulty = state.diffApplied || settings.difficulty;
     syncSheet();
     sheetWrap.hidden = false;
     refreshShareCode();   // 露出后再量高度，长代码才能自动撑开
@@ -3244,19 +3290,13 @@ button {
     else if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
   }
 
-  function applySize(n, immediate) {
-    if (targetBand()) return;   // 目标难度接管尺寸，手动改尺寸无效
+  /* 改尺寸只记在 pending 里，等「换一局」时一起落地 */
+  function setPendingSize(n) {
+    if (pending.difficulty && pending.difficulty !== 'any') return;  // 目标难度接管尺寸
     n = clamp(n, SIZE_MIN, SIZE_MAX);
-    if (n === settings.size && state.regions) return;
-    settings.size = n;
+    if (n === pending.size) return;
+    pending.size = n;
     syncSheet();
-    saveSettings();
-    if (sizeTimer) window.clearTimeout(sizeTimer);
-    if (immediate) {
-      newGame(n);
-    } else {
-      sizeTimer = window.setTimeout(function () { newGame(n); }, 220);
-    }
   }
 
   function trapFocus(e, container) {
@@ -3461,7 +3501,6 @@ button {
   btnAuto.addEventListener('click', toggleAuto);
   btnSize.addEventListener('click', openSheet);
   btnCloseSheet.addEventListener('click', closeSheet);
-  btnDone.addEventListener('click', closeSheet);
   sheetBackdrop.addEventListener('click', closeSheet);
 
   btnDiff.addEventListener('click', openDiff);
@@ -3469,51 +3508,46 @@ button {
   btnDiffDone.addEventListener('click', function () { closeDiff(true); });
   diffBackdrop.addEventListener('click', function () { closeDiff(true); });
 
-  btnRestart.addEventListener('click', function () {
-    closeSheet();
-    restartCurrent();
-  });
-
+  /* 换一局：唯一会作废当前这局的动作，面板上半部分的改动都在这里落地 */
   btnShuffle.addEventListener('click', function () {
+    var lv = pending.difficulty && pending.difficulty !== 'any' ? pending.difficulty : 'any';
+    var band = DIFF_BANDS[lv] || null;
+
+    settings.difficulty = lv;
+    if (!band) settings.size = clamp(pending.size, SIZE_MIN, SIZE_MAX);
+    saveSettings();
+
     closeSheet();
-    newGame(state.size);
+    newGame(settings.size);
+
+    if (band) announce('已换局，目标难度：' + band.name);
+    else announce('已换局：' + settings.size + '×' + settings.size);
   });
 
   sizeMinus.addEventListener('click', function () {
-    if (settings.size > SIZE_MIN) { applySize(settings.size - 1); }
+    setPendingSize(pending.size - 1);
   });
 
   sizePlus.addEventListener('click', function () {
-    if (settings.size < SIZE_MAX) { applySize(settings.size + 1); }
+    setPendingSize(pending.size + 1);
   });
 
   quickRow.addEventListener('click', function (e) {
     var btn = e.target.closest ? e.target.closest('.qbtn') : null;
     if (!btn) return;
-    applySize(parseInt(btn.dataset.size, 10), true);
+    setPendingSize(parseInt(btn.dataset.size, 10));
   });
 
-  /* 目标难度：盘上还空着就立刻按这个档位开一局；
-   * 已经下到一半就只记住选择，等他换一局时再生效——免得误点一下丢掉进度。 */
+  /* 目标难度：只记选择，不碰正在下的这局——点「换一局」才生效。 */
   diffOpts.addEventListener('click', function (e) {
     var btn = e.target.closest ? e.target.closest('.dbtn') : null;
     if (!btn) return;
     var lv = btn.dataset.level;
-    if (DIFF_ORDER.indexOf(lv) < 0) return;
-    if (lv === settings.difficulty) { closeSheet(); return; }
+    if (DIFF_ORDER.indexOf(lv) < 0 || lv === pending.difficulty) return;
 
-    settings.difficulty = lv;
-    saveSettings();
+    pending.difficulty = lv;
     syncSheet();
-    closeSheet();
-
-    var band = DIFF_BANDS[lv];
-    if (boardDirty()) {
-      flashHint(band ? '已设为「' + band.name + '」，换一局时生效' : '已取消难度限制，换一局时生效', true, 2000);
-    } else {
-      newGame(state.size);
-    }
-    announce(band ? '目标难度：' + band.name : '不限制难度');
+    announce(lv === 'any' ? '目标难度：不限' : '目标难度：' + DIFF_BANDS[lv].name + '（换一局后生效）');
   });
 
   /* ---- 分享棋盘 ---- */
@@ -3765,6 +3799,7 @@ button {
       flashHint('已载入分享的 ' + handed.size + '×' + handed.size + ' 棋盘', true, 2400);
       announce('已载入分享的棋盘：' + handed.size + '×' + handed.size);
     } else if (restored) {
+      state.diffApplied = settings.difficulty;   // 续玩的这局当作已按当前设置开出
       buildBoard(false);
       buildRegionBar();
       relayout();
