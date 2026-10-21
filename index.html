@@ -472,7 +472,7 @@ button {
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* ---- 冲突 / 提示光环 ---- */
+/* ---- 冲突光环（提示不再画在格子上，改用 .gl 圈画层，见 12.5） ---- */
 .ring {
   position: absolute;
   inset: 4%;
@@ -487,20 +487,9 @@ button {
   animation: conflictPulse 1.05s ease-in-out infinite;
 }
 
-.cell.is-hint .ring {
-  opacity: 1;
-  box-shadow: inset 0 0 0 3px var(--accent), 0 0 14px 4px rgba(255, 217, 61, .75);
-  animation: hintPulse .55s ease-in-out 3;
-}
-
 @keyframes conflictPulse {
   0%, 100% { box-shadow: inset 0 0 0 2px var(--danger), 0 0 6px 1px rgba(255, 92, 92, .45); }
   50% { box-shadow: inset 0 0 0 3px var(--danger), 0 0 16px 5px rgba(255, 92, 92, .75); }
-}
-
-@keyframes hintPulse {
-  0%, 100% { transform: scale(1); opacity: .55; }
-  50% { transform: scale(.88); opacity: 1; }
 }
 
 /* ---- 「这个色块只剩这一格能填」的轻提示 ---- */
@@ -1348,6 +1337,235 @@ button {
 }
 
 /* ============================================================
+   12.5 提示引导（向导面板 + 圈画层）
+   ------------------------------------------------------------
+   面板排在提示行和棋盘之间，占的是上面那块弹性空白，不覆盖棋盘。
+   引导进行中把提示行收起（它的位置正好让给面板）。
+   ============================================================ */
+.coach {
+  flex: 0 0 auto;
+  width: min(100%, 460px);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px 9px;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-btn);
+  animation: coachIn .22s var(--spring) both;
+}
+.coach[hidden] { display: none; }
+/* 面板可能被程序 focus（打开引导时把焦点从「提示」按钮接过来），不出焦点框 */
+.coach:focus { outline: none; }
+@keyframes coachIn {
+  from { opacity: 0; transform: translateY(9px); }
+  to { opacity: 1; transform: none; }
+}
+
+.coach-top { display: flex; align-items: flex-start; gap: 8px; }
+
+.coach-tier {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  padding: 4px 6px;
+  border: 1.5px solid var(--ink);
+  border-radius: 6px;
+  background: #E6F0FB;
+  font: 800 10px/1 var(--mono);
+  letter-spacing: .04em;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.coach[data-lv="2"] .coach-tier { background: var(--accent-soft); }
+.coach[data-lv="3"] .coach-tier { background: #FFE1E1; }
+.coach[data-lv="4"] .coach-tier { background: #EADFFB; }
+.coach[data-lv="5"] .coach-tier { background: #F0E3D2; }
+.coach[data-lv="0"] .coach-tier { background: #FFE1E1; }
+
+.coach-text {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 17px;
+  color: var(--ink);
+}
+
+.coach-ctl { display: flex; align-items: center; gap: 6px; }
+
+.cbtn {
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1.5px solid var(--ink);
+  border-radius: 10px;
+  background: var(--bg-card);
+  box-shadow: 0 2px 0 var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--ink);
+  cursor: pointer;
+  transition: transform var(--t-fast), box-shadow var(--t-fast), opacity var(--t-fast);
+}
+.cbtn:active:not(:disabled) { transform: translateY(2px); box-shadow: none; }
+.cbtn:disabled { opacity: .28; box-shadow: none; cursor: default; }
+.cbtn-go { background: var(--accent); min-width: 78px; }
+.cbtn-x {
+  margin-left: 2px;
+  border-color: var(--hair);
+  box-shadow: none;
+  background: transparent;
+  color: var(--ink-mute);
+  font-weight: 700;
+}
+
+.coach-dots {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.coach-dots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink-faint);
+  transition: transform .2s var(--spring), background .2s ease;
+}
+.coach-dots i.on { background: var(--ink); transform: scale(1.4); }
+
+/* 引导中把提示行让出来 */
+.stage.is-guiding .hint-row { display: none; }
+
+/* ---- 圈画层：画在棋盘上方，不吃点击 ---- */
+.gl {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 3;
+  overflow: visible;
+}
+.gl-tags {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.gl-band {
+  fill: rgba(255, 176, 26, .46);
+  stroke: #C87A0A;
+  stroke-width: 1.4;
+  stroke-dasharray: 7 5;
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: bandInX .3s cubic-bezier(.2, 1.2, .4, 1) both;
+}
+.gl-band.is-col {
+  transform-origin: center top;
+  animation-name: bandInY;
+}
+@keyframes bandInX {
+  from { opacity: 0; transform: scaleX(.04); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes bandInY {
+  from { opacity: 0; transform: scaleY(.04); }
+  to { opacity: 1; transform: none; }
+}
+
+.gl-region-glow {
+  fill: none;
+  stroke: rgba(255, 190, 60, .45);
+  stroke-width: 8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.gl-region-fill { fill: rgba(255, 217, 61, .18); }
+.gl-region-line {
+  fill: none;
+  stroke: #D9820F;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  animation: glDraw .55s ease both;
+}
+@keyframes glDraw {
+  from { stroke-dashoffset: var(--len, 600); }
+  to { stroke-dashoffset: 0; }
+}
+
+.gl-cell {
+  fill: rgba(255, 217, 61, .3);
+  stroke: #D9820F;
+  stroke-width: 3;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ringPop .34s cubic-bezier(.2, 1.25, .4, 1) both, ringPulse 1.5s ease-in-out .34s infinite;
+}
+.gl-cell.is-kill {
+  fill: rgba(255, 217, 61, .16);
+  stroke-dasharray: 5 4;
+  animation: ringPop .34s cubic-bezier(.2, 1.25, .4, 1) both;
+}
+.gl-cell.is-bad {
+  fill: rgba(255, 92, 92, .2);
+  stroke: var(--danger);
+}
+@keyframes ringPop {
+  from { opacity: 0; transform: scale(.55); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ringPulse {
+  0%, 100% { stroke-width: 3; }
+  50% { stroke-width: 4.6; }
+}
+
+.gl-tag {
+  position: absolute;
+  padding: 1px 4px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #FFFFFF;
+  font-size: 9.5px;
+  font-weight: 800;
+  line-height: 1.3;
+  white-space: nowrap;
+  animation: tagIn .26s ease both;
+}
+/* 行 / 列序号：贴在色带端点的 15px 小圆牌。只写数字，位置本身就是语义
+   （行号压在左边、列号压在上边），完整说法由面板文案负责。
+   色块不挂牌子——外轮廓 + 下方色卡闪烁已经够认。 */
+.gl-tag.is-num {
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 9.5px;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, .9);
+}
+@keyframes tagIn {
+  from { opacity: 0; transform: scale(.78); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coach, .gl-band, .gl-cell, .gl-region-line, .gl-tag { animation: none; }
+}
+
+/* ============================================================
    13. 小屏适配
    ============================================================ */
 @media (max-width: 400px) {
@@ -1380,6 +1598,25 @@ button {
   .hint { min-height: 16px; font-size: 11.5px; }
   .toolbar .btn { min-height: 38px; }
   .regions { min-height: 18px; }
+}
+
+/* 横屏（且矮）：引导面板压成一行，省下约 45px。
+   只在横屏生效——竖屏手机高度也常常 < 620，压成一行会把文案挤成六行。 */
+@media (orientation: landscape) and (max-height: 470px) {
+  .coach {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 12px;
+  }
+  .coach-top { flex: 1 1 auto; min-width: 0; gap: 6px; }
+  .coach-text { min-height: 0; font-size: 11.5px; line-height: 15px; }
+  .coach-ctl { flex: 0 0 auto; gap: 5px; }
+  .coach-dots { flex: 0 0 38px; }
+  .coach-dots i { width: 5px; height: 5px; }
+  .cbtn { min-height: 26px; padding: 0 8px; font-size: 11px; border-radius: 8px; }
+  .cbtn-go { min-width: 60px; }
 }
 </style>
 </head>
@@ -1434,9 +1671,24 @@ button {
       </button>
     </div>
 
+    <div class="coach" id="coach" role="group" aria-label="提示引导" tabindex="-1" hidden>
+      <div class="coach-top">
+        <span class="coach-tier" id="coachTier">L1</span>
+        <p class="coach-text" id="coachText"></p>
+      </div>
+      <div class="coach-ctl">
+        <button class="cbtn" id="coachPrev" type="button">上一步</button>
+        <span class="coach-dots" id="coachDots"></span>
+        <button class="cbtn cbtn-go" id="coachNext" type="button">下一步</button>
+        <button class="cbtn cbtn-x" id="coachClose" type="button">结束</button>
+      </div>
+    </div>
+
     <div class="board" id="board">
       <div class="grid" id="grid" role="grid" aria-label="皇后棋盘"></div>
       <svg class="links" id="links" aria-hidden="true"></svg>
+      <svg class="gl" id="gl" aria-hidden="true"></svg>
+      <div class="gl-tags" id="glTags" aria-hidden="true"></div>
     </div>
 
     <div class="regions" id="regions" aria-hidden="true"></div>
@@ -1602,6 +1854,7 @@ button {
 
 <script src="engine.js"></script>
 <script src="difficulty.js"></script>
+<script src="hint.js"></script>
 <script>
 (function () {
   'use strict';
@@ -1666,6 +1919,16 @@ button {
   var hintEl = $('hint');
   var regionsEl = $('regions');
   var toolbarEl = $('toolbar');
+
+  var coachEl = $('coach');
+  var coachText = $('coachText');
+  var coachTier = $('coachTier');
+  var coachDots = $('coachDots');
+  var coachPrev = $('coachPrev');
+  var coachNext = $('coachNext');
+  var coachClose = $('coachClose');
+  var glEl = $('gl');
+  var glTags = $('glTags');
 
   var btnSize = $('btnSize');
   var timePill = $('timePill');
@@ -1764,6 +2027,8 @@ button {
   var sheetOpen = false;
   var diffOpen = false;
   var resultOpen = false;
+  // 引导状态提前声明：relayout() 会在 boot() 里先跑，那时函数体内的 guide 还不能是 undefined
+  var guide = { open: false, plan: null, at: 0 };
   var hintTimer = null;
   var saveTimer = null;
   var ticker = null;
@@ -2344,14 +2609,18 @@ button {
     var n = state.size;
     var availW = stage.clientWidth - 18;
     // 上下那两块弹性空白在棋盘吃满时会缩到 0，所以可用高度就是
-    // 「舞台高度 − 提示行 − 调色板 − 工具栏 − 间距」
-    var availH = stage.clientHeight - hintEl.offsetHeight - regionsEl.offsetHeight -
-      toolbarEl.offsetHeight - 30;
+    // 「舞台高度 − 提示行 − 引导面板 − 调色板 − 工具栏 − 间距」
+    // 引导中提示行是 display:none，offsetHeight 自然是 0，不用特判。
+    var availH = stage.clientHeight - hintEl.offsetHeight - coachEl.offsetHeight -
+      regionsEl.offsetHeight - toolbarEl.offsetHeight - 30;
 
     if (availW < 40 || availH < 40) return;
 
     var cell = Math.floor(Math.min((availW - 6) / n, (availH - 6) / n));
-    cell = clamp(cell, 13, 78);
+    // 矮屏上引导面板再挤一下时，允许格子比平时小一点（16×16 横屏就是靠这个
+    // 才不至于把工具栏顶出屏幕）；不引导时仍是 13px 起步。
+    var minCell = (guide.open && stage.clientHeight < 480) ? 11 : 13;
+    cell = clamp(cell, minCell, 78);
 
     boardEl.style.setProperty('--cell', cell + 'px');
     boardEl.style.setProperty('--n', String(n));
@@ -2364,6 +2633,10 @@ button {
     gridEl.style.setProperty('--n', String(n));
 
     drawLinks(state.conflicts || { pairs: [], cells: new Set(), count: 0 });
+    // 格子尺寸变了，圈画层里的坐标也得跟着重画（否则横屏一转就错位）
+    if (guide.open && guide.plan && guide.plan.steps[guide.at]) {
+      paintGl(guide.plan.steps[guide.at].hl);
+    }
   }
 
   /* ==========================================================
@@ -2385,6 +2658,7 @@ button {
 
   function undo() {
     if (!undoStack.length || !canPlay()) return;
+    if (guide.open) closeGuide();
     redoStack.push(snapshot());
     var s = undoStack.pop();
     state.marks = s.marks;
@@ -2400,6 +2674,7 @@ button {
 
   function redo() {
     if (!redoStack.length || !canPlay()) return;
+    if (guide.open) closeGuide();
     undoStack.push(snapshot());
     var s = redoStack.pop();
     state.marks = s.marks;
@@ -2450,6 +2725,8 @@ button {
 
   function onCell(i) {
     if (!canPlay()) return;
+    // 玩家自己动手了，之前那张提示的圈就撤掉，免得指着一处已经变了的棋盘
+    if (guide.open) closeGuide();
     // Tab 位跟着最后一次操作的格子走
     if (cellEls[i] && cellEls[i].tabIndex !== 0) {
       for (var k = 0; k < cellEls.length; k++) cellEls[k].tabIndex = k === i ? 0 : -1;
@@ -2506,6 +2783,7 @@ button {
 
   function placeQueen(i, skipHistory) {
     if (!skipHistory) pushHistory();
+    if (guide.open) closeGuide();
     if (hintTimer) {
       window.clearTimeout(hintTimer);
       hintTimer = null;
@@ -2521,6 +2799,7 @@ button {
 
   function clearBoard(silent) {
     if (!canPlay()) return;
+    if (guide.open) closeGuide();
     pushHistory();
     state.marks.fill(0);
     state.lastTap = null;
@@ -2531,33 +2810,271 @@ button {
     announce('已清空棋盘');
   }
 
-  function useHint() {
+  /* ==========================================================
+     提示引导
+     ----------------------------------------------------------
+     不再直接给答案。先跑一遍人类能讲的规则（L1 直读 → L2 数色块 →
+     L3 数线 → L4 试推），把结论拆成「看哪 → 为什么 → 所以哪几格」，
+     每一步只高亮一样东西，玩家自己按「下一步」或「照做」。
+     文字放在棋盘上方的面板里，不压棋盘；圈画层 pointer-events:none。
+     ========================================================== */
+
+  function guidePlan() {
+    if (!window.QueensHint) return null;
+    return window.QueensHint.plan({
+      n: state.size,
+      regions: state.regions,
+      solution: state.solution,
+      marks: state.marks,
+      auto: state.auto || null,
+      maxK: 3,
+      allowProbe: true
+    });
+  }
+
+  function buildDots(count) {
+    coachDots.innerHTML = '';
+    for (var i = 0; i < count; i++) coachDots.appendChild(document.createElement('i'));
+  }
+
+  function openGuide() {
     if (!canPlay()) return;
-    var n = state.size;
-    var target = -1;
-    for (var r = 0; r < n; r++) {
-      var c = state.solution[r];
-      var i = r * n + c;
-      if (state.marks[i] !== 2) { target = i; break; }
+    if (guide.open) { guideNext(); return; }
+
+    var plan = guidePlan();
+    if (!plan || !plan.steps || !plan.steps.length) { flashHint('这盘暂时没有提示可给'); return; }
+    if (plan.kind === 'done') { flashHint('已经是解了'); return; }
+
+    guide.open = true;
+    guide.plan = plan;
+    guide.at = 0;
+    state.hints++;
+    save();
+
+    coachEl.hidden = false;
+    stage.classList.add('is-guiding');
+    buildDots(plan.steps.length);
+    showStep(0);
+    // 「提示」按钮这会儿被藏起来了，焦点不能留在它身上，否则键盘/读屏会掉到 body
+    try { coachEl.focus({ preventScroll: true }); } catch (e) { coachEl.focus(); }
+    sfx('hint');
+    buzz(8);
+  }
+
+  function showStep(i) {
+    var p = guide.plan;
+    if (!p) return;
+    i = clamp(i, 0, p.steps.length - 1);
+    guide.at = i;
+    var s = p.steps[i] || {};
+    var lv = p.level || 0;
+
+    coachText.textContent = s.text || '';
+    coachTier.textContent = (p.kind === 'fixQueen' || p.kind === 'fixCross') ? '检查' : ('L' + lv);
+    coachEl.dataset.lv = String(lv);
+
+    var last = i === p.steps.length - 1;
+    coachPrev.disabled = i === 0;
+    coachNext.textContent = last ? (p.action ? '照做' : '知道了') : '下一步';
+
+    var dots = coachDots.childNodes;
+    for (var d = 0; d < dots.length; d++) {
+      dots[d].className = d === i ? 'on' : '';
     }
-    if (target < 0) { flashHint('已经是解了'); return; }
+
+    relayout();          // 面板文字换行会改变高度，先重排再画
+    paintGl(s.hl);
+    announce(s.text || '');
+  }
+
+  function guideNext() {
+    if (!guide.open) return;
+    var p = guide.plan;
+    if (!p) return;
+    if (guide.at < p.steps.length - 1) { showStep(guide.at + 1); return; }
+    if (p.action) applyGuide();
+    else closeGuide();
+  }
+
+  function guidePrev() {
+    if (!guide.open) return;
+    showStep(guide.at - 1);
+  }
+
+  function closeGuide() {
+    if (!guide.open) return;
+    guide.open = false;
+    guide.plan = null;
+    guide.at = 0;
+    coachEl.hidden = true;
+    stage.classList.remove('is-guiding');
+    paintGl(null);
+    relayout();
+    updateHint();
+    // 焦点本来在面板里（或刚被藏掉的按钮上），收面板时交还给「提示」
+    var act = document.activeElement;
+    if (!act || act === coachEl || coachEl.contains(act) || act === btnHint ||
+        act === document.body) {
+      try { btnHint.focus({ preventScroll: true }); } catch (e) { /* 老浏览器忽略 */ }
+    }
+  }
+
+  function applyGuide() {
+    var p = guide.plan;
+    if (!p || !p.action) { closeGuide(); return; }
+    var a = p.action;
+    closeGuide();
+
+    if (a.type === 'place') {
+      placeQueen(a.cell);
+      flashHint('照做了：皇后已放好', true);
+      announce('已按提示放好皇后');
+      return;
+    }
+
+    if (a.type === 'cross') {
+      var cnt = 0, k;
+      for (k = 0; k < a.cells.length; k++) {
+        if (state.marks[a.cells[k]] === 0) cnt++;
+      }
+      if (!cnt) { flashHint('这几格已经划过了'); return; }
+      pushHistory();
+      for (k = 0; k < a.cells.length; k++) {
+        if (state.marks[a.cells[k]] === 0) state.marks[a.cells[k]] = 1;
+      }
+      state.moves += cnt;
+      sfx('x');
+      buzz(5);
+      setMarks(state.marks);
+      flashHint('已划掉 ' + cnt + ' 格', true);
+      announce('已划掉 ' + cnt + ' 格');
+      return;
+    }
 
     pushHistory();
-    state.hints++;
-    state.marks[target] = 2;
-    state.moves++;
-    startTimer();
-    sfx('hint');
-    buzz(14);
-    state.focus = target;
-    setMarks(state.marks, { from: target });
-
-    var cell = cellEls[target];
-    pulseClass(cell, 'drop', 520);
-    pulseClass(cell, 'is-hint', 1700);
-    flashHint('提示：已放好一只皇后', true);
-    announce('提示：皇后已放到正确位置');
+    state.marks[a.cell] = 0;
+    sfx('xOff');
+    buzz(6);
+    setMarks(state.marks);
+    flashHint('已清掉，重新试试', true);
   }
+
+  /* ---- 圈画层 ---- */
+  var SVGNS = 'http://www.w3.org/2000/svg';
+
+  function svgEl(name, attrs) {
+    var el = document.createElementNS(SVGNS, name);
+    for (var k in attrs) {
+      if (attrs.hasOwnProperty(k)) el.setAttribute(k, attrs[k]);
+    }
+    return el;
+  }
+
+  /* 一个色块的外轮廓：只画「邻居不是本块」的那些边 */
+  function regionPath(n, regions, g, cell) {
+    var d = '';
+    for (var i = 0; i < n * n; i++) {
+      if (regions[i] !== g) continue;
+      var r = (i / n) | 0, c = i % n;
+      var x = c * cell, y = r * cell;
+      if (r === 0 || regions[(r - 1) * n + c] !== g) d += 'M' + x + ' ' + y + 'L' + (x + cell) + ' ' + y;
+      if (r === n - 1 || regions[(r + 1) * n + c] !== g) d += 'M' + x + ' ' + (y + cell) + 'L' + (x + cell) + ' ' + (y + cell);
+      if (c === 0 || regions[r * n + c - 1] !== g) d += 'M' + x + ' ' + y + 'L' + x + ' ' + (y + cell);
+      if (c === n - 1 || regions[r * n + c + 1] !== g) d += 'M' + (x + cell) + ' ' + y + 'L' + (x + cell) + ' ' + (y + cell);
+    }
+    return d;
+  }
+
+  function addTag(text, x, y, kind) {
+    var tag = document.createElement('span');
+    tag.className = 'gl-tag' + (kind ? ' is-' + kind : '');
+    tag.textContent = text;
+    glTags.appendChild(tag);
+    // 标签比格子宽，贴边时往里挤一下，别跑到棋盘外面去
+    var bw = glTags.offsetWidth || 0;
+    var bh = glTags.offsetHeight || 0;
+    var left = Math.round(x - tag.offsetWidth / 2);
+    var top = Math.round(y - tag.offsetHeight / 2);
+    if (bw) left = clamp(left, 2, Math.max(2, bw - tag.offsetWidth - 2));
+    if (bh) top = clamp(top, 2, Math.max(2, bh - tag.offsetHeight - 2));
+    tag.style.left = left + 'px';
+    tag.style.top = top + 'px';
+  }
+
+  function pulseChip(g) {
+    var chip = chipEls[g];
+    if (!chip) return;
+    chip.classList.add('flash');
+    window.setTimeout(function () { chip.classList.remove('flash'); }, 420);
+  }
+
+  function paintGl(hl) {
+    var n = state.size;
+    var cell = parseFloat(getComputedStyle(boardEl).getPropertyValue('--cell')) || 0;
+    glEl.innerHTML = '';
+    glTags.innerHTML = '';
+    if (!hl || !cell) return;
+
+    var size = n * cell;
+    glEl.setAttribute('viewBox', '0 0 ' + size + ' ' + size);
+    glEl.setAttribute('width', String(size));
+    glEl.setAttribute('height', String(size));
+
+    var rows = hl.rows || [], cols = hl.cols || [];
+    var regions = hl.regions || [], cells = hl.cells || [];
+    var i, r, c;
+
+    for (i = 0; i < rows.length; i++) {
+      r = rows[i];
+      glEl.appendChild(svgEl('rect', {
+        x: 0, y: r * cell, width: size, height: cell, 'class': 'gl-band'
+      }));
+      // 只在色带端点挂一个 15px 的圆形序号：竖着压在行左端、横着压在列顶端，
+      // 最多遮住一格的一角，具体是第几行文案里也会再念一遍。
+      addTag('' + (r + 1), 9, r * cell + cell / 2, 'num');
+    }
+
+    for (i = 0; i < cols.length; i++) {
+      c = cols[i];
+      glEl.appendChild(svgEl('rect', {
+        x: c * cell, y: 0, width: cell, height: size, 'class': 'gl-band is-col'
+      }));
+      addTag('' + (c + 1), c * cell + cell / 2, 9, 'num');
+    }
+
+    for (i = 0; i < regions.length; i++) {
+      var g = regions[i];
+      var d = regionPath(n, state.regions, g, cell);
+      if (!d) continue;
+      glEl.appendChild(svgEl('path', { d: d, 'class': 'gl-region-glow' }));
+      glEl.appendChild(svgEl('path', { d: d, 'class': 'gl-region-fill' }));
+      var line = svgEl('path', { d: d, 'class': 'gl-region-line' });
+      glEl.appendChild(line);
+      try {
+        var len = line.getTotalLength();
+        line.style.strokeDasharray = String(len);
+        line.style.setProperty('--len', String(len));
+      } catch (e) { /* 老浏览器不画描边动画 */ }
+      pulseChip(g);
+    }
+
+    var kill = !!hl.kill;
+    for (i = 0; i < cells.length; i++) {
+      var idx = cells[i];
+      r = (idx / n) | 0;
+      c = idx % n;
+      var pad = Math.max(1.5, cell * 0.045);
+      var attrs = {
+        x: c * cell + pad, y: r * cell + pad,
+        width: cell - pad * 2, height: cell - pad * 2,
+        rx: Math.min(7, cell * 0.16),
+        'class': 'gl-cell' + (kill ? ' is-kill' : '') + (hl.bad ? ' is-bad' : '')
+      };
+      glEl.appendChild(svgEl('rect', attrs));
+    }
+  }
+
+  function useHint() { openGuide(); }
 
   /* ==========================================================
      胜利
@@ -2571,6 +3088,7 @@ button {
     for (var g = 0; g < n; g++) if (counts[g] !== 1) return;
 
     state.status = 'won';
+    if (guide.open) closeGuide();
     stopTimer();
     sfx('win');
     buzz([20, 40, 20, 40, 80]);
@@ -2769,6 +3287,8 @@ button {
   /* 把一副已经确定的棋盘装上（新生成 / 载入分享码 / 恢复存档共用） */
   function applyBoard(n, regions, solution, seed, preVibe) {
     if (resultOpen) dismissResult();
+    if (guide.open) closeGuide();
+    paintGl(null);
     boardEl.classList.remove('is-won');
 
     state.size = n;
@@ -3493,6 +4013,13 @@ button {
   btnHint.addEventListener('click', useHint);
   btnClear.addEventListener('click', function () { clearBoard(false); });
 
+  coachPrev.addEventListener('click', guidePrev);
+  coachNext.addEventListener('click', guideNext);
+  coachClose.addEventListener('click', function () {
+    closeGuide();
+    flashHint('需要的时候再点「提示」');
+  });
+
   btnNew.addEventListener('click', function () {
     newGame(state.size);
   });
@@ -3662,6 +4189,7 @@ button {
       if (diffOpen) { e.preventDefault(); closeDiff(true); return; }
       if (sheetOpen) { e.preventDefault(); closeSheet(); return; }
       if (resultOpen) { e.preventDefault(); dismissResult(); return; }
+      if (guide.open) { e.preventDefault(); closeGuide(); return; }
       state.lastTap = null;
     }
 
@@ -3842,6 +4370,13 @@ button {
     vibe: function () { return state.vibe; },
     openDiff: openDiff,
     closeDiff: closeDiff,
+    // 引导相关的探针，只给 tools/ 里的自动化测试用
+    guide: function () {
+      return { open: guide.open, at: guide.at, plan: guide.plan };
+    },
+    guideNext: guideNext,
+    guidePrev: guidePrev,
+    guideClose: closeGuide,
     encode: function () {
       return state.regions ? encodeShare(state.size, state.regions, state.solution) : '';
     },

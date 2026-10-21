@@ -226,16 +226,24 @@ await sleep(250);
 s = await page.evaluate(() => ({ q: __QUEENS_DEBUG__.state.marks.filter(m => m === 2).length, conf: __QUEENS_DEBUG__.state.conflicts.count }));
 check('撤销回到 1 只皇后', s.q === 1 && s.conf === 0, `q=${s.q} conf=${s.conf}`);
 
-// ---------- 7. 提示 ----------
+// ---------- 7. 提示（现在是分步引导，不再直接给答案） ----------
 await page.click('#btnHint');
 await sleep(400);
 const hintState = await page.evaluate(() => ({
-  hints: __QUEENS_DEBUG__.state.hints.length,
-  ring: document.querySelectorAll('.cell.is-hint, .cell.r-hint, .cell.hint-pulse').length,
-  text: document.getElementById('hint').textContent.trim()
+  hints: __QUEENS_DEBUG__.state.hints,
+  open: __QUEENS_DEBUG__.guide().open,
+  coach: document.getElementById('coachText').textContent.trim(),
+  gl: document.getElementById('gl').childElementCount,
+  tags: document.querySelectorAll('#glTags .gl-tag').length
 }));
-check('提示高亮一格', hintState.ring >= 1, `ring=${hintState.ring} text=${hintState.text}`);
+check('提示打开引导面板', hintState.open && hintState.hints >= 1, `open=${hintState.open} hints=${hintState.hints}`);
+check('引导有文案和圈画', !!hintState.coach && hintState.gl >= 1,
+  `text=${hintState.coach} shapes=${hintState.gl} tags=${hintState.tags}`);
 await page.screenshot({ path: `${OUT}/04-hint.png` });
+await page.click('#coachClose');
+await sleep(250);
+check('结束按钮收起引导', await page.evaluate(() => !__QUEENS_DEBUG__.guide().open &&
+  document.getElementById('gl').childElementCount === 0));
 
 // ---------- 8. 清空 ----------
 await page.click('#btnClear');
