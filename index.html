@@ -42,18 +42,6 @@
       <span class="brand-en">QUEENS</span>
     </div>
 
-    <div class="stats">
-      <button class="pill pill-size" id="btnSize" type="button" aria-label="棋盘尺寸，打开设置">8×8</button>
-      <span class="pill pill-time" id="timePill" aria-live="off">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="9"></circle>
-          <path d="M12 7v5l3 2"></path>
-        </svg>
-        <span id="timeText">00:00</span>
-      </span>
-      <span class="pill pill-queen" id="queenPill">♛ 0/8</span>
-    </div>
-
     <div class="actions">
       <button class="icon-btn" id="btnLook" type="button" aria-label="外观" aria-haspopup="dialog" aria-expanded="false" title="外观">
         <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
@@ -88,12 +76,32 @@
     </div>
   </header>
 
+  <!-- 局内信息条：棋盘 / 用时 / 皇后 / 难度走同一条、同一个按钮、同一个信息页。
+       以前是三个胶囊（只有一个能点、还开到设置面板里）加提示行右侧一个难度标签，
+       四处四种样子、点下去三种结果，全凭记忆分辨。
+       它和提示行装在一起（.stage-head），整块贴在棋盘上方。 -->
   <main class="stage" id="stage">
-    <div class="hint-row" id="hintRow">
-      <p class="hint" id="hint">轻点标 ×，按住可整行整列连涂</p>
-      <button class="diff-chip" id="btnDiff" type="button" aria-haspopup="dialog" aria-expanded="false" hidden>
-        <i class="diff-dot" aria-hidden="true"></i><b id="diffLevel">中等</b><span id="diffScore">5.0</span>
-      </button>
+    <div class="stage-head" id="stageHead">
+      <div class="hint-row" id="hintRow">
+        <p class="hint" id="hint">轻点标 ×，按住可整行整列连涂</p>
+      </div>
+
+      <div class="hud-row">
+        <button class="hud" id="btnHud" type="button" aria-haspopup="dialog" aria-expanded="false" aria-label="本局信息">
+          <span class="hud-seg" id="hudSize">8×8</span>
+          <span class="hud-seg hud-time" id="timePill" aria-live="off">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="9"></circle>
+              <path d="M12 7v5l3 2"></path>
+            </svg>
+            <span id="timeText">00:00</span>
+          </span>
+          <span class="hud-seg hud-queen" id="queenPill"><svg class="hud-q" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.4 7.6l4.4 3L12 4.2l4.2 6.4 4.4-3-1.5 9.2H4.9L3.4 7.6z"></path><path d="M5.6 20.2h12.8"></path></svg> <span id="queenCount">0/8</span></span>
+          <span class="hud-seg hud-diff" id="diffSeg" hidden>
+            <i class="hud-dot" aria-hidden="true"></i><b id="diffLevel">中等</b><span id="diffScore">5.2</span>
+          </span>
+        </button>
+      </div>
     </div>
 
     <div class="coach" id="coach" role="group" aria-label="提示引导" tabindex="-1" hidden>
@@ -276,26 +284,48 @@
 
 <div class="sheet-wrap" id="diffWrap" hidden>
   <div class="sheet-backdrop" id="diffBackdrop"></div>
-  <div class="sheet" id="diffSheet" role="dialog" aria-modal="true" aria-labelledby="diffTitle" tabindex="-1">
+  <div class="sheet info-sheet" id="diffSheet" role="dialog" aria-modal="true" aria-labelledby="diffTitle" tabindex="-1">
     <div class="sheet-head">
-      <h2 id="diffTitle">本局难度</h2>
-      <button class="icon-btn" id="btnCloseDiff" type="button" aria-label="关闭难度说明">
+      <h2 id="diffTitle">本局信息</h2>
+      <button class="icon-btn" id="btnCloseDiff" type="button" aria-label="关闭本局信息">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true">
           <path d="M6 6l12 12M18 6L6 18"></path>
         </svg>
       </button>
     </div>
+    <p class="sheet-note">棋盘上方那一条里的四项，这里都摊开说明</p>
 
-    <div class="diff-hero">
-      <div class="diff-score"><b id="diffBig">5.0</b><span>/ 10</span></div>
-      <span class="diff-badge" id="diffBadge" data-tone="mid">中等</span>
+    <!-- 四张卡片的顺序与顶栏信息条一致，点进来不用重新找 -->
+    <div class="info-grid">
+      <div class="info-card">
+        <span class="info-k">棋盘</span>
+        <b class="info-v" id="infoSize">8×8</b>
+        <span class="info-s" id="infoSizeSub">8 个色块 · 唯一解</span>
+      </div>
+      <div class="info-card">
+        <span class="info-k">用时</span>
+        <b class="info-v" id="infoTime">00:00</b>
+        <span class="info-s" id="infoTimeSub">落第一子才开始计时</span>
+      </div>
+      <div class="info-card">
+        <span class="info-k">皇后</span>
+        <b class="info-v" id="infoQueens">0/8</b>
+        <span class="info-s" id="infoQueensSub">还差 8 只</span>
+      </div>
+      <div class="info-card" id="infoDiffCard">
+        <span class="info-k">难度</span>
+        <b class="info-v"><span class="info-level" id="diffBadge" data-tone="mid">中等</span> <em id="diffBig">5.2</em></b>
+        <span class="info-s" id="infoDiffSub">本局难度评估</span>
+      </div>
     </div>
+
+    <p class="group-title" id="diffGroupTitle">难度构成</p>
 
     <p class="diff-lead" id="diffLead"></p>
 
     <div class="diff-steps" id="diffSteps"></div>
 
-    <div class="diff-legend">
+    <div class="diff-legend" id="diffLegend">
       <b>开局可定</b> 一上手不用猜、直接就能落子的数目（0 = 一开始就得试）<br>
       <b>区块封锁</b> 整块候选挤在同一行，这行别处就能排掉<br>
       <b>集合计数</b> k 个色块只能落在 k 行里，这几行就被它们占满<br>
@@ -303,7 +333,8 @@
       <b>试错落子</b> 前面都推不动，只能先落一只再看看
     </div>
 
-    <button class="btn sheet-done" id="btnDiffDone" type="button">知道了</button>
+    <button class="btn btn-hint sheet-done" id="btnDiffDone" type="button">知道了</button>
+    <button class="btn-text info-setup" id="btnInfoSetup" type="button">改棋盘大小与难度</button>
   </div>
 </div>
 

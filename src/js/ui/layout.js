@@ -3,7 +3,7 @@
  * 布局：棋盘边长只由舞台尺寸决定，任何浮层开关都不许挪动棋盘。
  * ========================================================================== */
 
-import { app, boardEl, gridEl, hintRowEl, regionsEl, stage, toolbarEl } from '../core/dom.js';
+import { app, boardEl, gridEl, regionsEl, stage, stageHeadEl, toolbarEl } from '../core/dom.js';
 import { state } from '../core/state.js';
 import { clamp } from '../core/utils.js';
 import { refreshPeek } from '../game/board.js';
@@ -22,10 +22,11 @@ export function relayout() {
   // 24 = 舞台左右各 12px 内边距；再减 6 是棋盘外框（3px × 2），
   // 这样 n*cell + 6 永远塞得进内容区，不会溢出去（以前会多出 6px，提示行就对齐不上）
   var availW = stage.clientWidth - 24;
-  var hintH = hintRowEl.offsetHeight;
+  // 提示行 + 信息条算作一块（.stage-head）：两者都贴着棋盘，占了多高就扣多高
+  var headH = stageHeadEl.offsetHeight;
   // 上下那两块弹性空白在棋盘吃满时会缩到 0，所以可用高度就是
-  // 「舞台高度 − 提示行 − 调色板 − 工具栏 − 间距」。30 是三道 gap 的余量。
-  var availH = stage.clientHeight - hintH -
+  // 「舞台高度 − 提示 / 信息条 − 调色板 − 工具栏 − 间距」。30 是三道 gap 的余量。
+  var availH = stage.clientHeight - headH -
     regionsEl.offsetHeight - toolbarEl.offsetHeight - 30;
 
   if (availW < 40 || availH < 40) return;

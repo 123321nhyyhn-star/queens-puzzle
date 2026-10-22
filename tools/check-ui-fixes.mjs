@@ -71,12 +71,13 @@ for (const [w, h, tag] of [[390, 844, 'iPhone14'], [360, 640, '小屏'], [320, 5
         const d = Math.hypot(la[0] - lb[0], la[1] - lb[1], la[2] - lb[2]);
         if (d < minAll) { minAll = d; atAll = [s.regionColors[a], s.regionColors[b]]; }
       }
-      const b = r('board'), hr = r('hintRow'), chip = document.getElementById('btnDiff');
+      const b = r('board'), hr = r('hintRow'), hud = document.getElementById('btnHud').getBoundingClientRect();
       return {
         minAdjDE: minD, at, minAll, atAll, uniq, n,
         board: { top: b.top, left: b.left, right: b.right, bottom: b.bottom, w: b.width },
         hintRight: hr.right, hintLeft: hr.left,
-        chipRight: chip.hidden ? null : chip.getBoundingClientRect().right,
+        hudCenter: (hud.left + hud.right) / 2 - window.innerWidth / 2,
+        hudW: hud.width,
         rbPaths: document.querySelectorAll('#rb path').length,
         rbLen: (document.querySelector('#rb path') || { getTotalLength: () => 0 }).getTotalLength(),
       };
@@ -93,15 +94,16 @@ for (const [w, h, tag] of [[390, 844, 'iPhone14'], [360, 640, '小屏'], [320, 5
 
     const line = `${tag} ${w}×${h} n=${n}`;
     const moveD = Math.abs(after.top - before.board.top) + Math.abs(after.left - before.board.left);
-    const chipErr = before.chipRight === null ? null : Math.round(before.chipRight - before.board.right);
+    const hudErr = Math.round(before.hudCenter);
     const hintL = Math.round(before.hintLeft - before.board.left);
-    console.log(`${line}: 相邻色差 minΔE=${before.minAdjDE.toFixed(1)} (${before.at}) 全盘最小 ${before.minAll.toFixed(1)} (${before.atAll}) 用色 ${before.uniq}/${before.n} | 描边 ${before.rbPaths} 笔 ${Math.round(before.rbLen)}px | 标签右差 ${chipErr} | 提示行左差 ${hintL}`);
+    console.log(`${line}: 相邻色差 minΔE=${before.minAdjDE.toFixed(1)} (${before.at}) 全盘最小 ${before.minAll.toFixed(1)} (${before.atAll}) 用色 ${before.uniq}/${before.n} | 描边 ${before.rbPaths} 笔 ${Math.round(before.rbLen)}px | 信息条居中差 ${hudErr} | 提示行左差 ${hintL}`);
 
     if (before.minAdjDE < 18) bad(`${line}: 相邻色块色差太小 ${before.minAdjDE.toFixed(1)}`);
     if (before.uniq < before.n) bad(`${line}: 有重复颜色 ${before.uniq}/${before.n}`);
     if (before.rbPaths < 1) bad(`${line}: 色块描边没画出来`);
     if (moveD > 0.5) bad(`${line}: 开提示后棋盘位移 ${moveD.toFixed(1)}px`);
-    if (chipErr !== null && Math.abs(chipErr) > 1.5) bad(`${line}: 难度标签没对齐棋盘右缘（差 ${chipErr}px）`);
+    if (Math.abs(hudErr) > 1.5) bad(`${line}: 信息条没居中（差 ${hudErr}px）`);
+    if (before.hudW > w - 16) bad(`${line}: 信息条撑出屏幕（${before.hudW}px）`);
     if (Math.abs(hintL) > 1.5) bad(`${line}: 提示行没和棋盘左缘对齐（差 ${hintL}px）`);
     if (after.coachTop < before.board.bottom - 1) console.log(`  ! 面板压到棋盘 ${Math.round(before.board.bottom - after.coachTop)}px（面板 ${Math.round(after.coachBottom - after.coachTop)}px 高）`);
     if (after.toolbarBottom > after.vh + 1) bad(`${line}: 工具栏出屏`);

@@ -15,7 +15,7 @@ import { announce } from './core/utils.js';
 import { buildBoard, buildRegionBar } from './game/board.js';
 import { decodeShare, encodeShare } from './game/share-code.js';
 import { computeVibe } from './game/vibe.js';
-import { closeDiff, openDiff, updateDiffChip } from './ui/difficulty.js';
+import { closeDiff, openDiff, paintInfo, updateDiffChip } from './ui/difficulty.js';
 import { applyFadeNow } from './ui/fade.js';
 import { closeGuide, guideNext, guidePrev, useHint } from './ui/guide.js';
 import { flashHint } from './ui/hint.js';
@@ -90,13 +90,17 @@ function boot() {
    * 判负放在这里而不是 clock 里——clock 只算时间账，封盘属于界面的事。 */
   clearInterval(ticker);
   ticker = window.setInterval(function () {
-    if (state.status !== 'playing') return;
-    if (checkTimeout()) {
-      // 面板还开着就先收起来，别让失败层背后挂着一张设置
-      if (view.sheetOpen) closeSheet();
-      return;
+    if (state.status === 'playing') {
+      if (checkTimeout()) {
+        // 面板还开着就先收起来，别让失败层背后挂着一张设置
+        if (view.sheetOpen) closeSheet();
+        return;
+      }
+      if (state.runningSince) paintClock();
     }
-    if (state.runningSince) paintClock();
+    /* 信息页开着时计时还在走：卡片上的读数跟着一起动，
+     * 不然盯着「用时 01:12」看半分钟，还以为面板把游戏暂停了。 */
+    if (view.diffOpen) paintInfo();
   }, 250);
 
   // 恢复出来的那局可能早就超时了（关着页面的时候不扣时间，但已用时是实打实的）

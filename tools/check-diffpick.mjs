@@ -157,7 +157,7 @@ const hard1 = await snap();
 const afterShuffle = await page.evaluate(() => ({
   setting: __QUEENS_DEBUG__.settings.difficulty,
   ls: JSON.parse(localStorage.getItem('queens.settings.v1') || '{}').difficulty,
-  chip: document.getElementById('btnDiff').textContent.replace(/\s+/g, ' ').trim(),
+  chip: document.getElementById('diffSeg').textContent.replace(/\s+/g, ' ').trim(),
   sheetClosed: document.getElementById('sheetWrap').hidden
 }));
 ok('新局落在困难档', hard1.lvl === '困难', hard1);
@@ -215,7 +215,7 @@ await page.waitForFunction('window.__QUEENS_DEBUG__ && __QUEENS_DEBUG__.state.vi
 await sleep(450);
 const restored = await page.evaluate(() => ({
   setting: __QUEENS_DEBUG__.settings.difficulty,
-  chip: document.getElementById('btnDiff').textContent.replace(/\s+/g, ' ').trim(),
+  chip: document.getElementById('diffSeg').textContent.replace(/\s+/g, ' ').trim(),
   hasVibe: !!__QUEENS_DEBUG__.state.vibe
 }));
 ok('刷新后设置仍是困难', restored.setting === 'hard', restored.setting);

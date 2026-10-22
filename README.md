@@ -2,11 +2,36 @@
 
 打开即玩的皇后推理小游戏：每行、每列、每个色块各放一只皇后，皇后之间不能相邻。
 支持 4×4–16×16，每盘唯一解，带难度评估、逐步提示、撤销、分享码与续玩。
+棋盘上方是一条**局内信息条**（棋盘 / 用时 / 皇后 / 难度），点哪儿都进同一个「本局信息」页。
 设置里还有「挑战」（限时、禁用提示、禁用撤销）与「淡化」（填过的格子整格透成背景色，手停半秒才淡）。
 设置面板默认只摊开「换一局」和它上面那几组，开关与分享折在「显示更多选项」里。
 顶栏的奖杯记战绩：每局留一张棋盘缩略图、分享码，排行榜按**限时 × 难度**分开排，
 全存在本机 localStorage 里。
 顶栏的调色盘是**外观**：叉可以换成点，皇后可以换成小猫——满盘 × 看得眼花时换一套就安静了。
+
+## 局内信息
+
+棋盘上方那一块（提示文案下面、棋盘上面）是这一局的读数，四段连成一条：
+
+| 段 | 显示 | 说明 |
+| --- | --- | --- |
+| 棋盘 | `8×8` | 这一局的边长 |
+| 用时 | `00:00` | 开了限时变成倒计时；最后 30 秒这一段转红慢闪 |
+| 皇后 | `1/8` | 放满时这一段变绿 |
+| 难度 | `中等 5.2` | 圆点按分级上色；本局难度还没算出来时整段收起 |
+
+- **整条是一个按钮**，点哪一段都打开同一个「本局信息」页。以前是三个胶囊
+  （只有尺寸那个能点、还开到设置面板里）加提示行右侧一个难度标签：
+  四种样子、三种去向，全靠记忆分辨，所以并成一条、一个入口。
+- 信息页里四张卡片跟信息条一一对应（棋盘 / 用时 / 皇后 / 难度），下面接难度构成：
+  五类推理各用了多少次、分数怎么来的。用时那张跟着心跳走，面板开着也在动。
+- 页脚的「改棋盘大小与难度」是信息页里唯一的一个动作，点到设置面板；
+  信息条本身只负责「读」，不改任何东西。
+- 提示文案与信息条装在一个 `.stage-head` 里，两者一起贴在棋盘上方，
+  在舞台上算**一块**：`ui/layout.js` 扣的是这一块的高度，开关浮层不会挪动棋盘。
+- 落地：`#btnHud`（整条）→ `ui/difficulty.js` 的 `openDiff()`；
+  四段是 `#hudSize` / `#timePill` / `#queenPill` / `#diffSeg`，样式在 `03-topbar.css`。
+
 
 ## 快速开始
 
@@ -210,7 +235,7 @@ core  ←  game  ←  ui  ←  app
 | `core/audio.js` | WebAudio 实时合成音效 + 震动 |
 | `core/storage.js` | 设置与当前这局的存档（写盘 160ms 防抖），含限时与倒计时起点 |
 | `core/records.js` | 每局战绩：数据结构、localStorage 读写、按「限时 × 难度」分组排名（不碰 DOM） |
-| `core/clock.js` | 计时（只在有动作后起表）+ 限时剩余时间 `limitRemaining()` / 顶栏胶囊 `paintClock()` |
+| `core/clock.js` | 计时（只在有动作后起表）+ 限时剩余时间 `limitRemaining()` / 信息条上的计时段 `paintClock()` |
 | `game/rules.js` | 自动打叉、被逼定位、冲突对、色块计数、填错的色块 |
 | `game/geometry.js` | 格子边长、色块轮廓 path |
 | `game/board.js` | 棋盘 DOM 构建 + 色块长按高亮 + `pieceSvg()` 按外观决定每格画什么 |
@@ -219,12 +244,12 @@ core  ←  game  ←  ui  ←  app
 | `game/vibe.js` | 本局难度评估（转调 `engine/difficulty.js`） |
 | `ui/render.js` | 把 state 画到 DOM：格子状态、描边、连线、红框防抖；工具栏按钮的可用状态 |
 | `ui/fade.js` | 淡化：整格透成背景色 + 0.5 秒防抖，拨开关时 `applyFadeNow()` 立刻落地 |
-| `ui/layout.js` | 棋盘尺寸计算（浮层开关不许挪动棋盘） |
+| `ui/layout.js` | 棋盘尺寸计算（提示行 + 信息条算一块，浮层开关不许挪动棋盘） |
 | `ui/guide.js` | 提示引导面板 + 棋盘圈画层 |
 | `ui/hint.js` | 顶部提示行文案 |
 | `ui/settings.js` | 设置面板（尺寸/难度/挑战只写 `pending`，点「换一局」才落地） |
 | `ui/look.js` | 外观面板：展柜生成、样式切换（即时生效）、`<html data-*>` 落地 |
-| `ui/difficulty.js` | 难度标签与难度说明弹层 |
+| `ui/difficulty.js` | 信息条上的难度段 + 本局信息页（四张读数卡片 + 难度构成） |
 | `ui/share.js` | 分享面板：复制 / 粘贴载入 / `#QNS1-...` 链接开局 |
 | `ui/records.js` | 战绩面板：记录列表（缩略图 / 分享码）、排行榜筛选与名次、删除与清空 |
 | `ui/win.js` | 胜利判定、礼花、结果层（解开 / 时间到共用一张卡）、`checkTimeout()` |
@@ -243,7 +268,7 @@ core  ←  game  ←  ui  ←  app
 | --- | --- |
 | 改配色 / 圆角 / 阴影 | `src/styles/01-tokens.css` |
 | 改色块底色池 | `src/js/core/palette.js`（用 `node tools/gen-palette.mjs` 生成候选） |
-| 改顶栏 / 棋盘 / 面板外观 | 对应编号的 CSS 片段 |
+| 改顶栏 / 信息条 / 棋盘 / 面板外观 | 对应编号的 CSS 片段（信息条在 `03-topbar.css`） |
 | 加一个设置开关 | `core/config.js` 的 `DEFAULT_SETTINGS` + `loadSettings`（老存档给个兜底）、`index.html` 里加一行 `.switch-row`（放进 `#sheetMore`，默认折在「显示更多选项」里）、`core/dom.js` 取引用、`ui/settings.js` 的 `syncSheet` 与 `events.js` 的 `sheet` click 分支 |
 | 改唯一位置提示的强度 / 节奏 | `06-board-states.css` 的 `.cell.is-forced`（`forcedGlow` 的峰值亮度与 2.8s 呼吸周期；这里刻意不描边） |
 | 改拖动标 × 的对齐方式 | `events.js` 的 `pointermove`（`settings.alignDrag` 一开一关两条路）、默认值在 `core/config.js` |
@@ -255,6 +280,8 @@ core  ←  game  ←  ui  ←  app
 | 改出题规则 | `src/js/engine/engine.js`（改动后跑 `node tools/test-engine.mjs`） |
 | 改提示措辞 / 推理等级 | `src/js/engine/hint.js`（`node tools/test-hint.mjs`） |
 | 改难度评分 | `src/js/engine/difficulty.js` + `game/vibe.js` |
+| 改信息条有哪几段 / 什么顺序 | `index.html` 的 `.hud`（每段一个 `.hud-seg`，样式在 `03-topbar.css`），读数由 `ui/render.js` 与 `ui/difficulty.js` 写 |
+| 改信息页的卡片 / 文案 | `index.html` 的 `.info-grid` + `ui/difficulty.js` 的 `paintInfo()` / `renderDiff()`，样式在 `11-sheet-difficulty.css` |
 | 改战绩记什么 | `core/records.js` 的 `add()` / `tidy()`（加字段记得兼容老数据） |
 | 改排行榜怎么分组 / 排序 | `core/records.js` 的 `group()`；筛选项在 `ui/records.js` 的 `renderBoard()` |
 | 改战绩行 / 排行榜长什么样 | `ui/records.js` 的 `rowHtml()` / `lbRow()` + `16-records.css` |
@@ -278,7 +305,7 @@ node tools/check-fade.mjs        # 淡化：默认关 / 透成纸色 / 边线不
 node tools/check-misc.mjs        # 面板折叠 / 无滚动条 / 拖动对齐与逐格震动 / 重来这局（18 项）
 ```
 
-`tools/` 里还有一批针对性检查（难度标签与模型一致性、拖动涂抹、引导面板布局等），
+`tools/` 里还有一批针对性检查（信息条与难度模型一致性、拖动涂抹、引导面板布局等），
 以及 `shots/` 目录下的大量截图脚本，需要时按文件名挑。
 
 所有这些脚本依赖 `window.__QUEENS_DEBUG__`（见 `main.js` 末尾）暴露的只读探针，
@@ -300,7 +327,7 @@ node tools/check-misc.mjs        # 面板折叠 / 无滚动条 / 拖动对齐与
 - 存档键：`queens.settings.v1` / `queens.game.v1` / `queens.records.v1`（改结构要升版本号）。
 - 外观存在 `settings.markStyle` / `settings.pieceStyle`，页面上表现为 `<html data-mark / data-piece>`；
   它只改画法，别往里塞会影响规则的东西（那属于「挑战」）。
-- 面板类浮层（设置 / 难度 / 战绩 / 外观）打开时 `app` 会被设成 `inert`，`canPlay()` 也要一起拦——
+- 面板类浮层（设置 / 本局信息 / 战绩 / 外观）打开时 `app` 会被设成 `inert`，`canPlay()` 也要一起拦——
   键盘事件挂在 `document` 上，不拦的话面板背后还能落子。
 - 对局存档里的 `limit` / `limitFrom` 是挑战的限时与倒计时起点，老存档没有也照样读。
 - 战绩每条都自带一份色块与解（`rg` / `so` 十六进制串），所以删掉最后一局的存档也不会让

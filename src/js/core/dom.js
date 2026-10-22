@@ -19,6 +19,8 @@ export var rlPeek = $('rlPeek');
 export var linksEl = $('links');
 export var hintEl = $('hint');
 export var hintRowEl = $('hintRow');
+/* 提示行 + 信息条：舞台上算一块，量高度时用它 */
+export var stageHeadEl = $('stageHead');
 export var regionsEl = $('regions');
 export var toolbarEl = $('toolbar');
 
@@ -32,10 +34,17 @@ export var coachClose = $('coachClose');
 export var glEl = $('gl');
 export var glTags = $('glTags');
 
-export var btnSize = $('btnSize');
+/* 局内信息条：棋盘 / 用时 / 皇后 / 难度四段，整条是一个按钮（btnHud）。
+ * 四段只是读数，点了都进同一个信息页，所以不各自做成按钮。 */
+export var btnHud = $('btnHud');
+export var hudSize = $('hudSize');
 export var timePill = $('timePill');
 export var timeText = $('timeText');
 export var queenPill = $('queenPill');
+export var queenCountEl = $('queenCount');
+export var diffSeg = $('diffSeg');
+export var diffLevelEl = $('diffLevel');
+export var diffScoreEl = $('diffScore');
 export var btnNew = $('btnNew');
 export var btnSettings = $('btnSettings');
 export var btnLook = $('btnLook');
@@ -72,18 +81,27 @@ export var shareStatus = $('shareStatus');
 export var btnCopyCode = $('btnCopyCode');
 export var btnLoadCode = $('btnLoadCode');
 
-export var btnDiff = $('btnDiff');
-export var diffLevelEl = $('diffLevel');
-export var diffScoreEl = $('diffScore');
+/* 本局信息页：四张读数卡片 + 难度构成（原「难度说明」弹层并进来） */
 export var diffWrap = $('diffWrap');
 export var diffSheet = $('diffSheet');
 export var diffBackdrop = $('diffBackdrop');
 export var btnCloseDiff = $('btnCloseDiff');
 export var btnDiffDone = $('btnDiffDone');
+export var btnInfoSetup = $('btnInfoSetup');
+export var infoSize = $('infoSize');
+export var infoSizeSub = $('infoSizeSub');
+export var infoTime = $('infoTime');
+export var infoTimeSub = $('infoTimeSub');
+export var infoQueens = $('infoQueens');
+export var infoQueensSub = $('infoQueensSub');
+export var infoDiffCard = $('infoDiffCard');
+export var infoDiffSub = $('infoDiffSub');
+export var diffGroupTitle = $('diffGroupTitle');
 export var diffBig = $('diffBig');
 export var diffBadge = $('diffBadge');
 export var diffLead = $('diffLead');
 export var diffSteps = $('diffSteps');
+export var diffLegend = $('diffLegend');
 
 export var resultEl = $('result');
 export var resultKicker = $('resultKicker');

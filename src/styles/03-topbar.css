@@ -1,4 +1,4 @@
-/* 03-topbar.css — 顶栏：品牌、尺寸/计时/皇后计数胶囊、图标按钮。 */
+/* 03-topbar.css — 顶栏（品牌 + 图标按钮）与局内信息条。 */
 
 /* ============================================================
    03. 顶栏
@@ -34,66 +34,12 @@
   line-height: 1;
 }
 
-.stats {
+.actions {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex: 0 0 auto;
   margin-left: auto;
-}
-
-.pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  min-height: 28px;
-  padding: 2px 9px;
-  border: 2px solid var(--ink);
-  border-radius: 999px;
-  background: var(--bg-card);
-  box-shadow: var(--shadow-pill);
-  font-size: 11.5px;
-  font-weight: 800;
-  line-height: 1;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-  transition: background var(--t-fast), transform var(--t-fast), box-shadow var(--t-fast);
-}
-
-.pill-size {
-  background: var(--accent);
-  cursor: pointer;
-  padding: 2px 8px;
-}
-
-.pill-size:active {
-  transform: translateY(2px);
-  box-shadow: none;
-}
-
-.pill-time { color: var(--ink-mute); }
-
-/* 开了限时：胶囊变成倒计时，最后 30 秒转红并轻轻闪，别只靠数字变小提醒 */
-.pill-time.is-countdown {
-  background: var(--accent-soft);
-  color: var(--ink);
-}
-
-.pill-time.is-low {
-  background: #FFE2E2;
-  border-color: #C62828;
-  color: #C62828;
-  animation: clockLow 1s steps(2, end) infinite;
-}
-
-@keyframes clockLow {
-  0%, 100% { transform: none; }
-  50% { transform: scale(1.04); }
-}
-
-.pill-queen.is-full {
-  background: var(--ok);
-  color: #FFFFFF;
 }
 
 .icon-btn {
@@ -132,9 +78,112 @@
   background: var(--accent);
 }
 
-.actions {
+/* ============================================================
+   局内信息条
+   ------------------------------------------------------------
+   棋盘 / 用时 / 皇后 / 难度：一条胶囊、一颗按钮、一个信息页。
+   每一段只是「读数」，点哪儿都进同一页——不再有「这颗能点、那颗不能、
+   点了还各去一个地方」的事。段与段之间用一根短线分，不各带一圈描边，
+   否则又变回一排各自为政的小胶囊。
+   ============================================================ */
+/* 信息条装在 .stage-head 里（提示行下面），自己不再留外边距 */
+.hud-row {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: 0 0 auto;
+  justify-content: center;
+  max-width: 100%;
 }
+
+.hud {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-height: 30px;
+  padding: 0 4px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-pill);
+  font-size: 11.5px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: transform var(--t-fast), box-shadow var(--t-fast), background var(--t-fast);
+}
+
+.hud:hover { background: #FFFDF8; }
+.hud:active { transform: translateY(2px); box-shadow: none; }
+
+.hud-seg {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 9px;
+  color: var(--ink);
+}
+
+/* 分隔短线：只到字高，不把胶囊切成几个小盒子 */
+.hud-seg + .hud-seg::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 1.5px;
+  height: 14px;
+  margin-top: -7px;
+  border-radius: 1px;
+  background: var(--hair);
+}
+
+.hud-time { color: var(--ink-mute); }
+
+/* 开了限时：这一段变成倒计时，最后 30 秒转红并轻轻闪，别只靠数字变小提醒 */
+.hud-time.is-countdown {
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+.hud-time.is-low {
+  background: #FFE2E2;
+  color: #C62828;
+  animation: clockLow 1s steps(2, end) infinite;
+}
+
+@keyframes clockLow {
+  0%, 100% { transform: none; }
+  50% { transform: scale(1.04); }
+}
+
+/* 皇后那一格的小皇冠跟时钟同一套线描，别一个描边一个实心剪影 */
+.hud-q {
+  flex: 0 0 auto;
+  color: var(--ink-mute);
+}
+
+/* 皇后放满：这一段绿底白字。这是「这盘摆完了」的状态提示，
+ * 跟尺寸 / 难度那些读数不是一回事，所以允许它跳出来。 */
+.hud-queen.is-full {
+  background: var(--ok);
+  color: #FFFFFF;
+  border-radius: 999px;
+}
+
+.hud-queen.is-full .hud-q { color: rgba(255, 255, 255, .8); }
+
+.hud-diff b { font-weight: 900; }
+.hud-diff span { color: var(--ink-mute); }
+
+.hud-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--ink-faint);
+}
+
+.hud-diff[data-tone="easy"] .hud-dot { background: #22B573; }
+.hud-diff[data-tone="mid"] .hud-dot { background: #E0A800; }
+.hud-diff[data-tone="hard"] .hud-dot { background: #F2762E; }
+.hud-diff[data-tone="extreme"] .hud-dot { background: #E23B3B; }

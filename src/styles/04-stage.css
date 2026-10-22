@@ -50,59 +50,30 @@
 .hint.is-alert { color: var(--ink); font-weight: 800; }
 .hint.is-ok { color: var(--ok); font-weight: 800; }
 
-/* ---- 提示行 + 难度标签（同一行：提示居中，难度靠右） ----
-   整行宽度跟着棋盘走（--board-w 由 relayout 写入），
-   这样小尺寸棋盘上「难度」也不会飘到屏幕最右边去。
-   高度写死 36px：文案换行、难度标签出现/消失都不会改变舞台里其它块的位置。
-   文案在「标签左边剩下的宽度」里居中 —— 不再额外镜像标签的宽度，
-   否则 4×4 这种窄棋盘上文案会被挤成两行（一行放得下的字才是好文案）。 */
+/* ---- 提示行 + 信息条（一块，贴在棋盘上方） ----
+   这两样都是「关于这一局」的话，装进同一个 .stage-head 里，
+   在舞台上算一个整体：上面是弹性空白，下面直接接棋盘。
+   提示行宽度跟着棋盘走（--board-w 由 relayout 写入），小棋盘的文案不会飘到屏幕边上；
+   信息条自己按内容居中，不用跟棋盘同宽（4×4 时棋盘反而比它窄）。
+   提示行高度写死 36px：文案换行、临时提示出现/消失都不会推动棋盘。 */
+.stage-head {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
 .hint-row {
   flex: 0 0 auto;
   width: min(100%, var(--board-w, 100%));
   height: 36px;
   display: flex;
   align-items: center;
-  gap: 8px;
 }
 
 .hint-row .hint {
   flex: 1 1 auto;
   min-width: 0;
 }
-
-.diff-chip {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  min-height: 22px;
-  padding: 0 8px;
-  border: 1.5px solid var(--hair);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--ink-mute);
-  font-size: 10.5px;
-  font-weight: 800;
-  line-height: 1;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: background var(--t-fast), border-color var(--t-fast), transform var(--t-fast);
-}
-
-.diff-chip:active { transform: translateY(1px); }
-.diff-chip:hover { border-color: var(--ink); }
-
-.diff-chip b { color: var(--ink); font-weight: 900; }
-.diff-chip span { font-variant-numeric: tabular-nums; }
-
-.diff-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--ink-faint);
-}
-
-.diff-chip[data-tone="easy"] .diff-dot { background: #22B573; }
-.diff-chip[data-tone="mid"] .diff-dot { background: #E0A800; }
-.diff-chip[data-tone="hard"] .diff-dot { background: #F2762E; }
-.diff-chip[data-tone="extreme"] .diff-dot { background: #E23B3B; }

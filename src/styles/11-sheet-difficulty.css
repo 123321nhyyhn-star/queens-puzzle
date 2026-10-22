@@ -144,55 +144,72 @@
 
 .sheet-done { width: 100%; margin-top: 10px; }
 
-/* ---- 难度说明 ---- */
-.diff-hero {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 2px 0 4px;
+/* ---- 本局信息：四张读数卡片 ----
+   顺序跟顶栏那条信息条一致。卡片只是「摊开说清楚」，不能点、不带按钮感，
+   不然又会变成一排各有各的去处的小控件。 */
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 10px 0 4px;
 }
 
-.diff-score {
+.info-card {
   display: flex;
-  align-items: baseline;
-  gap: 4px;
-  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding: 9px 11px 10px;
+  border: 1.5px solid var(--hair);
+  border-radius: 12px;
+  background: var(--bg-body);
 }
 
-.diff-score b {
-  font-size: 42px;
+.info-k {
+  font-size: 10px;
   font-weight: 900;
-  line-height: 1;
-  letter-spacing: -.03em;
-  font-variant-numeric: tabular-nums;
+  letter-spacing: 1.6px;
+  color: var(--ink-faint);
 }
 
-.diff-score span {
-  font-size: 11.5px;
+.info-v {
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: -.01em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.info-v em {
+  font-style: normal;
+  font-size: 12px;
   font-weight: 800;
   color: var(--ink-mute);
 }
 
-.diff-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 5px 12px;
-  border: 2px solid var(--ink);
-  border-radius: 999px;
-  box-shadow: var(--shadow-pill);
-  font-size: 13px;
-  font-weight: 900;
-  letter-spacing: .04em;
-  background: var(--bg-card);
+.info-level[data-tone="easy"] { color: #17804F; }
+.info-level[data-tone="mid"] { color: #A97600; }
+.info-level[data-tone="hard"] { color: #C9560F; }
+.info-level[data-tone="extreme"] { color: #C22F2F; }
+
+.info-s {
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--ink-mute);
 }
 
-.diff-badge[data-tone="easy"] { background: #DFF5E8; }
-.diff-badge[data-tone="mid"] { background: var(--accent-soft); }
-.diff-badge[data-tone="hard"] { background: #FFE4D2; }
-.diff-badge[data-tone="extreme"] { background: #FFDDDD; }
+.info-setup {
+  display: block;
+  margin: 10px auto 0;
+}
 
+/* ---- 难度构成 ---- */
 .diff-lead {
-  margin: 8px 0 14px;
+  margin: 4px 0 14px;
   font-size: 12.5px;
   line-height: 1.6;
   color: var(--ink-mute);

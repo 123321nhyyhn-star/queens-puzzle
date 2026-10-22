@@ -5,14 +5,15 @@
 
 import { buzz, sfx } from '../core/audio.js';
 import { paintClock } from '../core/clock.js';
-import { boardEl, btnClear, btnHint, btnSize, btnUndo, linksEl, queenPill, rbEl, rlBad,
-  rlEl } from '../core/dom.js';
+import { boardEl, btnClear, btnHint, btnUndo, hudSize, linksEl, queenCountEl, queenPill, rbEl,
+  rlBad, rlEl } from '../core/dom.js';
 import { settings, state, view } from '../core/state.js';
 import { pulseClass, svgEl } from '../core/utils.js';
 import { cellSize, regionPath } from '../game/geometry.js';
 import { FORCED_COL, FORCED_REGION, FORCED_ROW, badRegions, computeAuto, computeConflicts,
   computeForced, queenCount, regionCounts } from '../game/rules.js';
 import { updateHint } from './hint.js';
+import { paintHudLabel } from './difficulty.js';
 import { fadeCell, settleFade } from './fade.js';
 
 /* ==========================================================
@@ -304,9 +305,10 @@ export function updateStats() {
   var total = state.size;
   var q = queenCount();
   var playing = state.status === 'playing';
-  queenPill.textContent = '♛ ' + q + '/' + total;
+  queenCountEl.textContent = q + '/' + total;
   queenPill.classList.toggle('is-full', q === total && playing);
-  btnSize.textContent = total + '×' + total;
+  hudSize.textContent = total + '×' + total;
+  paintHudLabel();
 
   /* 挑战里禁用的按钮跟「暂时没得撤」是两回事：
    * 前者要多一句话说明为什么点了没反应，所以单独挂 is-locked + title。 */

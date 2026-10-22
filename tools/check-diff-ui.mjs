@@ -1,4 +1,4 @@
-/* 难度标签的界面检查 + 截图 */
+/* 信息条 + 本局信息页的界面检查 + 截图 */
 import { createRequire } from 'node:module';
 import { mkdirSync } from 'node:fs';
 const require = createRequire('C:/Users/CJL/.workbuddy/binaries/node/workspace/');
@@ -22,29 +22,32 @@ await page.goto('http://127.0.0.1:8080/', { waitUntil: 'networkidle0' });
 await page.waitForFunction('window.__QUEENS_DEBUG__ && __QUEENS_DEBUG__.state.vibe', { timeout: 20000 });
 await sleep(500);
 
-const chip = await page.evaluate(() => {
-  const b = document.getElementById('btnDiff');
+const hud = await page.evaluate(() => {
+  const b = document.getElementById('btnHud');
   const r = b.getBoundingClientRect();
-  const row = document.querySelector('.hint-row').getBoundingClientRect();
-  const hint = document.getElementById('hint').getBoundingClientRect();
+  const seg = document.getElementById('diffSeg').getBoundingClientRect();
   return {
-    hidden: b.hidden, text: b.textContent.trim().replace(/\s+/g, ' '),
+    hidden: document.getElementById('diffSeg').hidden,
+    text: b.textContent.replace(/\s+/g, ' ').trim(),
     aria: b.getAttribute('aria-label'),
     w: Math.round(r.width), h: Math.round(r.height),
-    rowW: Math.round(row.width), hintW: Math.round(hint.width),
-    overlap: Math.round(hint.right - r.left)
+    segW: Math.round(seg.width),
+    centered: Math.round((r.left + r.right) / 2 - window.innerWidth / 2),
+    overflowX: document.documentElement.scrollWidth > window.innerWidth
   };
 });
-console.log('标签:', JSON.stringify(chip, null, 0));
+console.log('信息条:', JSON.stringify(hud, null, 0));
 
 await page.screenshot({ path: OUT + '/diff-chip-390.png' });
-await page.click('#btnDiff');
+await page.click('#btnHud');
 await sleep(400);
 const dlg = await page.evaluate(() => {
   const w = document.getElementById('diffWrap');
   const sh = document.getElementById('diffSheet');
   return {
     open: !w.hidden,
+    title: document.getElementById('diffTitle').textContent,
+    cards: ['infoSize', 'infoTime', 'infoQueens'].map(id => document.getElementById(id).textContent),
     big: document.getElementById('diffBig').textContent,
     badge: document.getElementById('diffBadge').textContent,
     lead: document.getElementById('diffLead').textContent,
@@ -55,7 +58,7 @@ const dlg = await page.evaluate(() => {
     vh: window.innerHeight
   };
 });
-console.log('弹层:', JSON.stringify(dlg, null, 0));
+console.log('信息页:', JSON.stringify(dlg, null, 0));
 await page.screenshot({ path: OUT + '/diff-sheet-390.png' });
 
 // Esc 关闭
@@ -73,7 +76,7 @@ const big = await page.evaluate(() => {
 });
 console.log('16×16:', JSON.stringify(big));
 await page.screenshot({ path: OUT + '/diff-chip-16.png' });
-await page.click('#btnDiff');
+await page.click('#btnHud');
 await sleep(400);
 await page.screenshot({ path: OUT + '/diff-sheet-16.png' });
 
@@ -81,29 +84,28 @@ await page.screenshot({ path: OUT + '/diff-sheet-16.png' });
 await page.setViewport({ width: 320, height: 568, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 await sleep(500);
 const narrow = await page.evaluate(() => {
-  const b = document.getElementById('btnDiff').getBoundingClientRect();
+  const b = document.getElementById('btnHud').getBoundingClientRect();
   const h = document.getElementById('hint').getBoundingClientRect();
-  const stage = document.getElementById('stage').getBoundingClientRect();
   return {
-    chipRight: Math.round(b.right), stageRight: Math.round(stage.right),
-    hintRight: Math.round(h.right), overlap: Math.round(h.right - b.left),
+    hudLeft: Math.round(b.left), hudRight: Math.round(b.right),
+    hintRight: Math.round(h.right),
     overflow: document.documentElement.scrollWidth > window.innerWidth
   };
 });
 console.log('320px:', JSON.stringify(narrow));
 await page.screenshot({ path: OUT + '/diff-320.png' });
 
-// 其他设备尺寸（先收起弹层，看标签本身）
+// 其他设备尺寸（先收起信息页，看信息条本身）
 await page.keyboard.press('Escape');
 await sleep(250);
 for (const [w, h, tag] of [[430, 932, '430'], [360, 740, '360'], [740, 360, '横屏']]) {
   await page.setViewport({ width: w, height: h, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   await sleep(500);
   const fit = await page.evaluate(() => {
-    const b = document.getElementById('btnDiff').getBoundingClientRect();
+    const b = document.getElementById('btnHud').getBoundingClientRect();
     const hEl = document.getElementById('hint').getBoundingClientRect();
     return {
-      chipRight: Math.round(b.right), chipBottom: Math.round(b.bottom),
+      hudW: Math.round(b.width), hudBottom: Math.round(b.bottom),
       boardTop: Math.round(document.getElementById('board').getBoundingClientRect().top),
       hintRight: Math.round(hEl.right),
       overflowX: document.documentElement.scrollWidth > window.innerWidth,

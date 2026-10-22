@@ -9,12 +9,12 @@ import { audio, buzz, sfx } from './core/audio.js';
 import { pauseTimer, startTimer } from './core/clock.js';
 import { DIFF_BANDS, DIFF_ORDER, SIZE_MAX, SIZE_MIN } from './core/config.js';
 import { btnAgain, btnClear, btnClearRecs, btnCloseDiff, btnCloseLook, btnCloseRec,
-  btnCloseSheet, btnCopyCode, btnDiff, btnDiffDone, btnHint, btnLoadCode, btnLook, btnLookDone,
-  btnMoreOpts, btnMoreRecs, btnNew, btnPeek, btnRecords, btnReplay, btnSettings, btnShuffle,
-  btnSize, btnUndo, coachClose, coachNext, coachPrev, diffBackdrop, diffOpts, diffSheet, gridEl,
-  limChips, limitOpts, lookBackdrop, lookSheet, lvChips, quickRow, recBackdrop, recList, boardList,
-  regionsEl, resultEl, shareCode, shareStatus, sheet, sheetBackdrop, sizeMinus, sizePlus,
-  tabBoard, tabRecs } from './core/dom.js';
+  btnCloseSheet, btnCopyCode, btnDiffDone, btnHint, btnHud, btnInfoSetup, btnLoadCode, btnLook,
+  btnLookDone, btnMoreOpts, btnMoreRecs, btnNew, btnPeek, btnRecords, btnReplay, btnSettings,
+  btnShuffle, btnUndo, coachClose, coachNext, coachPrev, diffBackdrop, diffOpts, diffSheet,
+  gridEl, limChips, limitOpts, lookBackdrop, lookSheet, lvChips, quickRow, recBackdrop, recList,
+  boardList, regionsEl, resultEl, shareCode, shareStatus, sheet, sheetBackdrop, sizeMinus,
+  sizePlus, tabBoard, tabRecs } from './core/dom.js';
 import { guide, hasProgress, pending, settings, state, view } from './core/state.js';
 import { save, saveSettings } from './core/storage.js';
 import { announce, clamp } from './core/utils.js';
@@ -243,7 +243,10 @@ btnNew.addEventListener('click', function () {
 });
 
 btnSettings.addEventListener('click', openSheet);
-btnSize.addEventListener('click', openSheet);
+/* 信息条整条是一个按钮：棋盘 / 用时 / 皇后 / 难度点了都进同一个信息页。
+ * 以前「尺寸」点开设置面板、其余三处两个不能点、一个点开难度说明，
+ * 想看一眼现在几点得先记住哪个能按。 */
+btnHud.addEventListener('click', openDiff);
 btnCloseSheet.addEventListener('click', closeSheet);
 sheetBackdrop.addEventListener('click', closeSheet);
 /* 「显示更多选项」：只改面板露出多少，不碰任何设置；展开状态留在这一次会话里 */
@@ -261,10 +264,15 @@ lookSheet.addEventListener('click', function (e) {
   else if (b.dataset.piece) pickLook('piece', b.dataset.piece);
 });
 
-btnDiff.addEventListener('click', openDiff);
 btnCloseDiff.addEventListener('click', function () { closeDiff(true); });
 btnDiffDone.addEventListener('click', function () { closeDiff(true); });
 diffBackdrop.addEventListener('click', function () { closeDiff(true); });
+/* 信息页底部那句「改棋盘大小与难度」：看完信息想动手改，直接去设置面板——
+ * 这是页面里明写的一个动作，不是又一个「点哪里会怎样」的隐藏入口。 */
+btnInfoSetup.addEventListener('click', function () {
+  closeDiff(false);
+  openSheet();
+});
 
 /* ---- 战绩 / 排行榜 ---- */
 btnRecords.addEventListener('click', openRecords);

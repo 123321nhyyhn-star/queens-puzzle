@@ -48,7 +48,7 @@ const boot = await page.evaluate(() => {
       return Object.keys(areas).length;
     })(),
     engineLoaded: typeof window.QueensEngine === 'object',
-    sizePill: document.getElementById('btnSize').textContent.trim(),
+    sizePill: document.getElementById('hudSize').textContent.trim(),
     queenPill: document.getElementById('queenPill').textContent.trim(),
     chips: document.querySelectorAll('#regions .chip').length,
     // 色块粗边现在画在一张统一的 SVG 图层上（#rb），不再是逐格的 border
@@ -59,8 +59,8 @@ const boot = await page.evaluate(() => {
 check('默认 8×8', boot.size === 8 && boot.cells === 64, `cells=${boot.cells}`);
 check('色块数 = 边长', boot.unique === 8, `regions=${boot.unique}`);
 check('engine.js 已加载', boot.engineLoaded);
-check('顶栏尺寸胶囊', boot.sizePill === '8×8', boot.sizePill);
-check('皇后计数胶囊', boot.queenPill === '♛ 0/8', boot.queenPill);
+check('信息条棋盘段', boot.sizePill === '8×8', boot.sizePill);
+check('信息条皇后段', boot.queenPill === '0/8', boot.queenPill);
 check('色块条与描边', boot.chips === 8 && boot.borders > 100, `chips=${boot.chips} 描边长度=${Math.round(boot.borders)}px`);
 check('无页面溢出', boot.overflow <= 0, `overflow=${boot.overflow}`);
 await page.screenshot({ path: `${OUT}/01-boot.png` });
@@ -144,7 +144,7 @@ const afterQueen = await page.evaluate((q0) => {
 }, q0);
 check('双击落皇后', afterQueen.mark === 2 && afterQueen.piece, `mark=${afterQueen.mark}`);
 check('自动 × 与理论集合一致', afterQueen.autoExact, `auto=${afterQueen.autoCount}`);
-check('皇后计数更新', afterQueen.queenPill === '♛ 1/8', afterQueen.queenPill);
+check('皇后计数更新', afterQueen.queenPill === '1/8', afterQueen.queenPill);
 await page.screenshot({ path: `${OUT}/02-queen-auto.png` });
 
 // ---------- 4. 自动 × 不可手改 ----------
@@ -778,31 +778,32 @@ await page.waitForFunction('__QUEENS_DEBUG__.state.size === 8 && __QUEENS_DEBUG_
 await sleep(400);
 
 const chip = await page.evaluate(() => {
-  const b = document.getElementById('btnDiff');
+  const hud = document.getElementById('btnHud');
+  const seg = document.getElementById('diffSeg');
   const v = __QUEENS_DEBUG__.state.vibe;
   return {
-    hidden: b.hidden,
+    hidden: seg.hidden,
     level: document.getElementById('diffLevel').textContent,
     score: document.getElementById('diffScore').textContent,
-    aria: b.getAttribute('aria-label'),
+    aria: hud.getAttribute('aria-label'),
     vibe: { level: v.level, score: v.score, tone: v.tone, tier: v.tier },
     steps: v.steps,
-    inRow: !!b.closest('.hint-row'),
-    chipBottom: b.getBoundingClientRect().bottom,
+    inHud: !!seg.closest('.hud'),
+    chipBottom: hud.getBoundingClientRect().bottom,
     boardTop: document.getElementById('board').getBoundingClientRect().top
   };
 });
-check('难度标签可见', !chip.hidden && chip.inRow);
-check('标签文案是常见分级', /^(容易|中等|困难|极难)$/.test(chip.level), chip.level);
-check('标签分数一位小数', /^\d(\.\d)?$/.test(chip.score), chip.score);
-check('标签与模型一致', chip.level === chip.vibe.level && chip.score === chip.vibe.score.toFixed(1));
-check('标签不压到棋盘', chip.chipBottom <= chip.boardTop + 1,
-  `chip=${Math.round(chip.chipBottom)} board=${Math.round(chip.boardTop)}`);
+check('信息条难度段可见', !chip.hidden && chip.inHud);
+check('难度段文案是常见分级', /^(容易|中等|困难|极难)$/.test(chip.level), chip.level);
+check('难度段分数一位小数', /^\d(\.\d)?$/.test(chip.score), chip.score);
+check('难度段与模型一致', chip.level === chip.vibe.level && chip.score === chip.vibe.score.toFixed(1));
+check('信息条不压到棋盘', chip.chipBottom <= chip.boardTop + 1,
+  `hud=${Math.round(chip.chipBottom)} board=${Math.round(chip.boardTop)}`);
 check('无障碍标签带分数', /难度/.test(chip.aria) && /分/.test(chip.aria), chip.aria);
 await page.screenshot({ path: `${OUT}/13-diff-chip.png` });
 
-// 点开弹层
-await page.click('#btnDiff');
+// 点开信息页（信息条整条是一个按钮，点哪一段都一样）
+await page.click('#btnHud');
 await sleep(350);
 const sheet1 = await page.evaluate(() => {
   const v = __QUEENS_DEBUG__.state.vibe;
@@ -821,10 +822,10 @@ const sheet1 = await page.evaluate(() => {
       document.getElementById('diffSheet').clientHeight + 4
   };
 });
-check('难度弹层打开', sheet1.open);
-check('弹层分数与标签一致', sheet1.big === chip.score && sheet1.badge === chip.level,
+check('信息页打开', sheet1.open);
+check('信息页难度与信息条一致', sheet1.big === chip.score && sheet1.badge === chip.level,
   `${sheet1.big}/${sheet1.badge}`);
-check('弹层列出 5 类构成', sheet1.names.length === 5, sheet1.names.join('|'));
+check('信息页列出 5 类构成', sheet1.names.length === 5, sheet1.names.join('|'));
 check('每类都有次数', sheet1.counts.every(c => /^×\d+$/.test(c)), sheet1.counts.join(' '));
 check('次数与模型一致', sheet1.counts[0] === '×' + sheet1.steps.openSingles &&
   sheet1.counts[3] === '×' + sheet1.steps.probe, sheet1.counts.join(' '));
@@ -833,7 +834,7 @@ check('条形有长度且不超 100%', sheet1.bars.every(b => {
   return w >= 0 && w <= 100;
 }), sheet1.bars.join(' '));
 check('有一句难度来源说明', /8×8/.test(sheet1.lead) && /试推|推完/.test(sheet1.lead), sheet1.lead);
-check('弹层内容不溢出', !sheet1.scrollable);
+check('信息页内容不溢出', !sheet1.scrollable);
 check('打开后焦点在弹层里', sheet1.focus === 'diffSheet', `focus=${sheet1.focus}`);
 await page.screenshot({ path: `${OUT}/14-diff-sheet.png` });
 
@@ -845,7 +846,7 @@ const locked = await page.evaluate(() => {
   cell.click();
   return { before, after: d.state.marks[0] };
 });
-check('弹层打开时棋盘锁定', locked.before === locked.after, `${locked.before}→${locked.after}`);
+check('信息页打开时棋盘锁定', locked.before === locked.after, `${locked.before}→${locked.after}`);
 
 // Esc 关闭 + 焦点回到标签
 await page.keyboard.press('Escape');
@@ -853,14 +854,14 @@ await sleep(300);
 const afterEsc = await page.evaluate(() => ({
   hidden: document.getElementById('diffWrap').hidden,
   focus: document.activeElement && document.activeElement.id,
-  expanded: document.getElementById('btnDiff').getAttribute('aria-expanded')
+  expanded: document.getElementById('btnHud').getAttribute('aria-expanded')
 }));
-check('Esc 关闭难度弹层', afterEsc.hidden);
-check('关闭后焦点回到标签', afterEsc.focus === 'btnDiff', `focus=${afterEsc.focus}`);
+check('Esc 关闭信息页', afterEsc.hidden);
+check('关闭后焦点回到信息条', afterEsc.focus === 'btnHud', `focus=${afterEsc.focus}`);
 check('aria-expanded 复位', afterEsc.expanded === 'false');
 
-// 点背景关闭（弹层面板盖住了背景中心，点上方空白处）
-await page.click('#btnDiff');
+// 点背景关闭（信息页面板盖住了背景中心，点上方空白处）
+await page.click('#btnHud');
 await sleep(300);
 await page.mouse.click(195, 80);
 await sleep(300);
@@ -897,7 +898,7 @@ await sleep(400);
 const resumed = await p4.evaluate(() => ({
   size: __QUEENS_DEBUG__.state.size,
   vibe: __QUEENS_DEBUG__.state.vibe && __QUEENS_DEBUG__.state.vibe.level,
-  chip: !document.getElementById('btnDiff').hidden,
+  chip: !document.getElementById('diffSeg').hidden,
   text: document.getElementById('diffLevel').textContent
 }));
 check('续玩恢复后仍有难度', resumed.chip && resumed.size === 16 && resumed.vibe === resumed.text,
