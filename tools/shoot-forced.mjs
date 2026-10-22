@@ -61,7 +61,7 @@ for (const size of [8, 16]) {
   console.log(`size ${meta.n}  cell=${meta.cell}px  forced=${meta.forced.join(',')}  ${meta.aria}`);
 
   // captureBeyondViewport:false —— 否则 clip 截图会走离屏重绘，带 opacity 关键帧的描边会停在首帧
-  for (const [tag, phase] of [['peak', -1.6], ['trough', 0]]) {
+  for (const [tag, phase] of [['peak', -1.4], ['trough', 0]]) {
     await pin(phase);
     await page.screenshot({
       path: `${OUT}/forced-${meta.n}-${tag}.png`,

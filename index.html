@@ -527,29 +527,33 @@ button {
 }
 
 /* ---- 「这一格被逼定了」的轻提示 ----
-   只用一圈内描边：不铺底色、不在中间画东西，色块本身长什么样一点不变。
-   描边宽度跟着格子走，但始终大于色块自身的墨线（2px，小格子 1.5px），
-   否则一眼看上去会以为是格子边界而不是提示。
-   颜色选深紫（#7A2FD9）：18 种色块底色清一色是高明度淡彩，没有一个落在紫这一格，
-   所以它在任何色块上都能一眼认出来；也不会和红色的冲突环、墨色的格子线、黄色的强调色撞。 */
+   不画边框、不在中间画东西：整格透出一层自己的颜色（--rc-glow 是这块底色
+   的同色相加饱和版，见 glowOf），像这块自己亮了一下。
+   因为光色贴着底色走，跟哪块都不撞色，也不会把格子切成「有框 / 没框」两种气质。
+   呼吸让它时隐时现，暗到几乎没有再慢慢亮回来，用动静而不是对比度来抓注意力。 */
 .cell.is-forced::before {
   content: "";
   position: absolute;
   inset: 0;
-  box-shadow: inset 0 0 0 clamp(3px, calc(var(--cell, 40px) * .07), 5px) #7A2FD9;
+  /* 一层自己的颜色铺满整格（--rc-glow，见 glowOf），再压一小团极淡的白：
+     纯平铺像「换了个颜色」，纯径向又像个圆球，两者叠起来才像这格自己发着光。 */
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255, 255, 255, .62) 0%, rgba(255, 255, 255, 0) 66%),
+    var(--rc-glow, rgba(58, 51, 53, .4));
   pointer-events: none;
   opacity: 0;
-  animation: forcedBreathe 3.2s ease-in-out infinite;
+  animation: forcedGlow 3.2s ease-in-out infinite;
 }
 
-/* 呼吸只在自己的两档之间起伏：不消失，否则看起来像在闪，反而更抓眼睛 */
-@keyframes forcedBreathe {
-  0%, 100% { opacity: .58; }
-  50% { opacity: .92; }
+/* 时隐时现：几乎看不见 → 亮起来 → 停半拍 → 再暗回去 */
+@keyframes forcedGlow {
+  0%, 100% { opacity: .03; }
+  40% { opacity: .44; }
+  58% { opacity: .44; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cell.is-forced::before { animation: none; opacity: .74; }
+  .cell.is-forced::before { animation: none; opacity: .34; }
 }
 
 .cell.stamp .mark {
@@ -1811,7 +1815,7 @@ button {
     </div>
 
     <div class="switch-row">
-      <div class="stepper-label">唯一位置提示<small>某行、某列或某个色块只剩一格没标 × 时，亮一圈边框</small></div>
+      <div class="stepper-label">唯一位置提示<small>某行、某列或某个色块只剩一格没标 × 时，这格会亮一下</small></div>
       <button class="switch" id="swForced" type="button" role="switch" aria-checked="true" aria-label="唯一位置提示"></button>
     </div>
 
@@ -2022,6 +2026,40 @@ button {
       out.push(REGION_COLORS[idx]);
     }
     return out;
+  }
+
+  /* 「这一格亮起来」用的光色：拿色块底色换个更饱和、略深一点的同色相版本。
+     用同一块的颜色去发光，看起来才像它自己亮了一下，而不是糊上去一块别的颜色。 */
+  function glowOf(hex) {
+    var r = parseInt(hex.substr(1, 2), 16) / 255;
+    var g = parseInt(hex.substr(3, 2), 16) / 255;
+    var b = parseInt(hex.substr(5, 2), 16) / 255;
+    var max = Math.max(r, g, b), min = Math.min(r, g, b);
+    var h = 0, s = 0, l = (max + min) / 2;
+    if (max !== min) {
+      var d = max - min;
+      s = l > .5 ? d / (2 - max - min) : d / (max + min);
+      if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
+      else if (max === g) h = (b - r) / d + 2;
+      else h = (r - g) / d + 4;
+      h /= 6;
+    }
+    s = Math.min(.88, s * 1.18 + .14);        // 抬饱和度：淡彩才「亮」得起来
+    l = Math.min(.72, Math.max(.5, l - .14)); // 压一点明度：光才有实体感
+
+    function hue2rgb(p, q, t) {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1 / 6) return p + (q - p) * 6 * t;
+      if (t < 1 / 2) return q;
+      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+      return p;
+    }
+    var q = l < .5 ? l * (1 + s) : l + s - l * s;
+    var p2 = 2 * l - q;
+    var rgb = [hue2rgb(p2, q, h + 1 / 3), hue2rgb(p2, q, h), hue2rgb(p2, q, h - 1 / 3)]
+      .map(function (v) { return Math.round(Math.max(0, Math.min(1, v)) * 255); });
+    return 'rgba(' + rgb.join(',') + ',1)';
   }
 
   var SIZE_MIN = 4;
@@ -2546,6 +2584,7 @@ button {
         cell.className = 'cell';
         cell.dataset.i = String(i);
         cell.style.setProperty('--rc', state.regionColors[g]);
+        cell.style.setProperty('--rc-glow', glowOf(state.regionColors[g]));
         cell.setAttribute('role', 'gridcell');
         // 漫游 tabindex：整个棋盘只占一个 Tab 位，格内用方向键移动
         cell.tabIndex = i === 0 ? 0 : -1;
