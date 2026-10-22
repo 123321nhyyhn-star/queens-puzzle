@@ -80,6 +80,17 @@
 
 .result-card .btn { width: 100%; }
 
+/* 超时判负：同一张卡，红色调，按钮换成「重试这一局」 */
+.result[data-kind="lost"] .result-kicker { color: #C62828; }
+
+.result[data-kind="lost"] .result-title { color: #C62828; }
+
+.result[data-kind="lost"] .btn-hint {
+  background: #FFE2E2;
+  border-color: #C62828;
+  box-shadow: 0 3px 0 #C62828;
+}
+
 .btn-text {
   margin-top: 10px;
   padding: 6px;

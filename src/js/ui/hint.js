@@ -19,6 +19,11 @@ export function updateHint() {
     hintEl.classList.add('is-ok');
     return;
   }
+  if (state.status === 'lost') {
+    hintEl.textContent = '时间到，这局没解开 · 重开或换一局';
+    hintEl.classList.add('is-alert');
+    return;
+  }
   if (state.conflicts && state.conflicts.count > 0) {
     hintEl.textContent = state.conflicts.pairs[0].reason;
     hintEl.classList.add('is-alert');

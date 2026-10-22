@@ -5,12 +5,12 @@
 
 import './events.js';   // 事件接线（纯副作用模块，必须早于 boot 执行）
 import { clearBoard } from './app/actions.js';
-import { applyBoard, newGame } from './app/puzzle.js';
-import { elapsedMs, pauseTimer, startTimer } from './core/clock.js';
-import { hintEl, stage, timeText } from './core/dom.js';
-import { guide, hasProgress, settings, state } from './core/state.js';
+import { applyBoard, newGame, retryGame } from './app/puzzle.js';
+import { limitRemaining, paintClock, pauseTimer, startTimer } from './core/clock.js';
+import { hintEl, stage } from './core/dom.js';
+import { guide, hasProgress, settings, state, view } from './core/state.js';
 import { doSave, loadGame, loadSettings } from './core/storage.js';
-import { announce, formatTime } from './core/utils.js';
+import { announce } from './core/utils.js';
 import { buildBoard, buildRegionBar } from './game/board.js';
 import { decodeShare, encodeShare } from './game/share-code.js';
 import { computeVibe } from './game/vibe.js';
@@ -19,9 +19,9 @@ import { closeGuide, guideNext, guidePrev, useHint } from './ui/guide.js';
 import { flashHint } from './ui/hint.js';
 import { relayout } from './ui/layout.js';
 import { render, updateStats } from './ui/render.js';
-import { syncAutoBtn } from './ui/settings.js';
+import { closeSheet, syncAutoBtn } from './ui/settings.js';
 import { takeHashCode, tryLoadShare } from './ui/share.js';
-import { showResult } from './ui/win.js';
+import { checkTimeout, showResult } from './ui/win.js';
 
 var ro = null;
 var ticker = null;
@@ -78,12 +78,22 @@ function boot() {
     newGame(settings.size);
   }
 
+  /* 心跳：刷新计时胶囊，顺带看限时到没到点。
+   * 判负放在这里而不是 clock 里——clock 只算时间账，封盘属于界面的事。 */
   clearInterval(ticker);
   ticker = window.setInterval(function () {
-    if (state.status === 'playing' && state.runningSince) {
-      timeText.textContent = formatTime(elapsedMs());
+    if (state.status !== 'playing') return;
+    if (checkTimeout()) {
+      // 面板还开着就先收起来，别让失败层背后挂着一张设置
+      if (view.sheetOpen) closeSheet();
+      return;
     }
+    if (state.runningSince) paintClock();
   }, 250);
+
+  // 恢复出来的那局可能早就超时了（关着页面的时候不扣时间，但已用时是实打实的）
+  checkTimeout();
+  paintClock();
 
   window.addEventListener('beforeunload', function () {
     pauseTimer();
@@ -96,12 +106,16 @@ window.__QUEENS_DEBUG__ = {
   state: state,
   settings: settings,
   newGame: newGame,
+  retry: retryGame,
   useHint: useHint,
   clear: function () { clearBoard(true); },
   render: render,
   vibe: function () { return state.vibe; },
   openDiff: openDiff,
   closeDiff: closeDiff,
+  // 挑战相关的探针，只给 tools/ 里的自动化测试用
+  remaining: limitRemaining,
+  checkTimeout: checkTimeout,
   // 引导相关的探针，只给 tools/ 里的自动化测试用
   guide: function () {
     return { open: guide.open, at: guide.at, plan: guide.plan };

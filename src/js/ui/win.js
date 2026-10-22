@@ -1,12 +1,13 @@
 /* ============================================================================
  * win.js
- * 胜利判定、礼花、通关结果层。
+ * 胜利判定、礼花、结果层（解开 / 时间到共用一个面板）。
  * ========================================================================== */
 
 import { buzz, sfx } from '../core/audio.js';
-import { stopTimer } from '../core/clock.js';
-import { REDUCE_MOTION } from '../core/config.js';
-import { boardEl, btnAgain, fxEl, resHints, resSize, resTime, resultEl, resultSub } from '../core/dom.js';
+import { limitExpired, stopTimer } from '../core/clock.js';
+import { limitLabel, REDUCE_MOTION } from '../core/config.js';
+import { boardEl, btnAgain, btnPeek, fxEl, resHints, resSize, resTime, resTimeLbl, resultEl,
+  resultKicker, resultSub, resultTitle } from '../core/dom.js';
 import { guide, state, view } from '../core/state.js';
 import { save } from '../core/storage.js';
 import { announce, formatTime } from '../core/utils.js';
@@ -52,6 +53,36 @@ export function checkWin() {
   }, REDUCE_MOTION ? 200 : 900);
 }
 
+/* ==========================================================
+   超时判负
+   ----------------------------------------------------------
+   由入口的 250ms 心跳调用（见 main.js）：到点就把这局封盘。
+   封盘后棋盘只读（canPlay 看 status），但「重试这一局」能把同一盘棋
+   原样重开一遍，不用重新出题。
+   ========================================================== */
+export function checkTimeout() {
+  if (state.status !== 'playing') return false;
+  if (!limitExpired()) return false;
+  failByTimeout();
+  return true;
+}
+
+export function failByTimeout() {
+  if (state.status !== 'playing') return;
+  state.status = 'lost';
+  if (guide.open) closeGuide();
+  stopTimer();
+  updateStats();
+  updateHint();
+  boardEl.classList.add('is-lost');
+  boardEl.classList.remove('is-won');
+  sfx('fail');
+  buzz([30, 60, 30]);
+  announce('时间到，这局没解开');
+  save();
+  showResult();
+}
+
 export function burstConfetti() {
   if (REDUCE_MOTION) return;
   var rect = boardEl.getBoundingClientRect();
@@ -79,21 +110,44 @@ export function burstConfetti() {
 
 /* ==========================================================
    结果层
+   ----------------------------------------------------------
+   解开与超时共用一张卡，按 state.status 换文案与按钮：
+     解开：再来一局 / 看看棋盘
+     超时：重试这一局（同一盘棋重开）/ 换一局新的
    ========================================================== */
 export function showResult() {
   if (view.resultOpen) return;
+  var lost = state.status === 'lost';
   view.resultOpen = true;
+
+  resultEl.dataset.kind = lost ? 'lost' : 'won';
+  resultKicker.textContent = lost ? 'TIME UP' : 'PUZZLE SOLVED';
+  resultTitle.textContent = lost ? '时间到' : '解开了';
+
   resSize.textContent = state.size + '×' + state.size;
-  resTime.textContent = formatTime(state.elapsed);
+  resTime.textContent = lost ? limitLabel(state.limit) : formatTime(state.elapsed);
+  resTimeLbl.textContent = lost ? '限时' : '用时';
   resHints.textContent = String(state.hints);
-  resultSub.textContent = state.size + '×' + state.size + ' · 用时 ' + formatTime(state.elapsed) +
-    (state.vibe ? ' · ' + state.vibe.level + ' ' + state.vibe.score.toFixed(1) : '');
+
+  resultSub.textContent = lost
+    ? state.size + '×' + state.size + ' · 限时 ' + limitLabel(state.limit) +
+      ' · 还差 ' + Math.max(0, state.size - queenCount()) + ' 只皇后'
+    : state.size + '×' + state.size + ' · 用时 ' + formatTime(state.elapsed) +
+      (state.vibe ? ' · ' + state.vibe.level + ' ' + state.vibe.score.toFixed(1) : '');
+
+  btnAgain.textContent = lost ? '重试这一局' : '再来一局';
+  btnPeek.textContent = lost ? '换一局新的' : '看看棋盘';
+
   resultEl.hidden = false;
   window.setTimeout(function () { btnAgain.focus(); }, 80);
 }
 
-export function dismissResult() {
+/* 输掉的那一屏必须做个选择（重试 / 换一局），不能 Esc 一下就没了：
+ * 关掉之后棋盘是封的，只剩「新一局」一条路，容易点得莫名其妙。
+ * 换盘、重开这类真的要收面板的地方传 force = true。 */
+export function dismissResult(force) {
   if (!view.resultOpen) return;
+  if (state.status === 'lost' && !force) return;
   view.resultOpen = false;
   resultEl.hidden = true;
   boardEl.classList.remove('is-won');

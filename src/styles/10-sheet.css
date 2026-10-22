@@ -120,3 +120,65 @@
   border-bottom: 1px dashed rgba(58, 51, 53, .14);
 }
 
+/* ============================================================
+   挑战：限时 / 禁用提示 / 禁用撤销
+   ------------------------------------------------------------
+   用虚线框 + 米色底围成一小组，跟上下那些常规开关分开：
+   这一组是「给这局加难度」，不是偏好设置。
+   ============================================================ */
+.group-title {
+  margin: 14px 0 6px;
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: 2.6px;
+  color: var(--ink-faint);
+}
+
+/* 挑战这一组跟尺寸 / 难度同一个规矩：改了点「换一局」才落地，
+ * 所以有未落地的改动时标题直接说出来，别让人以为已经生效。 */
+.group-title.is-pending {
+  color: #C25A12;
+  letter-spacing: 1.4px;
+}
+
+.challenge {
+  margin-bottom: 10px;
+  padding: 0 12px;
+  border: 2px dashed rgba(58, 51, 53, .24);
+  border-radius: 14px;
+  background: var(--bg-body);
+}
+
+.challenge .limit-row { padding: 10px 0 4px; }
+.challenge .switch-row { padding: 9px 0; border-bottom: 0; }
+.challenge .switch-row:last-child { padding-bottom: 11px; }
+.challenge .switch-row + .switch-row { border-top: 1px dashed rgba(58, 51, 53, .14); }
+
+.limit-opts {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.lbtn {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 30px;
+  padding: 2px;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  background: var(--bg-card);
+  box-shadow: 0 2px 0 var(--ink);
+  font-size: 11.5px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform var(--t-fast), box-shadow var(--t-fast), background var(--t-fast), color var(--t-fast);
+}
+
+.lbtn:active:not(.is-on) { transform: translateY(2px); box-shadow: none; }
+
+/* 「不限」选中还是素色；选了具体分钟数就用橙底——挑战是真开着的 */
+.lbtn.is-on { background: var(--bg-neutral); color: var(--ink); }
+.lbtn.is-on:not([data-limit="0"]) { background: #F2762E; color: #FFFFFF; }
+

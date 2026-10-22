@@ -138,6 +138,11 @@ export function sfx(name, detail) {
       });
       audio.noise(0.5, 4200, 0.8, 0.1, 0.1);
       break;
+    case 'fail':
+      // 下行两句：不吵，但一听就知道这局完了
+      audio.tone('triangle', 392, 330, 0.16, 0, 0.26);
+      audio.tone('sine', 262, 175, 0.34, 0.12, 0.3);
+      break;
     default:
       break;
   }

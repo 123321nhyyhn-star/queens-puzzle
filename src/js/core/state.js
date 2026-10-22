@@ -29,16 +29,27 @@ export const state = {
   focus: 0,
   lastTap: null,
   vibe: null,         // 本局难度评估（由 game/vibe.js 算，见 applyBoard）
-  diffApplied: 'any'  // 本局真正用到的目标难度档（用来判断设置里是否有改动待生效）
+  diffApplied: 'any', // 本局真正用到的目标难度档（用来判断设置里是否有改动待生效）
+  /* 挑战：本局限时（毫秒，0 = 不限）与倒计时起点。
+   * limitFrom 记的是「起算那一刻的已用时」，所以剩余 = limit - (已用时 - limitFrom)，
+   * 中途改限时不会因为之前耗掉的时间直接判负。 */
+  limit: 0,
+  limitFrom: 0
 };
 
 /** 用户设置，会持久化到 localStorage。 */
 export const settings = Object.assign({}, DEFAULT_SETTINGS);
 
-/* 设置面板上半部分（棋盘大小 / 目标难度）只是「意向」，选完不立刻作废当前这局，
+/* 设置面板上半部分（棋盘大小 / 目标难度 / 挑战）只是「意向」，选完不立刻作废当前这局，
  * 点「换一局」才把 pending 落到 settings 上并真的出一盘新的。
- * 下半部分的开关是即时生效的。 */
-export const pending = { size: 8, difficulty: 'any' };
+ * 下半部分的开关（自动打叉 / 音效…）是即时生效的。 */
+export const pending = {
+  size: 8,
+  difficulty: 'any',
+  timeLimit: 0,
+  noHint: false,
+  noUndo: false
+};
 
 /* 提示引导的当前进度。提前声明：relayout() 会在 boot() 里先跑，
  * 那时函数体内的 guide 还不能是 undefined。 */

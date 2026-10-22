@@ -81,7 +81,11 @@ const ui0 = await page.evaluate(() => {
     locked: document.getElementById('sizeStepper').classList.contains('diff-locked'),
     hasDone: !!document.getElementById('btnDone'),
     hasRestart: !!document.getElementById('btnRestart'),
-    shuffleAfterDiff: kids.indexOf(document.querySelector('.diff-row')) + 1 === kids.indexOf(document.querySelector('.shuffle-row')),
+    // 顺序：目标难度 → 挑战（也是「换一局才生效」的一组）→ 换一局
+    shuffleAfterDiff: kids.indexOf(document.querySelector('.challenge')) ===
+        kids.indexOf(document.querySelector('.diff-row')) + 2 &&
+      kids.indexOf(document.querySelector('.shuffle-row')) ===
+        kids.indexOf(document.querySelector('.challenge')) + 1,
     shuffleHint: document.getElementById('shuffleHint').textContent.trim()
   };
 });
@@ -89,7 +93,7 @@ ok('五个档位齐全', ui0.opts.length === 5 && ui0.opts.join('') === '不限�
 ok('默认选中「不限」', ui0.on.length === 1 && ui0.on[0] === '不限', ui0.on);
 ok('默认尺寸不锁定', ui0.locked === false);
 ok('没有「好了」与「重开本局」', ui0.hasDone === false && ui0.hasRestart === false);
-ok('「换一局」紧跟在目标难度之后', ui0.shuffleAfterDiff === true);
+ok('「换一局」紧跟在挑战组之后（尺寸/难度/挑战都往这里落地）', ui0.shuffleAfterDiff === true);
 ok('说明文案指向换一局', /换一局/.test(ui0.hint) && /生效/.test(ui0.shuffleHint), [ui0.hint, ui0.shuffleHint]);
 ok('面板顶部标出当前这局', /当前这局/.test(ui0.note), ui0.note);
 await page.screenshot({ path: SHOTS + 'diff-setting.png' });

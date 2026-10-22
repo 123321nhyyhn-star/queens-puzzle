@@ -4,11 +4,11 @@
  * ========================================================================== */
 
 import { buzz, sfx } from '../core/audio.js';
-import { elapsedMs } from '../core/clock.js';
+import { paintClock } from '../core/clock.js';
 import { boardEl, btnClear, btnHint, btnSize, btnUndo, linksEl, queenPill, rbEl, rlBad,
-  rlEl, timeText } from '../core/dom.js';
+  rlEl } from '../core/dom.js';
 import { settings, state, view } from '../core/state.js';
-import { formatTime, pulseClass, svgEl } from '../core/utils.js';
+import { pulseClass, svgEl } from '../core/utils.js';
 import { cellSize, regionPath } from '../game/geometry.js';
 import { FORCED_COL, FORCED_REGION, FORCED_ROW, badRegions, computeAuto, computeConflicts,
   computeForced, queenCount, regionCounts } from '../game/rules.js';
@@ -296,13 +296,22 @@ export function drawLinks(cf) {
 export function updateStats() {
   var total = state.size;
   var q = queenCount();
+  var playing = state.status === 'playing';
   queenPill.textContent = '♛ ' + q + '/' + total;
-  queenPill.classList.toggle('is-full', q === total && state.status === 'playing');
+  queenPill.classList.toggle('is-full', q === total && playing);
   btnSize.textContent = total + '×' + total;
-  btnUndo.disabled = view.undo.length === 0;
-  btnHint.disabled = state.status !== 'playing';
-  btnClear.disabled = state.status !== 'playing';
-  timeText.textContent = formatTime(elapsedMs());
+
+  /* 挑战里禁用的按钮跟「暂时没得撤」是两回事：
+   * 前者要多一句话说明为什么点了没反应，所以单独挂 is-locked + title。 */
+  btnUndo.disabled = settings.noUndo || view.undo.length === 0;
+  btnUndo.classList.toggle('is-locked', !!settings.noUndo);
+  btnUndo.setAttribute('title', settings.noUndo ? '挑战模式：这局不能撤销' : '撤销（Z）');
+  btnHint.disabled = !playing || settings.noHint;
+  btnHint.classList.toggle('is-locked', !!settings.noHint);
+  btnHint.setAttribute('title', settings.noHint ? '挑战模式：这局不能用提示' : '提示（H）');
+  btnClear.disabled = !playing;
+
+  paintClock();
 }
 /** 布局重排后，如果红框正亮着，按新格子尺寸重画（否则横屏一转就错位）。 */
 export function refreshBad() {

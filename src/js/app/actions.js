@@ -87,6 +87,7 @@ export function onCell(i) {
 }
 
 export function placeQueen(i, skipHistory) {
+  if (!canPlay()) return;     // 赢了 / 超时封盘的局，键盘也别想再落子
   if (!skipHistory) pushHistory();
   if (guide.open) closeGuide();
   clearHintTimer();

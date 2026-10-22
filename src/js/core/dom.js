@@ -61,6 +61,10 @@ export var sheetNote = $('sheetNote');
 export var diffOpts = $('diffOpts');
 export var diffHint = $('diffHint');
 
+export var limitOpts = $('limitOpts');
+export var limitHint = $('limitHint');
+export var challengeTitle = $('challengeTitle');
+
 export var shareCode = $('shareCode');
 export var shareTag = $('shareTag');
 export var shareStatus = $('shareStatus');
@@ -81,9 +85,12 @@ export var diffLead = $('diffLead');
 export var diffSteps = $('diffSteps');
 
 export var resultEl = $('result');
+export var resultKicker = $('resultKicker');
+export var resultTitle = $('resultTitle');
 export var resultSub = $('resultSub');
 export var resSize = $('resSize');
 export var resTime = $('resTime');
+export var resTimeLbl = $('resTimeLbl');
 export var resHints = $('resHints');
 export var btnAgain = $('btnAgain');
 export var btnPeek = $('btnPeek');
@@ -99,3 +106,6 @@ export var swConflict = $('swConflict');
 export var swForced = $('swForced');
 export var swSound = $('swSound');
 export var swHaptics = $('swHaptics');
+/* 挑战那一组 */
+export var swNoHint = $('swNoHint');
+export var swNoUndo = $('swNoUndo');

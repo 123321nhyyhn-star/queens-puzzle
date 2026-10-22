@@ -73,6 +73,24 @@
 
 .pill-time { color: var(--ink-mute); }
 
+/* 开了限时：胶囊变成倒计时，最后 30 秒转红并轻轻闪，别只靠数字变小提醒 */
+.pill-time.is-countdown {
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+.pill-time.is-low {
+  background: #FFE2E2;
+  border-color: #C62828;
+  color: #C62828;
+  animation: clockLow 1s steps(2, end) infinite;
+}
+
+@keyframes clockLow {
+  0%, 100% { transform: none; }
+  50% { transform: scale(1.04); }
+}
+
 .pill-queen.is-full {
   background: var(--ok);
   color: #FFFFFF;

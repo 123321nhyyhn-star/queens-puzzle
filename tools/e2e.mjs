@@ -533,7 +533,8 @@ const sheet = await page.evaluate(() => {
 });
 check('设置面板打开', sheet.open, `inView=${sheet.inView}`);
 check('设置面板完整可见', sheet.inView);
-check('开关数量', sheet.sw === 5, `sw=${sheet.sw}`);
+// 5 个偏好开关 + 挑战里的「禁用提示 / 禁用撤销」
+check('开关数量', sheet.sw === 7, `sw=${sheet.sw}`);
 check('快捷尺寸', sheet.quick >= 5, `quick=${sheet.quick}`);
 await page.screenshot({ path: `${OUT}/06-settings.png` });
 

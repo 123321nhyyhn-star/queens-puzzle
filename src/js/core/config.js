@@ -18,6 +18,31 @@ export var DIFF_BANDS = {
 };
 export var DIFF_ORDER = ['any', 'easy', 'mid', 'hard', 'extreme'];
 
+/* 挑战：限时挡位（毫秒，0 = 不限时）。
+ * 设置面板的按钮按这张表生成，加挡位只改这里。 */
+export var LIMIT_OPTIONS = [
+  { ms: 0, label: '不限' },
+  { ms: 180000, label: '3 分' },
+  { ms: 300000, label: '5 分' },
+  { ms: 600000, label: '10 分' },
+  { ms: 1200000, label: '20 分' }
+];
+
+export var LIMIT_MAX = 3600000;
+
+export function normalizeLimit(ms) {
+  ms = parseInt(ms, 10);
+  if (!ms || ms < 0) return 0;
+  return Math.min(ms, LIMIT_MAX);
+}
+
+/** 限时的人话说法：「5 分钟」/「不限时」。 */
+export function limitLabel(ms) {
+  if (!ms) return '不限时';
+  var m = Math.round(ms / 60000);
+  return m >= 1 ? m + ' 分钟' : '不到 1 分钟';
+}
+
 export var DEFAULT_SETTINGS = {
   size: 8,
   difficulty: 'any',
@@ -25,7 +50,11 @@ export var DEFAULT_SETTINGS = {
   conflict: true,
   forced: true,
   sound: true,
-  haptics: true
+  haptics: true,
+  // 挑战（即时生效，也跟着存盘）
+  timeLimit: 0,     // 本局限时（毫秒），0 = 不限时
+  noHint: false,    // 禁用提示
+  noUndo: false     // 禁用撤销
 };
 
 export var REDUCE_MOTION = window.matchMedia &&

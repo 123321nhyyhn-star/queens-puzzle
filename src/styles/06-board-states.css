@@ -185,3 +185,12 @@
   0%, 100% { transform: translateY(0); }
   45% { transform: translateY(-16%) scale(1.06); }
 }
+
+/* ---- 超时封盘 ----
+   不发红也不描边：只是把棋盘按暗一档，跟「还在下」一眼分开。
+   看得清但下不动，正好——重试就在结果层第一个按钮上。 */
+.board.is-lost {
+  opacity: .5;
+  filter: saturate(.7);
+  transition: opacity .3s ease, filter .3s ease;
+}

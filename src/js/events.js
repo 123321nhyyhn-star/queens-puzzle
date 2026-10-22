@@ -4,15 +4,15 @@
  * ========================================================================== */
 
 import { canPlay, clearBoard, onCell, placeQueen } from './app/actions.js';
-import { newGame } from './app/puzzle.js';
+import { newGame, retryGame } from './app/puzzle.js';
 import { audio, buzz, sfx } from './core/audio.js';
 import { pauseTimer, startTimer } from './core/clock.js';
 import { DIFF_BANDS, DIFF_ORDER, SIZE_MAX, SIZE_MIN } from './core/config.js';
 import { btnAgain, btnAuto, btnClear, btnCloseDiff, btnCloseSheet, btnCopyCode, btnDiff,
   btnDiffDone, btnHint, btnLoadCode, btnNew, btnPeek, btnSettings, btnShuffle, btnSize,
   btnUndo, coachClose, coachNext, coachPrev, diffBackdrop, diffOpts, diffSheet, gridEl,
-  quickRow, regionsEl, resultEl, shareCode, shareStatus, sheet, sheetBackdrop, sizeMinus,
-  sizePlus } from './core/dom.js';
+  limitOpts, quickRow, regionsEl, resultEl, shareCode, shareStatus, sheet, sheetBackdrop,
+  sizeMinus, sizePlus } from './core/dom.js';
 import { guide, hasProgress, pending, settings, state, view } from './core/state.js';
 import { save, saveSettings } from './core/storage.js';
 import { announce, clamp } from './core/utils.js';
@@ -23,7 +23,8 @@ import { closeGuide, guideNext, guidePrev, useHint } from './ui/guide.js';
 import { flashHint } from './ui/hint.js';
 import { pushHistory, redo, undo } from './app/history.js';
 import { render } from './ui/render.js';
-import { closeSheet, openSheet, setPendingSize, syncSheet, toggleAuto, trapFocus } from './ui/settings.js';
+import { closeSheet, commitChallenge, challengeSummary, openSheet, setPendingLimit,
+  setPendingSize, syncSheet, toggleAuto, trapFocus } from './ui/settings.js';
 import { copyText, isShareFocusHold, setShareStatus, shareReject, tryLoadShare } from './ui/share.js';
 import { dismissResult } from './ui/win.js';
 
@@ -139,6 +140,8 @@ gridEl.addEventListener('pointerdown', function (e) {
 
 gridEl.addEventListener('pointermove', function (e) {
   if (!stroke || e.pointerId !== stroke.id || stroke.mode === 'none') return;
+  // 拖到一半限时到了：这局已经封盘，别再往棋盘上涂
+  if (!canPlay()) return;
   var dx = e.clientX - stroke.x;
   var dy = e.clientY - stroke.y;
   if (!stroke.axis) {
@@ -228,20 +231,23 @@ btnCloseDiff.addEventListener('click', function () { closeDiff(true); });
 btnDiffDone.addEventListener('click', function () { closeDiff(true); });
 diffBackdrop.addEventListener('click', function () { closeDiff(true); });
 
-/* 换一局：唯一会作废当前这局的动作，面板上半部分的改动都在这里落地 */
+/* 换一局：唯一会作废当前这局的动作，面板上半部分（尺寸 / 难度 / 挑战）的改动都在这里落地 */
 btnShuffle.addEventListener('click', function () {
   var lv = pending.difficulty && pending.difficulty !== 'any' ? pending.difficulty : 'any';
   var band = DIFF_BANDS[lv] || null;
+  var challenge = challengeSummary();   // 落地前先记下来，好念给读屏
 
   settings.difficulty = lv;
   if (!band) settings.size = clamp(pending.size, SIZE_MIN, SIZE_MAX);
+  commitChallenge();
   saveSettings();
 
   closeSheet();
   newGame(settings.size);
 
-  if (band) announce('已换局，目标难度：' + band.name);
-  else announce('已换局：' + settings.size + '×' + settings.size);
+  if (band) announce('已换局，目标难度：' + band.name + (challenge ? '，挑战：' + challenge : ''));
+  else announce('已换局：' + settings.size + '×' + settings.size +
+    (challenge ? '，挑战：' + challenge : ''));
 });
 
 sizeMinus.addEventListener('click', function () {
@@ -268,6 +274,15 @@ diffOpts.addEventListener('click', function (e) {
   pending.difficulty = lv;
   syncSheet();
   announce(lv === 'any' ? '目标难度：不限' : '目标难度：' + DIFF_BANDS[lv].name + '（换一局后生效）');
+});
+
+/* 限时：跟尺寸 / 难度一样只记意向，点「换一局」才真的开始计时 */
+limitOpts.addEventListener('click', function (e) {
+  var btn = e.target.closest ? e.target.closest('.lbtn') : null;
+  if (!btn) return;
+  setPendingLimit(parseInt(btn.dataset.limit, 10));
+  sfx('x');
+  buzz(5);
 });
 
 /* ---- 分享棋盘 ---- */
@@ -350,16 +365,29 @@ sheet.addEventListener('click', function (e) {
   } else if (id === 'swHaptics') {
     settings.haptics = !settings.haptics;
     if (settings.haptics) buzz(12);
+  } else if (id === 'swNoHint') {
+    // 挑战这一组只写 pending：这一局的规则不改，换一局才生效
+    pending.noHint = !pending.noHint;
+    announce(pending.noHint ? '挑战：换一局后禁用提示' : '挑战：换一局后恢复提示');
+  } else if (id === 'swNoUndo') {
+    pending.noUndo = !pending.noUndo;
+    announce(pending.noUndo ? '挑战：换一局后禁用撤销' : '挑战：换一局后恢复撤销');
   }
   syncSheet();
   saveSettings();
 });
 
 btnAgain.addEventListener('click', function () {
-  dismissResult();
-  newGame(state.size);
+  var lost = state.status === 'lost';
+  dismissResult(true);
+  if (lost) retryGame(); else newGame(state.size);
 });
-btnPeek.addEventListener('click', dismissResult);
+btnPeek.addEventListener('click', function () {
+  var lost = state.status === 'lost';
+  dismissResult(true);
+  // 解开时是「看看棋盘」（结果层收掉就行）；输了就只有「换一局新的」这条路
+  if (lost) newGame(state.size);
+});
 resultEl.addEventListener('click', function (e) {
   if (e.target === resultEl) dismissResult();
 });
@@ -400,8 +428,9 @@ document.addEventListener('keydown', function (e) {
     if (e.key === 'Tab') trapFocus(e, resultEl);
     if (e.key.toLowerCase() === 'n' && !e.ctrlKey && !e.metaKey) {
       e.preventDefault();
-      dismissResult();
-      newGame(state.size);
+      var lostNow = state.status === 'lost';
+      dismissResult(true);
+      if (lostNow) retryGame(); else newGame(state.size);
     }
     return;
   }
@@ -459,6 +488,7 @@ document.addEventListener('keydown', function (e) {
   if (key === 'Backspace' || key === 'Delete') {
     if (focused >= 0) {
       e.preventDefault();
+      if (!canPlay()) return;
       pushHistory();
       state.marks[focused] = 0;
       state.lastTap = null;

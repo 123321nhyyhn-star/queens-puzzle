@@ -38,3 +38,11 @@
 }
 
 .btn-hint { background: var(--accent); }
+
+/* 挑战里被规则锁掉的按钮：比「暂时没得撤」淡得少，再加一层斜纹，
+   一眼能分出「现在撤不了」和「这局不许撤」。 */
+.btn.is-locked:disabled {
+  opacity: .55;
+  background-image: repeating-linear-gradient(-45deg,
+    transparent 0 5px, rgba(58, 51, 53, .07) 5px 10px);
+}

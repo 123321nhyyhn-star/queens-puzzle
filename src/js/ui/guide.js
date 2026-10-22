@@ -8,7 +8,7 @@ import { buzz, sfx } from '../core/audio.js';
 import { boardEl, btnHint, coachDots, coachEl, coachNext, coachPrev, coachText, coachTier,
   glEl, glTags, rlEl, stage } from '../core/dom.js';
 import { REGION_COLORS } from '../core/palette.js';
-import { guide, state, view } from '../core/state.js';
+import { guide, settings, state, view } from '../core/state.js';
 import { save } from '../core/storage.js';
 import { announce, clamp, svgEl } from '../core/utils.js';
 import { regionPath } from '../game/geometry.js';
@@ -45,6 +45,12 @@ function buildDots(count) {
 
 export function openGuide() {
   if (!canPlay()) return;
+  // 挑战里关掉了提示：按钮是灰的，键盘 H 也得拦住
+  if (settings.noHint) {
+    flashHint('挑战模式：这局不能用提示');
+    buzz(6);
+    return;
+  }
   if (guide.open) { guideNext(); return; }
 
   var plan = guidePlan();

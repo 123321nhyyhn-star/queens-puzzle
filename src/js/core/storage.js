@@ -4,7 +4,7 @@
  * ========================================================================== */
 
 import { elapsedMs } from './clock.js';
-import { DIFF_ORDER, SIZE_MAX, SIZE_MIN, STORE_GAME, STORE_SETTINGS } from './config.js';
+import { DIFF_ORDER, normalizeLimit, SIZE_MAX, SIZE_MIN, STORE_GAME, STORE_SETTINGS } from './config.js';
 import { settings, state } from './state.js';
 import { clamp } from './utils.js';
 
@@ -24,6 +24,9 @@ export function loadSettings() {
     settings.forced = s.forced !== false;
     settings.sound = s.sound !== false;
     settings.haptics = s.haptics !== false;
+    settings.timeLimit = normalizeLimit(s.timeLimit);
+    settings.noHint = s.noHint === true;
+    settings.noUndo = s.noUndo === true;
   } catch (e) { /* file:// 或隐私模式忽略 */ }
 }
 
@@ -59,7 +62,10 @@ export function doSave() {
       hints: state.hints,
       moves: state.moves,
       elapsed: Math.round(elapsedMs()),
-      status: state.status
+      status: state.status,
+      // 限时也跟着存：关掉页面再回来，倒计时接着走，不会白捡时间
+      limit: state.limit,
+      limitFrom: Math.round(state.limitFrom || 0)
     };
     window.localStorage.setItem(STORE_GAME, JSON.stringify(g));
   } catch (e) { /* 忽略 */ }
@@ -104,6 +110,11 @@ export function loadGame() {
     state.elapsed = Math.max(0, parseInt(g.elapsed, 10) || 0);
     state.status = g.status === 'won' ? 'won' : 'playing';
     state.runningSince = 0;
+    /* 限时：老存档没这两个字段，就按当前设置补上。
+     * 超时的那局照样恢复成 playing，下一帧 checkTimeout 会再判一次负——
+     * 刷新页面不能把已经输掉的局救回来。 */
+    state.limit = normalizeLimit(g.limit != null ? g.limit : settings.timeLimit);
+    state.limitFrom = clamp(parseInt(g.limitFrom, 10) || 0, 0, state.elapsed);
     settings.size = n;
     return true;
   } catch (e) {

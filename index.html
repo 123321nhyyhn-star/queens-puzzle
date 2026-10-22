@@ -166,9 +166,29 @@
       </div>
     </div>
 
+    <p class="group-title" id="challengeTitle">挑战</p>
+
+    <div class="challenge">
+      <div class="limit-row">
+        <div class="stepper-label">限时<small id="limitHint">开启后第一次操作开始倒计时，超时判负</small></div>
+        <!-- 挡位按钮按 core/config.js 的 LIMIT_OPTIONS 生成，见 ui/settings.js -->
+        <div class="limit-opts" id="limitOpts" role="group" aria-label="限时"></div>
+      </div>
+
+      <div class="switch-row">
+        <div class="stepper-label">禁用提示<small>这局的「提示」按钮不可用，只能自己推</small></div>
+        <button class="switch" id="swNoHint" type="button" role="switch" aria-checked="false" aria-label="禁用提示"></button>
+      </div>
+
+      <div class="switch-row">
+        <div class="stepper-label">禁用撤销<small>落错子不能退回，也没有重做</small></div>
+        <button class="switch" id="swNoUndo" type="button" role="switch" aria-checked="false" aria-label="禁用撤销"></button>
+      </div>
+    </div>
+
     <div class="shuffle-row">
       <button class="btn btn-hint" id="btnShuffle" type="button">换一局</button>
-      <p class="shuffle-hint" id="shuffleHint">换一幅新棋盘，上面的棋盘大小与目标难度一起生效</p>
+      <p class="shuffle-hint" id="shuffleHint">换一幅新棋盘，上面的棋盘大小、目标难度与挑战一起生效</p>
     </div>
 
     <div class="switch-row">
@@ -248,12 +268,12 @@
 
 <div class="result" id="result" hidden>
   <div class="result-card" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
-    <p class="result-kicker">PUZZLE SOLVED</p>
+    <p class="result-kicker" id="resultKicker">PUZZLE SOLVED</p>
     <h2 class="result-title" id="resultTitle">解开了</h2>
     <p class="result-sub" id="resultSub">8×8 · 用时 00:00</p>
     <div class="result-stats">
       <div class="result-stat"><b id="resSize">8×8</b><span>棋盘</span></div>
-      <div class="result-stat"><b id="resTime">00:00</b><span>用时</span></div>
+      <div class="result-stat"><b id="resTime">00:00</b><span id="resTimeLbl">用时</span></div>
       <div class="result-stat"><b id="resHints">0</b><span>提示</span></div>
     </div>
     <button class="btn btn-hint" id="btnAgain" type="button">再来一局</button>

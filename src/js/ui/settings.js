@@ -1,19 +1,77 @@
 /* ============================================================================
  * settings.js
- * 设置面板：尺寸 / 难度只写 pending，开关即时生效，换一局才落地。
+ * 设置面板：尺寸 / 难度 / 挑战只写 pending，点「换一局」才落地；其余开关即时生效。
  * ========================================================================== */
 
 import { buzz, sfx } from '../core/audio.js';
-import { DIFF_BANDS, SIZE_MAX, SIZE_MIN } from '../core/config.js';
-import { app, btnAuto, btnSettings, btnShuffle, diffHint, diffOpts, quickRow, sheet,
-  sheetNote, sheetWrap, shuffleHint, sizeMinus, sizePlus, sizeStepperEl, sizeVal, swAuto,
-  swConflict, swForced, swHaptics, swSound } from '../core/dom.js';
+import { DIFF_BANDS, LIMIT_OPTIONS, limitLabel, normalizeLimit, SIZE_MAX, SIZE_MIN } from '../core/config.js';
+import { app, btnAuto, btnSettings, btnShuffle, challengeTitle, diffHint, diffOpts, limitHint,
+  limitOpts, quickRow, sheet, sheetNote, sheetWrap, shuffleHint, sizeMinus, sizePlus,
+  sizeStepperEl, sizeVal, swAuto, swConflict, swForced, swHaptics, swNoHint, swNoUndo,
+  swSound } from '../core/dom.js';
 import { pending, settings, state, view } from '../core/state.js';
 import { saveSettings } from '../core/storage.js';
-import { clamp } from '../core/utils.js';
+import { announce, clamp } from '../core/utils.js';
 import { flashHint } from './hint.js';
 import { render } from './render.js';
 import { refreshShareCode } from './share.js';
+
+/* ==========================================================
+   挑战：限时挡位
+   ----------------------------------------------------------
+   按钮按 LIMIT_OPTIONS 生成，省得配置和面板各写一份、改一边忘另一边。
+   ========================================================== */
+function buildLimitOpts() {
+  if (!limitOpts || limitOpts.childNodes.length) return;
+  for (var i = 0; i < LIMIT_OPTIONS.length; i++) {
+    var o = LIMIT_OPTIONS[i];
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'lbtn';
+    b.dataset.limit = String(o.ms);
+    b.textContent = o.label;
+    b.setAttribute('aria-pressed', 'false');
+    limitOpts.appendChild(b);
+  }
+}
+buildLimitOpts();
+
+/* 挑战只写 pending，跟棋盘大小 / 目标难度一个规矩：点「换一局」才落地。
+ * 中途改完不换局就等于没改——开了限时又反悔，也不用担心这局被计时追着跑。 */
+export function setPendingLimit(ms) {
+  ms = normalizeLimit(ms);
+  if (ms === pending.timeLimit) return;
+  pending.timeLimit = ms;
+  syncSheet();
+  announce('限时：' + (ms ? limitLabel(ms) : '不限') + '（换一局后生效）');
+}
+
+/* 这一组里有哪些还没落地的改动，给「换一局」下方的说明与读屏播报共用 */
+function challengeBits() {
+  var bits = [];
+  if ((pending.timeLimit || 0) !== (settings.timeLimit || 0)) {
+    bits.push(pending.timeLimit ? '限时 ' + limitLabel(pending.timeLimit) : '不限时');
+  }
+  if (!!pending.noHint !== !!settings.noHint) {
+    bits.push(pending.noHint ? '禁用提示' : '提示可用');
+  }
+  if (!!pending.noUndo !== !!settings.noUndo) {
+    bits.push(pending.noUndo ? '禁用撤销' : '撤销可用');
+  }
+  return bits;
+}
+
+export function challengeSummary() {
+  return challengeBits().join(' · ');
+}
+
+/* 换一局时把挑战的意向落到设置上：这是它唯一生效的时机 */
+export function commitChallenge() {
+  settings.timeLimit = normalizeLimit(pending.timeLimit);
+  settings.noHint = !!pending.noHint;
+  settings.noUndo = !!pending.noUndo;
+  saveSettings();
+}
 
 /* ==========================================================
    设置面板
@@ -57,7 +115,8 @@ export function syncSheet() {
   quickRow.classList.toggle('diff-locked', !!target);
 
   sheetNote.textContent = '当前这局：' + state.size + '×' + state.size +
-    (state.vibe ? ' · ' + state.vibe.level + ' ' + state.vibe.score.toFixed(1) : '');
+    (state.vibe ? ' · ' + state.vibe.level + ' ' + state.vibe.score.toFixed(1) : '') +
+    (state.limit ? ' · 限时 ' + limitLabel(state.limit) : '');
 
   diffHint.textContent = target
     ? '「' + band.name + '」＝ ' + band.lo + '×' + band.lo + '–' + band.hi + '×' + band.hi + '，每局随机一档'
@@ -75,6 +134,30 @@ export function syncSheet() {
   swForced.setAttribute('aria-checked', settings.forced ? 'true' : 'false');
   swSound.setAttribute('aria-checked', settings.sound ? 'true' : 'false');
   swHaptics.setAttribute('aria-checked', settings.haptics ? 'true' : 'false');
+
+  /* ---- 挑战（只写 pending，点「换一局」才生效） ---- */
+  var lim = pending.timeLimit || 0;
+  var applied = settings.timeLimit || 0;
+  var lbtns = limitOpts.querySelectorAll('.lbtn');
+  for (var l = 0; l < lbtns.length; l++) {
+    var lon = parseInt(lbtns[l].dataset.limit, 10) === lim;
+    lbtns[l].classList.toggle('is-on', lon);
+    lbtns[l].setAttribute('aria-pressed', lon ? 'true' : 'false');
+  }
+  limitHint.textContent = lim !== applied
+    ? '换一局后生效：' + (lim ? '限时 ' + limitLabel(lim) : '不限时')
+    : (lim ? '本局限时 ' + limitLabel(lim) + '，超时判负，可以重试这一局'
+        : '开启后第一次操作开始倒计时，超时判负');
+  swNoHint.setAttribute('aria-checked', pending.noHint ? 'true' : 'false');
+  swNoUndo.setAttribute('aria-checked', pending.noUndo ? 'true' : 'false');
+
+  // 有没落地的改动就把组标题点亮，别让人以为已经生效了
+  var cbits = challengeBits();
+  if (challengeTitle) {
+    challengeTitle.textContent = cbits.length ? '挑战 · 待换一局生效' : '挑战';
+    challengeTitle.classList.toggle('is-pending', cbits.length > 0);
+  }
+
   syncAutoBtn();
 
   var chips = quickRow.querySelectorAll('.qbtn');
@@ -96,13 +179,14 @@ export function syncShuffleRow() {
       ? '不限难度'
       : DIFF_BANDS[pending.difficulty].name);
   }
+  bits = bits.concat(challengeBits());
 
   var hasPending = bits.length > 0;
   btnShuffle.classList.toggle('is-pending', hasPending);
   shuffleHint.classList.toggle('is-pending', hasPending);
   shuffleHint.textContent = hasPending
     ? '点这里生效：' + bits.join(' · ')
-    : '换一幅新棋盘，上面的棋盘大小与目标难度一起生效';
+    : '换一幅新棋盘，上面的棋盘大小、目标难度与挑战一起生效';
 }
 
 export function openSheet() {
@@ -111,6 +195,9 @@ export function openSheet() {
   // 每次打开都从「这一局实际是什么」重新起算，上次没落地的改动就作废
   pending.size = state.size;
   pending.difficulty = state.diffApplied || settings.difficulty;
+  pending.timeLimit = settings.timeLimit || 0;
+  pending.noHint = !!settings.noHint;
+  pending.noUndo = !!settings.noUndo;
   syncSheet();
   sheetWrap.hidden = false;
   refreshShareCode();   // 露出后再量高度，长代码才能自动撑开

@@ -4,7 +4,7 @@
  * ========================================================================== */
 
 import { sfx } from '../core/audio.js';
-import { DIFF_BANDS, SIZE_MAX, SIZE_MIN } from '../core/config.js';
+import { DIFF_BANDS, limitLabel, SIZE_MAX, SIZE_MIN } from '../core/config.js';
 import { boardEl, veil, veilTitle } from '../core/dom.js';
 import { guide, settings, state, view } from '../core/state.js';
 import { save, saveSettings } from '../core/storage.js';
@@ -78,8 +78,8 @@ export function newGame(size, seed) {
     ? pickBandSize(band, state.size)
     : clamp(size || state.size, SIZE_MIN, SIZE_MAX);
 
-  if (view.resultOpen) dismissResult();
-  boardEl.classList.remove('is-won');
+  if (view.resultOpen) dismissResult(true);
+  boardEl.classList.remove('is-won', 'is-lost');
 
   // 已知这一档会卡就立刻露遮罩，否则先等 90ms——算得快就当没这回事
   var heavy = !!band || n >= 13;
@@ -141,13 +141,13 @@ export function newGame(size, seed) {
   }
 }
 
-/* 把一副已经确定的棋盘装上（新生成 / 载入分享码 / 恢复存档共用） */
+/* 把一副已经确定的棋盘装上（新生成 / 载入分享码 / 恢复存档 / 重试共用） */
 export function applyBoard(n, regions, solution, seed, preVibe) {
-  if (view.resultOpen) dismissResult();
+  if (view.resultOpen) dismissResult(true);
   if (guide.open) closeGuide();
   paintGl(null);
   resetBad();          // 上局的红框 / 待提醒计时一起作废
-  boardEl.classList.remove('is-won');
+  boardEl.classList.remove('is-won', 'is-lost');
 
   state.size = n;
   state.seed = seed || 0;
@@ -166,6 +166,9 @@ export function applyBoard(n, regions, solution, seed, preVibe) {
   state.forced = null;
   // 记下这盘实际用到的难度档，用来判断设置面板里选的东西「是否还没生效」
   state.diffApplied = settings.difficulty;
+  // 挑战：限时从这一局的第一笔操作起算（新局 / 重试都把起算点归零）
+  state.limit = settings.timeLimit || 0;
+  state.limitFrom = 0;
   view.lastConflictCount = 0;
   view.undo = [];
   view.redo = [];
@@ -181,4 +184,14 @@ export function applyBoard(n, regions, solution, seed, preVibe) {
   updateStats();
   updateDiffChip();
   save();
+}
+
+/* 重试这一局：同一盘棋原样重开（不重新出题），用时、标记、撤销栈一起归零。
+ * 限时的那局重试后重新计时——挑战里输了不该被按住不动。 */
+export function retryGame() {
+  if (!state.regions) { newGame(state.size); return; }
+  applyBoard(state.size, state.regions, state.solution, state.seed, state.vibe);
+  var msg = state.limit ? '重新开始，限时 ' + limitLabel(state.limit) : '重新开始这一局';
+  flashHint(msg, true, 2000);
+  announce(msg);
 }

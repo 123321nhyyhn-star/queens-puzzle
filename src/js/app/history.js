@@ -8,10 +8,11 @@
 
 import { canPlay } from './actions.js';
 import { buzz, sfx } from '../core/audio.js';
-import { guide, state, view } from '../core/state.js';
+import { guide, settings, state, view } from '../core/state.js';
 import { save } from '../core/storage.js';
 import { announce } from '../core/utils.js';
 import { closeGuide } from '../ui/guide.js';
+import { flashHint } from '../ui/hint.js';
 import { render } from '../ui/render.js';
 
 /* ==========================================================
@@ -32,7 +33,9 @@ export function pushHistory() {
 }
 
 export function undo() {
-  if (!view.undo.length || !canPlay()) return;
+  if (!canPlay()) return;
+  if (settings.noUndo) { lockedHint(); return; }
+  if (!view.undo.length) return;
   if (guide.open) closeGuide();
   view.redo.push(snapshot());
   var s = view.undo.pop();
@@ -48,7 +51,9 @@ export function undo() {
 }
 
 export function redo() {
-  if (!view.redo.length || !canPlay()) return;
+  if (!canPlay()) return;
+  if (settings.noUndo) { lockedHint(); return; }
+  if (!view.redo.length) return;
   if (guide.open) closeGuide();
   view.undo.push(snapshot());
   var s = view.redo.pop();
@@ -58,4 +63,10 @@ export function redo() {
   state.lastTap = null;
   render();
   save();
+}
+
+/* 挑战里关掉撤销后，按钮是灰的；键盘 Z 还能按，得给一句话说明为什么没反应 */
+function lockedHint() {
+  flashHint('挑战模式：这局不能撤销');
+  buzz(6);
 }
