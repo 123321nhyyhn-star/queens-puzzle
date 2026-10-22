@@ -327,23 +327,143 @@ const forced = await page.evaluate(() => {
     return true;
   };
   const want = [];
+  const pushAll = (list) => { for (const i of list) if (!want.includes(i)) want.push(i); };
+  // 色块 / 行 / 列 三种单位各自独立数一遍，取并集
   for (let g = 0; g < n; g++) {
     if (regQ.has(g)) continue;
-    let only = -1, cnt = 0;
-    for (let i = 0; i < n * n; i++) {
-      if (d.state.regions[i] !== g || !legal(i)) continue;
-      cnt++; only = i;
-    }
-    if (cnt === 1) want.push(only);
+    const only = [];
+    for (let i = 0; i < n * n; i++) if (d.state.regions[i] === g && legal(i)) only.push(i);
+    if (only.length === 1) pushAll(only);
+  }
+  for (let r = 0; r < n; r++) {
+    const only = [];
+    for (let c = 0; c < n; c++) { const i = r * n + c; if (legal(i)) only.push(i); }
+    if (only.length === 1) pushAll(only);
+  }
+  for (let c = 0; c < n; c++) {
+    const only = [];
+    for (let r = 0; r < n; r++) { const i = r * n + c; if (legal(i)) only.push(i); }
+    if (only.length === 1) pushAll(only);
   }
   const got = [...document.querySelectorAll('.cell.is-forced')].map(el => +el.dataset.i);
-  return { want: want.sort((a, b) => a - b), got: got.sort((a, b) => a - b) };
+  const forcedEl = document.querySelector('.cell.is-forced');
+  return {
+    want: want.sort((a, b) => a - b),
+    got: got.sort((a, b) => a - b),
+    aria: forcedEl ? forcedEl.getAttribute('aria-label') : ''
+  };
 });
 check('唯一位置判定与独立计算一致',
   JSON.stringify(forced.want) === JSON.stringify(forced.got),
   `want=${forced.want.join(',')} got=${forced.got.join(',')}`);
 check('最后一格只剩唯一位置', forced.got.length === 1, `got=${forced.got.length}`);
 check('唯一位置正好是正解', forced.got[0] === solF[nF - 1], `cell=${forced.got[0]} want=${solF[nF - 1]}`);
+check('行 / 列 独存也能触发提示',
+  /这一行/.test(forced.aria) && /这一列/.test(forced.aria), `aria=${forced.aria}`);
+
+// 多种残局扫一遍：前 k 行放正解皇后，再撒一层固定的手标 ×，
+// 逐盘比较页面标出来的 is-forced 与「独立按 色块 / 行 / 列 各数一遍取并集」的结果
+const sweep = await page.evaluate(() => {
+  const d = __QUEENS_DEBUG__, n = d.state.size;
+  const sol = Array.from(d.state.solution, (c, r) => r * n + c);
+  const recompute = (marks) => {
+    const qs = [];
+    for (let i = 0; i < n * n; i++) if (marks[i] === 2) qs.push(i);
+    const rowQ = new Set(qs.map(i => (i / n) | 0));
+    const colQ = new Set(qs.map(i => i % n));
+    const regQ = new Set(qs.map(i => d.state.regions[i]));
+    const legal = (i) => {
+      if (marks[i] !== 0) return false;
+      const r = (i / n) | 0, c = i % n;
+      if (rowQ.has(r) || colQ.has(c) || regQ.has(d.state.regions[i])) return false;
+      for (const q of qs) {
+        if (Math.max(Math.abs(((q / n) | 0) - r), Math.abs((q % n) - c)) <= 1) return false;
+      }
+      return true;
+    };
+    const out = new Set();
+    const scan = (cells) => {
+      const only = cells.filter(legal);
+      if (only.length === 1) out.add(only[0]);
+    };
+    const all = [...Array(n * n).keys()];
+    for (let g = 0; g < n; g++) scan(all.filter(i => d.state.regions[i] === g));
+    for (let r = 0; r < n; r++) scan([...Array(n).keys()].map(c => r * n + c));
+    for (let c = 0; c < n; c++) scan([...Array(n).keys()].map(r => r * n + c));
+    return [...out].sort((a, b) => a - b);
+  };
+  const bad = [];
+  let cases = 0;
+  for (let k = 0; k <= n; k++) {
+    const marks = new Uint8Array(n * n);
+    for (let r = 0; r < k; r++) marks[sol[r]] = 2;
+    for (let i = 0; i < n * n; i++) {
+      if (marks[i] === 2) continue;
+      if ((i * 7 + k * 13) % 11 === 0) marks[i] = 1;
+    }
+    d.state.marks.set(marks);
+    d.render(false);
+    const got = [...document.querySelectorAll('.cell.is-forced')].map(el => +el.dataset.i).sort((a, b) => a - b);
+    const want = recompute(marks);
+    cases++;
+    if (JSON.stringify(got) !== JSON.stringify(want)) bad.push({ k, got, want });
+  }
+  // 复原成「只剩最后一格」的盘面，后面的用例还要接着用
+  const back = new Uint8Array(n * n);
+  for (let r = 0; r < n - 1; r++) back[sol[r]] = 2;
+  d.state.marks.set(back);
+  d.render(false);
+  return { cases, bad: bad.slice(0, 3) };
+});
+check('多种残局下色块 / 行 / 列 判定一致', sweep.bad.length === 0,
+  `cases=${sweep.cases} bad=${JSON.stringify(sweep.bad)}`);
+
+// ---------- 8d. 提示只认「看得见的 ×」 ----------
+// 关掉自动打叉后棋盘上一片空白，这时不该凭空指出唯一位置
+await page.click('#btnAuto');
+await sleep(340);
+const noMark = await page.evaluate(() => ({
+  on: __QUEENS_DEBUG__.settings.autoMark,
+  auto: document.querySelectorAll('.cell.is-auto').length,
+  x: document.querySelectorAll('.cell.is-x').length,
+  forced: document.querySelectorAll('.cell.is-forced').length
+}));
+check('关自动打叉 + 无 × 时不出唯一位置提示',
+  noMark.on === false && noMark.auto === 0 && noMark.x === 0 && noMark.forced === 0,
+  `auto=${noMark.auto} x=${noMark.x} forced=${noMark.forced}`);
+
+// 手动把最后一行除正解外全划掉 → 这时才该提示
+const manualForced = await page.evaluate((want) => {
+  const d = __QUEENS_DEBUG__, n = d.state.size;
+  for (let c = 0; c < n; c++) {
+    const i = (n - 1) * n + c;
+    if (i !== want) d.state.marks[i] = 1;
+  }
+  d.render(false);
+  const el = document.querySelector('.cell.is-forced');
+  return {
+    got: [...document.querySelectorAll('.cell.is-forced')].map(e => +e.dataset.i),
+    aria: el ? el.getAttribute('aria-label') : ''
+  };
+}, solF[nF - 1]);
+check('手标 × 划满后提示出现且指向正解',
+  manualForced.got.length === 1 && manualForced.got[0] === solF[nF - 1],
+  `got=${manualForced.got.join(',')} want=${solF[nF - 1]}`);
+
+// 复原：清掉手标 ×、恢复自动打叉，回到「只剩最后一格」的盘面
+await page.evaluate(() => {
+  const d = __QUEENS_DEBUG__;
+  for (let i = 0; i < d.state.marks.length; i++) if (d.state.marks[i] === 1) d.state.marks[i] = 0;
+  d.render(false);
+});
+await page.click('#btnAuto');
+await sleep(340);
+const restored = await page.evaluate(() => ({
+  on: __QUEENS_DEBUG__.settings.autoMark,
+  forced: document.querySelectorAll('.cell.is-forced').length
+}));
+check('恢复自动打叉后提示回到 1 格', restored.on === true && restored.forced === 1,
+  `on=${restored.on} forced=${restored.forced}`);
 
 await page.click('#btnSettings');
 await sleep(420);

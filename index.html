@@ -526,34 +526,30 @@ button {
   50% { box-shadow: inset 0 0 0 3px var(--danger), 0 0 16px 5px rgba(255, 92, 92, .75); }
 }
 
-/* ---- 「这个色块只剩这一格能填」的轻提示 ---- */
-.cell.is-forced {
-  /* 一圈细琥珀描边标出这一格，不铺满颜色，免得和色块底色糊在一起 */
-  box-shadow: inset 0 0 0 1.5px rgba(224, 148, 32, .8);
-}
-
+/* ---- 「这一格被逼定了」的轻提示 ----
+   只用一圈内描边：不铺底色、不在中间画东西，色块本身长什么样一点不变。
+   描边宽度跟着格子走，但始终大于色块自身的墨线（2px，小格子 1.5px），
+   否则一眼看上去会以为是格子边界而不是提示。
+   颜色选深紫（#7A2FD9）：18 种色块底色清一色是高明度淡彩，没有一个落在紫这一格，
+   所以它在任何色块上都能一眼认出来；也不会和红色的冲突环、墨色的格子线、黄色的强调色撞。 */
 .cell.is-forced::before {
   content: "";
   position: absolute;
-  left: 50%;
-  top: 50%;
-  width: calc(var(--cell, 40px) * .24);
-  height: calc(var(--cell, 40px) * .24);
-  margin: calc(var(--cell, 40px) * -.12) 0 0 calc(var(--cell, 40px) * -.12);
-  border-radius: 50%;
-  background: #E8A233;
-  box-shadow: 0 0 0 3px rgba(232, 162, 51, .22);
+  inset: 0;
+  box-shadow: inset 0 0 0 clamp(3px, calc(var(--cell, 40px) * .07), 5px) #7A2FD9;
   pointer-events: none;
-  animation: forcedBreathe 2.6s ease-in-out infinite;
+  opacity: 0;
+  animation: forcedBreathe 3.2s ease-in-out infinite;
 }
 
+/* 呼吸只在自己的两档之间起伏：不消失，否则看起来像在闪，反而更抓眼睛 */
 @keyframes forcedBreathe {
-  0%, 100% { opacity: .5; transform: scale(.82); }
-  50% { opacity: 1; transform: scale(1); }
+  0%, 100% { opacity: .58; }
+  50% { opacity: .92; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cell.is-forced::before { animation: none; opacity: .88; }
+  .cell.is-forced::before { animation: none; opacity: .74; }
 }
 
 .cell.stamp .mark {
@@ -1815,7 +1811,7 @@ button {
     </div>
 
     <div class="switch-row">
-      <div class="stepper-label">唯一位置提示<small>某个色块只剩一格能填时，轻轻亮一下</small></div>
+      <div class="stepper-label">唯一位置提示<small>某行、某列或某个色块只剩一格没标 × 时，亮一圈边框</small></div>
       <button class="switch" id="swForced" type="button" role="switch" aria-checked="true" aria-label="唯一位置提示"></button>
     </div>
 
@@ -2431,58 +2427,50 @@ button {
     return auto;
   }
 
-  /* 每个色块里「只剩一个还可以放皇后的格子」——返回掩码，1 = 该格被逼定 */
-  function computeForced() {
+  /* 每个单位里「只剩一个还没打 × 的格子」——返回位掩码：
+     1 = 所在色块只剩这一格，2 = 所在行只剩这一格，4 = 所在列只剩这一格。
+     同一格可能同时被行、列、色块三种理由逼定，所以用按位或累积。
+
+     ⚠ 判定只认棋盘上**看得见**的东西：皇后和 ×（手动标的 + 自动打叉画出来的），
+     其余一律算活格。关掉「自动打叉」后棋盘上只剩玩家自己划的 ×，
+     这时提示就只会依据这些 × 来算——不会出现「一个 × 都没有却说这里是唯一位置」。 */
+  var FORCED_REGION = 1, FORCED_ROW = 2, FORCED_COL = 4;
+
+  function computeForced(auto) {
     var n = state.size;
     var total = n * n;
     var mask = new Uint8Array(total);
-    var i, r, c, dr, dc, rr, cc;
+    var i, r, c, u;
 
     var rowHas = new Uint8Array(n);
     var colHas = new Uint8Array(n);
     var regionHas = new Uint8Array(n);
     for (i = 0; i < total; i++) {
       if (state.marks[i] !== 2) continue;
-      r = (i / n) | 0;
-      c = i % n;
-      rowHas[r] = 1;
-      colHas[c] = 1;
+      rowHas[(i / n) | 0] = 1;
+      colHas[i % n] = 1;
       regionHas[state.regions[i]] = 1;
     }
 
-    // 被排除的格子：同行 / 同列 / 皇后八邻域 / 手动标的 ×
-    var blocked = new Uint8Array(total);
+    // 三种单位共用这一份「活格」目录：没画皇后、也没画 × 的格子
+    var regCnt = new Int16Array(n), regLast = new Int32Array(n).fill(-1);
+    var rowCnt = new Int16Array(n), rowLast = new Int32Array(n).fill(-1);
+    var colCnt = new Int16Array(n), colLast = new Int32Array(n).fill(-1);
     for (i = 0; i < total; i++) {
-      if (state.marks[i] === 2) { blocked[i] = 1; continue; }
+      if (state.marks[i] !== 0) continue;   // 皇后 / 手标 ×
+      if (auto[i]) continue;                // 自动打叉画出来的 ×
       r = (i / n) | 0;
       c = i % n;
-      if (rowHas[r] || colHas[c] || state.marks[i] === 1) blocked[i] = 1;
-    }
-    for (i = 0; i < total; i++) {
-      if (state.marks[i] !== 2) continue;
-      r = (i / n) | 0;
-      c = i % n;
-      for (dr = -1; dr <= 1; dr++) {
-        for (dc = -1; dc <= 1; dc++) {
-          if (!dr && !dc) continue;
-          rr = r + dr;
-          cc = c + dc;
-          if (rr < 0 || rr >= n || cc < 0 || cc >= n) continue;
-          blocked[rr * n + cc] = 1;
-        }
-      }
-    }
-
-    var cnt = new Int16Array(n);
-    var last = new Int32Array(n).fill(-1);
-    for (i = 0; i < total; i++) {
       var g = state.regions[i];
-      if (regionHas[g] || blocked[i]) continue;
-      cnt[g]++;
-      last[g] = i;
+      regCnt[g]++; regLast[g] = i;
+      rowCnt[r]++; rowLast[r] = i;
+      colCnt[c]++; colLast[c] = i;
     }
-    for (var gg = 0; gg < n; gg++) {
-      if (!regionHas[gg] && cnt[gg] === 1) mask[last[gg]] = 1;
+    // 某单位一只皇后都没放、活格又只剩 1 个 → 那一格被逼定
+    for (u = 0; u < n; u++) {
+      if (!regionHas[u] && regCnt[u] === 1) mask[regLast[u]] |= FORCED_REGION;
+      if (!rowHas[u] && rowCnt[u] === 1) mask[rowLast[u]] |= FORCED_ROW;
+      if (!colHas[u] && colCnt[u] === 1) mask[colLast[u]] |= FORCED_COL;
     }
     return mask;
   }
@@ -2628,7 +2616,7 @@ button {
     var n = state.size;
     var auto = settings.autoMark ? computeAuto() : new Uint8Array(n * n);
     var cf = computeConflicts();
-    var forced = settings.forced ? computeForced() : new Uint8Array(n * n);
+    var forced = settings.forced ? computeForced(auto) : new Uint8Array(n * n);
     var showConflict = settings.conflict;
     var counts = regionCounts();
 
@@ -2650,7 +2638,7 @@ button {
       cell.classList.toggle('r-ok', counts[g] === 1);
       cell.classList.toggle('r-over', counts[g] > 1);
       cell.classList.toggle('is-conflict', showConflict && cf.cells.has(i));
-      cell.classList.toggle('is-forced', forced[i] === 1);
+      cell.classList.toggle('is-forced', forced[i] !== 0);
 
       if (anim) {
         if (s === 'q' && prev !== 'q') {
@@ -2678,7 +2666,13 @@ button {
         (g + 1) + '，' +
         (s === 'q' ? '皇后' : s === 'x' ? '叉' : s === 'a' ? '自动标记' : '空');
       if (cf.cells.has(i)) label += '，冲突';
-      if (forced[i] === 1) label += '，本区唯一可填';
+      if (forced[i]) {
+        var fw = [];
+        if (forced[i] & FORCED_REGION) fw.push('色块');
+        if (forced[i] & FORCED_ROW) fw.push('这一行');
+        if (forced[i] & FORCED_COL) fw.push('这一列');
+        label += '，' + fw.join('、') + '都只剩这一格可填';
+      }
       cell.setAttribute('aria-label', label);
       cell.setAttribute('aria-selected', s === 'q' ? 'true' : 'false');
 
