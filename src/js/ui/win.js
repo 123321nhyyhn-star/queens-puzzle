@@ -8,7 +8,8 @@ import { limitExpired, stopTimer } from '../core/clock.js';
 import { limitLabel, REDUCE_MOTION } from '../core/config.js';
 import { boardEl, btnAgain, btnPeek, fxEl, resHints, resSize, resTime, resTimeLbl, resultEl,
   resultKicker, resultSub, resultTitle } from '../core/dom.js';
-import { guide, state, view } from '../core/state.js';
+import { guide, settings, state, view } from '../core/state.js';
+import { add as addRecord } from '../core/records.js';
 import { save } from '../core/storage.js';
 import { announce, formatTime } from '../core/utils.js';
 import { queenCount, regionCounts } from '../game/rules.js';
@@ -46,11 +47,39 @@ export function checkWin() {
   burstConfetti();
 
   save();
+  recordFinish(true);
 
   window.setTimeout(function () {
     if (state.status !== 'won') return;
     showResult();
   }, REDUCE_MOTION ? 200 : 900);
+}
+
+/* ==========================================================
+   战绩
+   ----------------------------------------------------------
+   一局结束就写一条（解开 / 超时都算），顺带记下这局在自己那组
+   「限时 × 难度」里排第几快——结果层拿它说一句「本组最快」。
+   写盘失败不影响游戏：core/records 自己会吞掉异常。
+   ========================================================== */
+function recordFinish(won) {
+  view.lastFinish = null;
+  if (!state.regions || !state.solution) return;
+  var saved = addRecord({
+    n: state.size,
+    seed: state.seed,
+    regions: state.regions,
+    solution: state.solution,
+    vib: state.vibe,
+    limit: state.limit || 0,
+    ms: state.elapsed,
+    hints: state.hints,
+    moves: state.moves,
+    won: won,
+    noHint: !!settings.noHint,
+    noUndo: !!settings.noUndo
+  });
+  if (saved) view.lastFinish = { rank: saved.rank, total: saved.total };
 }
 
 /* ==========================================================
@@ -80,6 +109,7 @@ export function failByTimeout() {
   buzz([30, 60, 30]);
   announce('时间到，这局没解开');
   save();
+  recordFinish(false);
   showResult();
 }
 
@@ -115,6 +145,14 @@ export function burstConfetti() {
      解开：再来一局 / 看看棋盘
      超时：重试这一局（同一盘棋重开）/ 换一局新的
    ========================================================== */
+/* 结果层那一行小字：这局在自己组里排第几快。
+ * 只有解开的才有名次；本组只此一局时说「本组最快」也不算吹牛。 */
+function rankText() {
+  var f = view.lastFinish;
+  if (!f || !f.rank) return '';
+  return f.rank === 1 ? ' · 本组最快' : ' · 本组第 ' + f.rank;
+}
+
 export function showResult() {
   if (view.resultOpen) return;
   var lost = state.status === 'lost';
@@ -133,7 +171,8 @@ export function showResult() {
     ? state.size + '×' + state.size + ' · 限时 ' + limitLabel(state.limit) +
       ' · 还差 ' + Math.max(0, state.size - queenCount()) + ' 只皇后'
     : state.size + '×' + state.size + ' · 用时 ' + formatTime(state.elapsed) +
-      (state.vibe ? ' · ' + state.vibe.level + ' ' + state.vibe.score.toFixed(1) : '');
+      (state.vibe ? ' · ' + state.vibe.level + ' ' + state.vibe.score.toFixed(1) : '') +
+      rankText();
 
   btnAgain.textContent = lost ? '重试这一局' : '再来一局';
   btnPeek.textContent = lost ? '换一局新的' : '看看棋盘';

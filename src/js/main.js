@@ -10,6 +10,7 @@ import { limitRemaining, paintClock, pauseTimer, startTimer } from './core/clock
 import { hintEl, stage } from './core/dom.js';
 import { guide, hasProgress, settings, state, view } from './core/state.js';
 import { doSave, loadGame, loadSettings } from './core/storage.js';
+import * as records from './core/records.js';
 import { announce } from './core/utils.js';
 import { buildBoard, buildRegionBar } from './game/board.js';
 import { decodeShare, encodeShare } from './game/share-code.js';
@@ -19,6 +20,7 @@ import { closeGuide, guideNext, guidePrev, useHint } from './ui/guide.js';
 import { flashHint } from './ui/hint.js';
 import { relayout } from './ui/layout.js';
 import { render, updateStats } from './ui/render.js';
+import { closeRecords, openRecords } from './ui/records.js';
 import { closeSheet, syncAutoBtn } from './ui/settings.js';
 import { takeHashCode, tryLoadShare } from './ui/share.js';
 import { checkTimeout, showResult } from './ui/win.js';
@@ -127,7 +129,14 @@ window.__QUEENS_DEBUG__ = {
     return state.regions ? encodeShare(state.size, state.regions, state.solution) : '';
   },
   decode: decodeShare,
-  loadCode: tryLoadShare
+  loadCode: tryLoadShare,
+  // 战绩：只给 tools/ 里的自动化测试用（正常游玩都走面板）
+  records: function () { return records.all(); },
+  record: function (id) { return records.get(id); },
+  recordDelete: records.remove,
+  recordClear: records.clear,
+  openRecords: openRecords,
+  closeRecords: closeRecords
 };
 
 boot();

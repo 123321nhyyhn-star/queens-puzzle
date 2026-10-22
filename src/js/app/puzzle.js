@@ -172,6 +172,7 @@ export function applyBoard(n, regions, solution, seed, preVibe) {
   view.lastConflictCount = 0;
   view.undo = [];
   view.redo = [];
+  view.lastFinish = null;   // 上一局的成绩别飘到这一局的结果卡上
 
   settings.size = n;
   saveSettings();

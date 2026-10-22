@@ -1,0 +1,240 @@
+/* ============================================================================
+ * records.js
+ * 每局战绩：数据结构、本地存储、按「限时 × 难度」分组排名。
+ * ----------------------------------------------------------------------------
+ * 这一层只管数据，不碰 DOM：想画棋盘、算分享码的都在上层（ui/records.js）。
+ *
+ * 存法：色块与解都压成十六进制串（n*n 与 n 个字符），比直接存数组小一半左右。
+ * 一条 8×8 的记录约 200 字节，上限 300 条也就几十 KB，localStorage 放得下。
+ *
+ * 记录只增不改：一局结束（解开 / 超时）写一条，删只能整条删。
+ * ========================================================================== */
+
+import { DIFF_BANDS, RECORD_MAX, SIZE_MAX, SIZE_MIN, STORE_RECORDS, normalizeLimit } from './config.js';
+
+/** 难度档，和 DIFF_BANDS 的键、以及本局难度评估的 tone 是同一套。 */
+export var RECORD_TONES = ['easy', 'mid', 'hard', 'extreme'];
+
+var HEX = '0123456789ABCDEF';
+
+/* 第一次读盘之后就把结果留住：面板每次重画都走缓存，不反复 JSON.parse。
+ * 写盘走 persist()，内存里的数组才是唯一的真源。 */
+var cache = null;
+
+/* ==========================================================
+   小工具
+   ========================================================== */
+function clampNum(v, lo, hi) {
+  v = parseInt(v, 10);
+  if (!isFinite(v)) return lo;
+  return Math.min(hi, Math.max(lo, v));
+}
+
+function hexEncode(arr, len) {
+  var s = '', i;
+  for (i = 0; i < len; i++) s += HEX.charAt((arr[i] | 0) & 15);
+  return s;
+}
+
+function hexDecode(str, len) {
+  var out = new Uint8Array(len), i;
+  for (i = 0; i < len; i++) out[i] = parseInt(str.charAt(i), 16) || 0;
+  return out;
+}
+
+function newId() {
+  return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+}
+
+/** 难度档的中文名（「中等」这种），给面板文案用。 */
+export function toneName(tone) {
+  return DIFF_BANDS[tone] ? DIFF_BANDS[tone].name : '中等';
+}
+
+/** 没有难度评估时（引擎没加载 / 存档很老）按尺寸兜底分档。 */
+export function toneOfSize(n) {
+  n = clampNum(n, SIZE_MIN, SIZE_MAX);
+  for (var i = 0; i < RECORD_TONES.length; i++) {
+    var b = DIFF_BANDS[RECORD_TONES[i]];
+    if (n >= b.lo && n <= b.hi) return RECORD_TONES[i];
+  }
+  return 'mid';
+}
+
+/* 一条记录的形状（字段名都很短，因为它要反复进出 localStorage）：
+ *   id  本地唯一 id（删除用）
+ *   at  结束时刻（Date.now）
+ *   n   边长   sd 出题种子
+ *   rg  色块（n*n 个十六进制字符）  so 解（每行皇后的列）
+ *   lv  难度档（easy/mid/hard/extreme）  sc 难度体感分
+ *   lim 本局限时（0 = 不限）  ms 用时
+ *   h   提示次数  mv 落子次数
+ *   won 是否解开  nh 禁用提示  nu 禁用撤销
+ */
+function tidy(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  var n = parseInt(raw.n, 10);
+  if (!(n >= SIZE_MIN && n <= SIZE_MAX)) return null;
+  if (typeof raw.rg !== 'string' || raw.rg.length !== n * n) return null;
+  if (typeof raw.so !== 'string' || raw.so.length !== n) return null;
+  if (!/^[0-9A-F]+$/.test(raw.rg) || !/^[0-9A-F]+$/.test(raw.so)) return null;
+
+  return {
+    v: 1,
+    id: typeof raw.id === 'string' && raw.id ? raw.id : newId(),
+    at: clampNum(raw.at, 0, 4102444800000) || Date.now(),
+    n: n,
+    sd: clampNum(raw.sd, 0, 2147483647),
+    rg: raw.rg,
+    so: raw.so,
+    lv: RECORD_TONES.indexOf(raw.lv) >= 0 ? raw.lv : toneOfSize(n),
+    sc: isFinite(raw.sc) && raw.sc > 0 ? Math.round(raw.sc * 10) / 10 : null,
+    lim: normalizeLimit(raw.lim),
+    ms: clampNum(raw.ms, 0, 24 * 3600 * 1000),
+    h: clampNum(raw.h, 0, 999),
+    mv: clampNum(raw.mv, 0, 99999),
+    won: raw.won === true || raw.won === 1,
+    nh: raw.nh === true,
+    nu: raw.nu === true
+  };
+}
+
+/* ==========================================================
+   读写
+   ========================================================== */
+/** 全部记录（新的在前）。第一次调用会读盘，坏数据逐条丢掉，不连累整份。 */
+export function all() {
+  if (cache) return cache;
+  cache = [];
+  try {
+    var raw = window.localStorage.getItem(STORE_RECORDS);
+    var arr = raw ? JSON.parse(raw) : null;
+    if (Array.isArray(arr)) {
+      for (var i = 0; i < arr.length && cache.length < RECORD_MAX; i++) {
+        var r = tidy(arr[i]);
+        if (r) cache.push(r);
+      }
+    }
+  } catch (e) { /* 隐私模式 / 存档坏了：当没有战绩，游戏照常玩 */ }
+  return cache;
+}
+
+export function persist() {
+  try {
+    window.localStorage.setItem(STORE_RECORDS, JSON.stringify(all()));
+  } catch (e) { /* 配额满了就丢弃，别让玩到一半的局崩掉 */ }
+}
+
+/** 记一局。fields 是当前局面的裸数据，这里负责压缩与校验。
+ *  返回 { rec, rank, total }；rank 是这一局在同「限时 × 难度」组里排第几快。 */
+export function add(f) {
+  if (!f || !f.regions || !f.solution) return null;
+  var rec = tidy({
+    id: newId(),
+    at: Date.now(),
+    n: f.n,
+    sd: f.seed || 0,
+    rg: hexEncode(f.regions, f.n * f.n),
+    so: hexEncode(f.solution, f.n),
+    lv: f.vib && DIFF_BANDS[f.vib.tone] ? f.vib.tone : toneOfSize(f.n),
+    sc: f.vib ? f.vib.score : null,
+    lim: f.limit,
+    ms: Math.round(f.ms || 0),
+    h: f.hints,
+    mv: f.moves,
+    won: !!f.won,
+    nh: !!f.noHint,
+    nu: !!f.noUndo
+  });
+  if (!rec) return null;
+
+  var list = all();
+  list.unshift(rec);
+  if (list.length > RECORD_MAX) list.splice(RECORD_MAX);
+  persist();
+
+  var st = rankOf(rec);
+  return { rec: rec, rank: st.rank, total: st.total };
+}
+
+export function get(id) {
+  var list = all();
+  for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+  return null;
+}
+
+export function remove(id) {
+  var list = all();
+  for (var i = 0; i < list.length; i++) {
+    if (list[i].id === id) {
+      list.splice(i, 1);
+      persist();
+      return true;
+    }
+  }
+  return false;
+}
+
+export function clear() {
+  all().length = 0;
+  persist();
+}
+
+export function total() {
+  return all().length;
+}
+
+/** 把记录里的十六进制串还原成棋盘。 */
+export function board(rec) {
+  if (!rec) return null;
+  return {
+    n: rec.n,
+    regions: hexDecode(rec.rg, rec.n * rec.n),
+    solution: hexDecode(rec.so, rec.n)
+  };
+}
+
+/* ==========================================================
+   分组与排名
+   ----------------------------------------------------------
+   排行榜的规矩：**先按限时分组，再按难度分组**，组内只比谁快。
+   不同限时、不同难度的时间本来就没法比（3 分钟的中等和 20 分钟的困难
+   放在一张表里，第一名永远属于最简单的那个），所以干脆分开。
+   输掉的那局不进榜，但照样记在记录里。
+   ========================================================== */
+export function group(lim, tone, wonOnly) {
+  var list = all();
+  var out = [];
+  for (var i = 0; i < list.length; i++) {
+    var r = list[i];
+    if (r.lim !== lim || r.lv !== tone) continue;
+    if (wonOnly && !r.won) continue;
+    out.push(r);
+  }
+  // 用时短的在前；同样快就看谁先做到（老记录优先，榜位不会因为重复提交而翻来覆去）
+  out.sort(function (a, b) { return a.ms - b.ms || a.at - b.at; });
+  return out;
+}
+
+/** 这一局在自己组里排第几快（1 起）。解开的才算名次。 */
+export function rankOf(rec) {
+  var g = group(rec.lim, rec.lv, true);
+  for (var i = 0; i < g.length; i++) if (g[i].id === rec.id) return { rank: i + 1, total: g.length };
+  return { rank: 0, total: g.length };
+}
+
+/** 某个「限时 × 难度」组合里有多少个解开的成绩（排行榜筛选项上的角标）。 */
+export function countOf(lim, tone) {
+  var list = all();
+  var c = 0;
+  for (var i = 0; i < list.length; i++) {
+    if (list[i].lim === lim && list[i].lv === tone && list[i].won) c++;
+  }
+  return c;
+}
+
+/** 同一个组合里最快的那条（没解开的跳过）。 */
+export function bestOf(lim, tone) {
+  var g = group(lim, tone, true);
+  return g.length ? g[0] : null;
+}

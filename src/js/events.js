@@ -8,11 +8,12 @@ import { newGame, retryGame } from './app/puzzle.js';
 import { audio, buzz, sfx } from './core/audio.js';
 import { pauseTimer, startTimer } from './core/clock.js';
 import { DIFF_BANDS, DIFF_ORDER, SIZE_MAX, SIZE_MIN } from './core/config.js';
-import { btnAgain, btnAuto, btnClear, btnCloseDiff, btnCloseSheet, btnCopyCode, btnDiff,
-  btnDiffDone, btnHint, btnLoadCode, btnNew, btnPeek, btnSettings, btnShuffle, btnSize,
-  btnUndo, coachClose, coachNext, coachPrev, diffBackdrop, diffOpts, diffSheet, gridEl,
-  limitOpts, quickRow, regionsEl, resultEl, shareCode, shareStatus, sheet, sheetBackdrop,
-  sizeMinus, sizePlus } from './core/dom.js';
+import { btnAgain, btnAuto, btnClear, btnClearRecs, btnCloseDiff, btnCloseRec, btnCloseSheet,
+  btnCopyCode, btnDiff, btnDiffDone, btnHint, btnLoadCode, btnMoreRecs, btnNew, btnPeek,
+  btnRecords, btnSettings, btnShuffle, btnSize, btnUndo, coachClose, coachNext, coachPrev,
+  diffBackdrop, diffOpts, diffSheet, gridEl, limChips, limitOpts, lvChips, quickRow,
+  recBackdrop, recList, boardList, regionsEl, resultEl, shareCode, shareStatus, sheet,
+  sheetBackdrop, sizeMinus, sizePlus, tabBoard, tabRecs } from './core/dom.js';
 import { guide, hasProgress, pending, settings, state, view } from './core/state.js';
 import { save, saveSettings } from './core/storage.js';
 import { announce, clamp } from './core/utils.js';
@@ -27,6 +28,8 @@ import { closeSheet, commitChallenge, challengeSummary, openSheet, setPendingLim
   setPendingSize, syncSheet, toggleAuto, trapFocus } from './ui/settings.js';
 import { copyText, isShareFocusHold, setShareStatus, shareReject, tryLoadShare } from './ui/share.js';
 import { dismissResult } from './ui/win.js';
+import { closeRecords, openRecords, pickChip, recAction, requestClearAll, showMore,
+  switchTab, trapRecords } from './ui/records.js';
 
 // 松手 / 手势被打断 / 窗口失焦，都算结束（指针被捕获在老色卡上时也能兜住）
 window.addEventListener('pointerup', endPeek, true);
@@ -231,6 +234,18 @@ btnCloseDiff.addEventListener('click', function () { closeDiff(true); });
 btnDiffDone.addEventListener('click', function () { closeDiff(true); });
 diffBackdrop.addEventListener('click', function () { closeDiff(true); });
 
+/* ---- 战绩 / 排行榜 ---- */
+btnRecords.addEventListener('click', openRecords);
+btnCloseRec.addEventListener('click', closeRecords);
+recBackdrop.addEventListener('click', closeRecords);
+tabRecs.addEventListener('click', function () { switchTab('list'); });
+tabBoard.addEventListener('click', function () { switchTab('board'); });
+limChips.addEventListener('click', pickChip);
+lvChips.addEventListener('click', pickChip);
+recList.addEventListener('click', recAction);
+boardList.addEventListener('click', recAction);
+btnMoreRecs.addEventListener('click', showMore);
+btnClearRecs.addEventListener('click', requestClearAll);
 /* 换一局：唯一会作废当前这局的动作，面板上半部分（尺寸 / 难度 / 挑战）的改动都在这里落地 */
 btnShuffle.addEventListener('click', function () {
   var lv = pending.difficulty && pending.difficulty !== 'any' ? pending.difficulty : 'any';
@@ -408,6 +423,7 @@ document.addEventListener('visibilitychange', function () {
 document.addEventListener('keydown', function (e) {
   if (e.key === 'Escape') {
     if (view.diffOpen) { e.preventDefault(); closeDiff(true); return; }
+    if (view.recordsOpen) { e.preventDefault(); closeRecords(); return; }
     if (view.sheetOpen) { e.preventDefault(); closeSheet(); return; }
     if (view.resultOpen) { e.preventDefault(); dismissResult(); return; }
     if (guide.open) { e.preventDefault(); closeGuide(); return; }
@@ -416,6 +432,11 @@ document.addEventListener('keydown', function (e) {
 
   if (view.diffOpen) {
     if (e.key === 'Tab') trapFocus(e, diffSheet);
+    return;
+  }
+
+  if (view.recordsOpen) {
+    if (e.key === 'Tab') trapRecords(e);
     return;
   }
 

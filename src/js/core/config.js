@@ -7,6 +7,13 @@ export var SIZE_MIN = 4;
 export var SIZE_MAX = 16;
 export var STORE_SETTINGS = 'queens.settings.v1';
 export var STORE_GAME = 'queens.game.v1';
+export var STORE_RECORDS = 'queens.records.v1';
+
+/* 战绩：最多留多少条（新的在前，超出丢最老的）、列表一次画多少条、
+ * 排行榜每组最多显示几名。都只影响展示，不影响统计。 */
+export var RECORD_MAX = 300;
+export var RECORD_PAGE = 20;
+export var RECORD_TOP = 12;
 
 /* 目标难度：每个档位实测下来只对应一段棋盘尺寸（见难度调研报告），
  * 所以「选难度」实际就是「选尺寸区间」，不需要反复重试。 */

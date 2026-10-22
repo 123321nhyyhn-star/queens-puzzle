@@ -18,7 +18,8 @@ import { checkWin } from '../ui/win.js';
    落子 / 标记
    ========================================================== */
 export function canPlay() {
-  return state.status === 'playing' && !view.sheetOpen && !view.diffOpen && !view.resultOpen;
+  return state.status === 'playing' && !view.sheetOpen && !view.diffOpen && !view.resultOpen &&
+    !view.recordsOpen;
 }
 
 export function setMarks(next, anim) {

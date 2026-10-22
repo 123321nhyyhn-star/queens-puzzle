@@ -69,6 +69,15 @@ export const view = {
   sheetOpen: false,
   diffOpen: false,
   resultOpen: false,
+  recordsOpen: false,
+  /* 战绩面板的临时视图：看的是哪一页、哪个筛选、哪条展开着。
+   * 每次打开面板都重置，不写盘。 */
+  recTab: 'list',      // 'list' | 'board'
+  recLimit: 0,
+  recLevel: 'mid',
+  recOpenId: '',
+  recShown: 20,
+  lastFinish: null,    // 刚结束那局的成绩 { rank, total }，结果层拿它说「本组最快」
   lastConflictCount: 0
 };
 

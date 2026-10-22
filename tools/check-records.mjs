@@ -1,0 +1,429 @@
+// 皇后 Queens · 战绩 / 排行榜回归测试
+// 用法: node tools/check-records.mjs [url]   （先起 python serve.py --no-open）
+// 覆盖：记录写入、棋盘缩略图、分享码、复制、排行榜分组、超时记账、删除 / 清空、刷新后仍在
+import { createRequire } from 'node:module';
+import { mkdirSync } from 'node:fs';
+const require = createRequire('C:/Users/CJL/.workbuddy/binaries/node/workspace/');
+const puppeteer = require('puppeteer-core');
+
+const URL = process.argv[2] || 'http://127.0.0.1:8080/';
+const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
+const OUT = 'E:/Projects/Games/queens-puzzle/tools/shots';
+mkdirSync(OUT, { recursive: true });
+
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+const log = (...a) => console.log(...a);
+const errors = [];
+let failures = 0;
+function check(name, ok, extra = '') {
+  if (!ok) failures++;
+  log(`${ok ? 'PASS' : 'FAIL'}  ${name}${extra ? '  ' + extra : ''}`);
+}
+
+const browser = await puppeteer.launch({
+  executablePath: CHROME,
+  headless: 'new',
+  args: ['--no-sandbox', '--disable-dev-shm-usage', '--force-device-scale-factor=2']
+});
+await browser.defaultBrowserContext().overridePermissions(URL, ['clipboard-read', 'clipboard-write']);
+const page = await browser.newPage();
+await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+page.on('pageerror', e => errors.push('pageerror: ' + e.message));
+page.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
+
+const cellBox = async (i) => page.evaluate((i) => {
+  const c = document.querySelector(`.cell[data-i="${i}"]`).getBoundingClientRect();
+  return { x: c.left + c.width / 2, y: c.top + c.height / 2 };
+}, i);
+
+const tap = async (i, { dbl = false, gap = 90 } = {}) => {
+  const p = await cellBox(i);
+  await page.mouse.move(p.x, p.y);
+  await page.mouse.down(); await page.mouse.up();
+  if (dbl) { await sleep(gap); await page.mouse.down(); await page.mouse.up(); }
+  await sleep(180);
+};
+
+const solutionCells = () => page.evaluate(() => {
+  const d = __QUEENS_DEBUG__, n = d.state.size;
+  return Array.from(d.state.solution, (c, r) => r * n + c);
+});
+
+async function solve() {
+  const cells = await solutionCells();
+  for (const q of cells) await tap(q, { dbl: true });
+  await sleep(1200);   // 胜利 → 礼花 → 结果层
+}
+
+async function closeResultIfAny() {
+  await page.evaluate(() => {
+    const r = document.getElementById('result');
+    if (!r.hasAttribute('hidden')) {
+      const b = document.getElementById('btnPeek');
+      if (b) b.click();
+    }
+  });
+  await sleep(320);
+}
+
+async function openRecords() {
+  await page.evaluate(() => document.getElementById('btnRecords').click());
+  await sleep(360);
+}
+
+async function openTab(which) {
+  await page.evaluate((w) => document.getElementById(w === 'board' ? 'tabBoard' : 'tabRecs').click(), which);
+  await sleep(200);
+}
+
+/* ---------- 0. 干净开局 ---------- */
+await page.goto(URL, { waitUntil: 'networkidle0' });
+await page.evaluate(() => { localStorage.removeItem('queens.records.v1'); localStorage.removeItem('queens.game.v1'); });
+await page.reload({ waitUntil: 'networkidle0' });
+await page.waitForFunction('window.__QUEENS_DEBUG__ && __QUEENS_DEBUG__.state.regions.length > 0', { timeout: 15000 });
+await sleep(400);
+
+let r = await page.evaluate(() => __QUEENS_DEBUG__.records());
+check('初始没有战绩', r.length === 0, `n=${r.length}`);
+
+await openRecords();
+r = await page.evaluate(() => ({
+  open: !document.getElementById('recWrap').hasAttribute('hidden'),
+  rows: document.querySelectorAll('#recList .rec').length,
+  empty: !document.getElementById('recEmpty').hasAttribute('hidden')
+}));
+check('空态面板能打开', r.open && r.rows === 0 && r.empty, JSON.stringify(r));
+await page.evaluate(() => document.getElementById('btnCloseRec').click());
+await sleep(200);
+
+/* ---------- 1. 通关 → 写一条记录 ---------- */
+await solve();
+r = await page.evaluate(() => {
+  const list = __QUEENS_DEBUG__.records();
+  const res = document.getElementById('result');
+  return {
+    n: list.length,
+    rec: list[0] || null,
+    status: __QUEENS_DEBUG__.state.status,
+    resultOpen: !res.hasAttribute('hidden'),
+    sub: document.getElementById('resultSub').textContent.trim(),
+    stored: JSON.parse(localStorage.getItem('queens.records.v1') || '[]').length
+  };
+});
+check('解开后写入一条记录', r.n === 1 && r.stored === 1 && r.status === 'won', `n=${r.n}/${r.stored}`);
+check('记录带棋盘与用时', !!r.rec && r.rec.n === 8 && r.rec.rg.length === 64 && r.rec.so.length === 8 && r.rec.ms >= 0,
+  r.rec ? `ms=${r.rec.ms} lv=${r.rec.lv}` : 'no rec');
+check('记录带难度与限时', !!r.rec && !!r.rec.lv && r.rec.lim === 0 && r.rec.won === true,
+  r.rec ? `lv=${r.rec.lv} lim=${r.rec.lim}` : '');
+check('结果层说「本组最快」', r.sub.includes('本组最快'), r.sub);
+
+/* ---------- 2. 记录列表：缩略图 / 分享码 ---------- */
+await closeResultIfAny();
+await openRecords();
+r = await page.evaluate(() => {
+  const row = document.querySelector('#recList .rec');
+  if (!row) return { rows: 0 };
+  const img = row.querySelector('.rec-thumb img');
+  const box = row.getBoundingClientRect();
+  const sheet = document.getElementById('recSheet').getBoundingClientRect();
+  return {
+    rows: document.querySelectorAll('#recList .rec').length,
+    imgSrc: img ? img.src.slice(0, 30) : '',
+    imgOk: !!(img && img.complete !== false),
+    time: row.querySelector('.rec-time').textContent.trim(),
+    size: row.querySelector('.rec-size').textContent.trim(),
+    lv: row.querySelector('.rec-lv').textContent.trim(),
+    meta: row.querySelector('.rec-l2').textContent.trim(),
+    expanded: row.querySelector('.rec-hit').getAttribute('aria-expanded'),
+    inSheet: box.left >= sheet.left - 1 && box.right <= sheet.right + 1,
+    overflow: document.documentElement.scrollHeight - window.innerHeight
+  };
+});
+check('记录列表画出一条', r.rows === 1, `rows=${r.rows}`);
+check('缩略图是内联 SVG', r.imgSrc.startsWith('data:image/svg+xml'), r.imgSrc);
+check('记录行信息完整', /^\d\d:\d\d$/.test(r.time) && r.size === '8×8' && r.lv.includes('中等'),
+  `${r.time} ${r.size} ${r.lv}`);
+check('记录行小字含限时与日期', r.meta.includes('不限时') && r.meta.includes('步') && r.meta.includes('今天'), r.meta);
+check('行不超出面板', r.inSheet && r.overflow <= 0, `overflow=${r.overflow}`);
+check('默认收起', r.expanded === 'false');
+
+await page.evaluate(() => document.querySelector('#recList .rec-hit').click());
+await sleep(260);
+r = await page.evaluate(() => ({
+  code: (document.querySelector('#recList .rec-code') || {}).textContent || '',
+  now: __QUEENS_DEBUG__.encode(),
+  btns: document.querySelectorAll('#recList .rec-btns .rbtn').length,
+  expanded: document.querySelector('#recList .rec-hit').getAttribute('aria-expanded')
+}));
+check('展开后露出分享码', r.expanded === 'true' && r.code.startsWith('QNS1-'), r.code.slice(0, 20));
+check('分享码就是这一盘', r.code === r.now, `${r.code.slice(0, 12)} vs ${r.now.slice(0, 12)}`);
+check('展开后四个动作', r.btns === 4, `btns=${r.btns}`);
+await page.screenshot({ path: `${OUT}/records-list.png` });
+
+/* ---------- 3. 复制代码 ---------- */
+await page.evaluate(() => document.querySelector('#recList [data-act="copy"]').click());
+await sleep(300);
+r = await page.evaluate(async () => ({
+  clip: await navigator.clipboard.readText().catch(() => ''),
+  status: document.getElementById('recStatus').textContent.trim(),
+  tone: document.getElementById('recStatus').dataset.tone
+}));
+check('复制到剪贴板', r.clip.startsWith('QNS1-'), r.clip.slice(0, 16));
+check('复制有回执', r.status.includes('已复制') && r.tone === 'good', r.status);
+
+/* ---------- 4. 排行榜：默认落在这一组 ---------- */
+await openTab('board');
+r = await page.evaluate(() => ({
+  lims: document.querySelectorAll('#limChips .rchip').length,
+  lvs: document.querySelectorAll('#lvChips .rchip').length,
+  limOn: (document.querySelector('#limChips .rchip.is-on') || {}).textContent || '',
+  lvOn: (document.querySelector('#lvChips .rchip.is-on') || {}).textContent || '',
+  note: document.getElementById('boardNote').textContent.trim(),
+  rows: document.querySelectorAll('#boardList .lb-row').length,
+  rank: (document.querySelector('#boardList .lb-rank') || {}).textContent || '',
+  time: (document.querySelector('#boardList .lb-time') || {}).textContent || '',
+  medal: (document.querySelector('#boardList .lb-row') || {}).dataset ? document.querySelector('#boardList .lb-row').dataset.medal : ''
+}));
+check('限时 5 挡 + 难度 4 挡', r.lims === 5 && r.lvs === 4, `lim=${r.lims} lv=${r.lvs}`);
+check('默认选中「不限 + 中等」', r.limOn.startsWith('不限') && r.lvOn.includes('中等'), `${r.limOn} / ${r.lvOn}`);
+check('榜单里有这一局', r.rows === 1 && r.rank === '1' && /^\d\d:\d\d$/.test(r.time), `${r.rows} ${r.rank} ${r.time}`);
+check('第一名挂金牌', r.medal === '1', `medal=${r.medal}`);
+check('分组说明写清楚', r.note.includes('不限时') && r.note.includes('中等') && r.note.includes('最快'), r.note);
+await page.screenshot({ path: `${OUT}/records-board.png` });
+
+/* ---------- 5. 换一组筛选 → 空 ---------- */
+await page.evaluate(() => document.querySelector('#limChips [data-lim="180000"]').click());
+await sleep(240);
+r = await page.evaluate(() => ({
+  rows: document.querySelectorAll('#boardList .lb-row').length,
+  empty: !document.getElementById('boardEmpty').hasAttribute('hidden'),
+  note: document.getElementById('boardNote').textContent.trim()
+}));
+check('3 分钟组是空的', r.rows === 0 && r.empty, `rows=${r.rows}`);
+check('空组说明带限时', r.note.includes('3 分钟'), r.note);
+
+/* ---------- 6. 刷新后仍在 ---------- */
+await page.evaluate(() => document.getElementById('btnCloseRec').click());
+await sleep(200);
+await page.reload({ waitUntil: 'networkidle0' });
+await page.waitForFunction('window.__QUEENS_DEBUG__ && __QUEENS_DEBUG__.state.regions.length > 0', { timeout: 15000 });
+await sleep(400);
+r = await page.evaluate(() => __QUEENS_DEBUG__.records().length);
+check('刷新后记录还在', r === 1, `n=${r}`);
+await closeResultIfAny();
+
+/* ---------- 7. 换一盘限时 5 分钟 → 另一个组 ---------- */
+await page.evaluate(() => document.getElementById('btnSettings').click());
+await sleep(320);
+await page.evaluate(() => document.querySelector('#limitOpts [data-limit="300000"]').click());
+await page.evaluate(() => document.getElementById('btnShuffle').click());
+await sleep(1400);
+await solve();
+r = await page.evaluate(() => ({
+  n: __QUEENS_DEBUG__.records().length,
+  lim: __QUEENS_DEBUG__.records()[0].lim,
+  sub: document.getElementById('resultSub').textContent.trim()
+}));
+check('第二局记成另一组', r.n === 2 && r.lim === 300000, `n=${r.n} lim=${r.lim}`);
+check('结果层按组排名', r.sub.includes('本组最快') || r.sub.includes('本组第'), r.sub);
+
+await closeResultIfAny();
+await openRecords();
+await openTab('board');
+r = await page.evaluate(() => {
+  const chip = (sel) => document.querySelector(sel).textContent.trim();
+  const click = (sel) => document.querySelector(sel).click();
+  click('#limChips [data-lim="0"]');
+  const a = document.querySelectorAll('#boardList .lb-row').length;
+  click('#limChips [data-lim="300000"]');
+  const b = document.querySelectorAll('#boardList .lb-row').length;
+  return { a, b, note: document.getElementById('boardNote').textContent.trim(), n5: chip('#limChips [data-lim="300000"]') };
+});
+check('不同限时分开统计', r.a === 1 && r.b === 1, `不限=${r.a} 5分=${r.b}`);
+check('5 分钟组的角标是 1', r.n5.endsWith('1'), r.n5);
+
+/* ---------- 8. 超时那局：记下来但不进榜 ---------- */
+await page.evaluate(() => document.getElementById('btnCloseRec').click());
+await sleep(200);
+await page.evaluate(() => {
+  const d = __QUEENS_DEBUG__;
+  d.state.limit = 60000;
+  d.state.elapsed = 61000;
+  d.state.runningSince = 0;
+  d.state.status = 'playing';
+  d.checkTimeout();
+});
+await sleep(400);
+r = await page.evaluate(() => {
+  const list = __QUEENS_DEBUG__.records();
+  return { n: list.length, won: list[0].won, ms: list[0].ms, lim: list[0].lim, status: __QUEENS_DEBUG__.state.status };
+});
+check('超时也记一局', r.n === 3 && r.won === false && r.status === 'lost', JSON.stringify(r));
+
+await closeResultIfAny();
+await openRecords();
+await openTab('list');
+r = await page.evaluate(() => ({
+  rows: document.querySelectorAll('#recList .rec').length,
+  lost: document.querySelectorAll('#recList .rec[data-won="0"]').length,
+  badge: document.querySelector('#recList .rec-lost').textContent.trim()
+}));
+check('记录列表标出未完成', r.rows === 3 && r.lost === 1 && r.badge === '未完成', `rows=${r.rows} lost=${r.lost}`);
+
+await openTab('board');
+r = await page.evaluate(() => {
+  document.querySelector('#limChips [data-lim="0"]').click();
+  const a = document.querySelectorAll('#boardList .lb-row').length;
+  document.querySelector('#lvChips [data-lv="mid"]').click();
+  return { a };
+});
+check('输掉的局不进榜', r.a === 1, `不限时中等=${r.a}`);
+await openTab('list');
+
+/* ---------- 9. 删除一条（两步确认） ---------- */
+await page.evaluate(() => {
+  const row = document.querySelector('#recList .rec');
+  row.querySelector('.rec-hit').click();
+});
+await sleep(240);
+r = await page.evaluate(() => {
+  const btn = document.querySelector('#recList [data-act="del"]');
+  btn.click();
+  return { armed: btn.dataset.armed, text: btn.textContent.trim(), n: __QUEENS_DEBUG__.records().length };
+});
+check('删除要两步', r.armed === '1' && r.text === '再点一次' && r.n === 3, JSON.stringify(r));
+await page.evaluate(() => document.querySelector('#recList [data-act="del"]').click());
+await sleep(260);
+r = await page.evaluate(() => ({
+  n: __QUEENS_DEBUG__.records().length,
+  rows: document.querySelectorAll('#recList .rec').length,
+  stored: JSON.parse(localStorage.getItem('queens.records.v1') || '[]').length
+}));
+check('确认后删掉一条', r.n === 2 && r.rows === 2 && r.stored === 2, JSON.stringify(r));
+
+/* ---------- 10. 清空全部 ---------- */
+r = await page.evaluate(() => {
+  const btn = document.getElementById('btnClearRecs');
+  btn.click();
+  return { armed: btn.dataset.armed, text: btn.textContent.trim() };
+});
+check('清空要两步', r.armed === '1' && r.text.includes('全部清空'), JSON.stringify(r));
+await page.evaluate(() => document.getElementById('btnClearRecs').click());
+await sleep(280);
+r = await page.evaluate(() => ({
+  n: __QUEENS_DEBUG__.records().length,
+  rows: document.querySelectorAll('#recList .rec').length,
+  empty: !document.getElementById('recEmpty').hasAttribute('hidden'),
+  stored: localStorage.getItem('queens.records.v1'),
+  clearHidden: document.getElementById('btnClearRecs').hasAttribute('hidden')
+}));
+check('清空后回到空态', r.n === 0 && r.rows === 0 && r.empty && r.clearHidden, JSON.stringify(r));
+check('存盘也清空', r.stored === '[]', String(r.stored));
+
+/* ---------- 11. Esc 关闭 + 不拦截键盘 ---------- */
+await page.keyboard.press('Escape');
+await sleep(240);
+r = await page.evaluate(() => ({
+  closed: document.getElementById('recWrap').hasAttribute('hidden'),
+  inert: document.getElementById('app').inert === true
+}));
+check('Esc 关面板并解除 inert', r.closed && !r.inert, JSON.stringify(r));
+
+r = await page.evaluate(() => ({
+  overflow: document.documentElement.scrollHeight - window.innerHeight,
+  topbar: document.getElementById('btnRecords').getBoundingClientRect().right <= window.innerWidth
+}));
+check('顶栏没被挤出去', r.topbar && r.overflow <= 0, JSON.stringify(r));
+
+/* ---------- 12. 一批记录：分页 + 榜单排序 ---------- */
+// 造 25 条：难度按 easy→extreme 轮转、限时按 0/3/5 分钟轮转、每 5 条有一条未完成，
+// 用时随序号递减（越靠后越快），这样排序对不对一眼就能看出来。
+await page.evaluate(() => {
+  const d = __QUEENS_DEBUG__, n = d.state.size;
+  const hex = (v) => '0123456789ABCDEF'[v];
+  const rg = Array.from(d.state.regions).map(hex).join('');
+  const so = Array.from(d.state.solution).map(hex).join('');
+  const lvs = ['easy', 'mid', 'hard', 'extreme'];
+  const lims = [0, 180000, 300000];
+  const out = [];
+  for (let i = 0; i < 25; i++) {
+    out.push({
+      v: 1, id: 'seed' + i, at: Date.now() - i * 86400000, n: n, sd: 1, rg: rg, so: so,
+      lv: lvs[i % 4], sc: 3 + (i % 7), lim: lims[i % 3], ms: 200000 - i * 3000,
+      h: i % 3, mv: 20 + i, won: i % 5 !== 0, nh: false, nu: false
+    });
+  }
+  localStorage.setItem('queens.records.v1', JSON.stringify(out));
+});
+await page.reload({ waitUntil: 'networkidle0' });
+await page.waitForFunction('window.__QUEENS_DEBUG__ && __QUEENS_DEBUG__.state.regions.length > 0', { timeout: 15000 });
+await sleep(400);
+await closeResultIfAny();
+await openRecords();
+
+r = await page.evaluate(() => ({
+  n: __QUEENS_DEBUG__.records().length,
+  rows: document.querySelectorAll('#recList .rec').length,
+  more: document.getElementById('btnMoreRecs').textContent.trim(),
+  moreHidden: document.getElementById('btnMoreRecs').hasAttribute('hidden'),
+  total: document.getElementById('recTotal').textContent.trim()
+}));
+check('25 条只先画 20 条', r.n === 25 && r.rows === 20 && !r.moreHidden, `rows=${r.rows} n=${r.n}`);
+check('「显示更多」报剩余数', r.more.includes('还有 5 局'), r.more);
+check('标签页上有总数', r.total === '25', r.total);
+
+await page.evaluate(() => document.getElementById('btnMoreRecs').click());
+await sleep(260);
+r = await page.evaluate(() => ({
+  rows: document.querySelectorAll('#recList .rec').length,
+  moreHidden: document.getElementById('btnMoreRecs').hasAttribute('hidden')
+}));
+check('显示更多后 25 条全在', r.rows === 25 && r.moreHidden, `rows=${r.rows}`);
+
+await openTab('board');
+// 显式选「不限时」：打开面板时默认跟着当前这局的限时走，不一定是 0
+await page.evaluate(() => document.querySelector('#limChips [data-lim="0"]').click());
+await page.evaluate(() => document.querySelector('#lvChips [data-lv="easy"]').click());
+await sleep(220);
+r = await page.evaluate(() => {
+  const rows = [...document.querySelectorAll('#boardList .lb-row')];
+  return {
+    n: rows.length,
+    times: rows.map(x => x.querySelector('.lb-time').textContent.trim()),
+    ranks: rows.map(x => x.querySelector('.lb-rank').textContent.trim()),
+    medals: rows.map(x => x.dataset.medal),
+    chip: document.querySelector('#limChips [data-lim="0"]').textContent.trim()
+  };
+});
+// 不限时 + 容易：种子数据里 i=12 / i=24 两条，用时 200000-36000 / 200000-72000
+check('按要求分组（不限时 + 容易 2 条）', r.n === 2, `n=${r.n} ${r.times.join(',')}`);
+check('按用时从快到慢', r.times[0] === '02:08' && r.times[1] === '02:44', r.times.join(' > '));
+check('名次与奖牌', r.ranks.join(',') === '1,2' && r.medals.join(',') === '1,2', `${r.ranks} ${r.medals}`);
+check('限时角标跟着换难度重算', r.chip.endsWith('2'), r.chip);
+await page.screenshot({ path: `${OUT}/records-board-many.png` });
+
+/* ---------- 13. 小屏不挤 ---------- */
+await page.setViewport({ width: 340, height: 720, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+await sleep(320);
+await openTab('list');
+r = await page.evaluate(() => {
+  const sheet = document.getElementById('recSheet').getBoundingClientRect();
+  const row = document.querySelector('#recList .rec').getBoundingClientRect();
+  return {
+    fits: row.left >= sheet.left - 1 && row.right <= sheet.right + 1,
+    overflow: document.documentElement.scrollHeight - window.innerHeight,
+    btns: document.querySelectorAll('#recList .rec-btns .rbtn').length
+  };
+});
+check('340px 下记录行不溢出', r.fits && r.overflow <= 0, JSON.stringify(r));
+await page.screenshot({ path: `${OUT}/records-narrow.png` });
+await page.evaluate(() => document.getElementById('btnCloseRec').click());
+await sleep(200);
+await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+
+/* ---------- 14. 没有页面报错 ---------- */
+check('无 JS 报错', errors.length === 0, errors.slice(0, 3).join(' | '));
+
+log(`\n${failures === 0 ? '全部通过' : failures + ' 项失败'}`);
+await browser.close();
+process.exit(failures === 0 ? 0 : 1);

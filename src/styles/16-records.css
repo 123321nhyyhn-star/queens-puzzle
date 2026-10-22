@@ -1,0 +1,429 @@
+/* 16-records.css — 战绩面板：记录列表、棋盘缩略图、分享码、排行榜。
+   必须排在 17-responsive.css 之前加载。 */
+
+/* ============================================================
+   14. 战绩面板外壳
+   ------------------------------------------------------------
+   跟设置面板共用 .sheet 那一套壳，只在内部换内容：
+   标签页是分段控件，下面两块面板各自滚——整张面板本身也还能滚。
+   ============================================================ */
+.rec-sheet {
+  padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+}
+
+.rec-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 8px 0 10px;
+  padding: 3px;
+  border: 2px solid var(--ink);
+  border-radius: 13px;
+  background: var(--bg-neutral);
+}
+
+.rtab {
+  flex: 1 1 0;
+  min-height: 32px;
+  padding: 0 8px;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  background: none;
+  color: var(--ink-mute);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: .5px;
+  cursor: pointer;
+  transition: background var(--t-fast), color var(--t-fast), box-shadow var(--t-fast);
+}
+
+.rtab.is-on {
+  border-color: var(--ink);
+  background: var(--accent);
+  box-shadow: 0 2px 0 var(--ink);
+  color: var(--ink);
+}
+
+/* 记录条数挂在「记录」两个字后面，没有记录时干脆不显示 */
+.rtab i {
+  margin-left: 5px;
+  font-style: normal;
+  font-size: 10.5px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  opacity: .65;
+}
+
+.rec-hint {
+  margin: 0 0 10px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--ink-faint);
+}
+
+/* ============================================================
+   15. 一条记录
+   ============================================================ */
+.rec-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rec {
+  overflow: hidden;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  background: var(--bg-card);
+  box-shadow: 0 3px 0 var(--ink);
+}
+
+/* 没解开的那局：整条压低一点，别和战绩混在一起看 */
+.rec[data-won="0"] .rec-thumb img { opacity: .55; }
+
+.rec-hit {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rec-thumb {
+  flex: 0 0 auto;
+  display: block;
+  width: 46px;
+  height: 46px;
+  overflow: hidden;
+  border: 2px solid var(--ink);
+  border-radius: 9px;
+  background: var(--bg-neutral);
+}
+
+.rec-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.rec-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: block;
+}
+
+.rec-l1 {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.rec-time {
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: .3px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rec-size {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  background: var(--bg-neutral);
+  font-size: 10px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.rec-lv {
+  flex: 0 0 auto;
+  padding: 1px 7px;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  background: var(--bg-card);
+  font-size: 10px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.rec-lv[data-tone="easy"] { background: #DFF5E8; }
+.rec-lv[data-tone="mid"] { background: var(--accent-soft); }
+.rec-lv[data-tone="hard"] { background: #FFE4D2; }
+.rec-lv[data-tone="extreme"] { background: #FFDDDD; }
+
+.rec-lost {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border: 1.5px solid #C62828;
+  border-radius: 999px;
+  background: #FFE2E2;
+  color: #C62828;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.rec-l2 {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 3px;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--ink-mute);
+}
+
+/* 中间那串信息可以被省略，右边的日期不行 */
+.rec-info {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.rec-date {
+  flex: 0 0 auto;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+.rec-chev {
+  flex: 0 0 auto;
+  padding-right: 2px;
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--ink-mute);
+  transition: transform var(--t-fast);
+}
+
+.rec-hit[aria-expanded="true"] .rec-chev { transform: rotate(180deg); }
+
+/* ---- 展开后的分享码与按钮 ---- */
+.rec-extra {
+  padding: 0 8px 8px;
+  animation: fadeIn .16s ease both;
+}
+
+.rec-code {
+  display: block;
+  /* 高度卡在「整数行」上：16×16 的码正好六行，不会露出半行字 */
+  max-height: 108px;
+  overflow: auto;
+  padding: 7px 9px;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  background: var(--bg-neutral);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 10px;
+  line-height: 1.45;
+  letter-spacing: .4px;
+  word-break: break-all;
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: default;
+}
+
+.rec-btns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+.rbtn {
+  min-height: 32px;
+  padding: 0 8px;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  background: var(--bg-card);
+  box-shadow: 0 2px 0 var(--ink);
+  font-size: 11.5px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform var(--t-fast), box-shadow var(--t-fast), background var(--t-fast);
+}
+
+.rbtn:active { transform: translateY(2px); box-shadow: none; }
+
+.rbtn[data-armed="1"] {
+  border-color: #C62828;
+  background: #FFE2E2;
+  box-shadow: 0 2px 0 #C62828;
+  color: #C62828;
+}
+
+.rec-more {
+  width: 100%;
+  min-height: 36px;
+  margin-top: 8px;
+  font-size: 12px;
+  letter-spacing: .3px;
+}
+
+/* ============================================================
+   16. 排行榜
+   ------------------------------------------------------------
+   限时与难度各一排胶囊，选中的组合就是当前榜单：
+   不同限时、不同难度的时间本来就不该放在一张表里比。
+   ============================================================ */
+.rec-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.rchip {
+  min-height: 28px;
+  padding: 2px 9px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--bg-card);
+  box-shadow: 0 2px 0 var(--ink);
+  font-size: 11.5px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform var(--t-fast), box-shadow var(--t-fast), background var(--t-fast), color var(--t-fast);
+}
+
+.rchip:active:not(.is-on) { transform: translateY(2px); box-shadow: none; }
+
+.rchip.is-on {
+  background: var(--ink);
+  color: var(--bg-body);
+}
+
+/* 角标是这个组合里的成绩数：没有数字说明这组还没人（也就没有成绩） */
+.rchip i {
+  margin-left: 4px;
+  font-style: normal;
+  font-size: 9.5px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  opacity: .55;
+}
+
+.board-note {
+  margin: 12px 0 8px;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--ink-mute);
+}
+
+.lb-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 8px;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  background: var(--bg-card);
+}
+
+.lb-row[data-medal="1"] { background: #FFF8DC; }
+.lb-row[data-medal="2"] { background: #F6F4EF; }
+.lb-row[data-medal="3"] { background: #FBF0E6; }
+
+.lb-rank {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--bg-neutral);
+  font-size: 11px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.lb-row[data-medal="1"] .lb-rank { background: #FFD93D; }
+.lb-row[data-medal="2"] .lb-rank { background: #DCDCDC; }
+.lb-row[data-medal="3"] .lb-rank { background: #F0C08A; }
+
+.lb-row .rec-thumb {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+}
+
+.lb-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: block;
+}
+
+.lb-time {
+  display: block;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.lb-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink-mute);
+}
+
+.lb-share {
+  flex: 0 0 auto;
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 11px;
+}
+
+/* ============================================================
+   17. 空态 / 状态行 / 清空
+   ============================================================ */
+.rec-empty {
+  margin: 10px 0 0;
+  padding: 18px 12px;
+  border: 2px dashed rgba(58, 51, 53, .28);
+  border-radius: 12px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.6;
+  color: var(--ink-faint);
+}
+
+.rec-status {
+  min-height: 15px;
+  margin: 10px 0 0;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--ink-mute);
+}
+
+.rec-status[data-tone="good"] { color: #17945B; }
+.rec-status[data-tone="bad"] { color: #D8382F; }
+
+.rec-clear {
+  display: block;
+  margin: 6px auto 0;
+  color: var(--ink-faint);
+  font-size: 11.5px;
+}
+
+.rec-clear[data-armed="1"] {
+  color: #C62828;
+  font-weight: 900;
+}

@@ -39,6 +39,7 @@ export var queenPill = $('queenPill');
 export var btnNew = $('btnNew');
 export var btnSettings = $('btnSettings');
 export var btnAuto = $('btnAuto');
+export var btnRecords = $('btnRecords');
 
 export var btnUndo = $('btnUndo');
 export var btnHint = $('btnHint');
@@ -109,3 +110,24 @@ export var swHaptics = $('swHaptics');
 /* 挑战那一组 */
 export var swNoHint = $('swNoHint');
 export var swNoUndo = $('swNoUndo');
+
+/* 战绩 / 排行榜面板 */
+export var recWrap = $('recWrap');
+export var recSheet = $('recSheet');
+export var recBackdrop = $('recBackdrop');
+export var btnCloseRec = $('btnCloseRec');
+export var tabRecs = $('tabRecs');
+export var tabBoard = $('tabBoard');
+export var paneRecs = $('paneRecs');
+export var paneBoard = $('paneBoard');
+export var recTotal = $('recTotal');
+export var recList = $('recList');
+export var recEmpty = $('recEmpty');
+export var btnMoreRecs = $('btnMoreRecs');
+export var limChips = $('limChips');
+export var lvChips = $('lvChips');
+export var boardNote = $('boardNote');
+export var boardList = $('boardList');
+export var boardEmpty = $('boardEmpty');
+export var recStatus = $('recStatus');
+export var btnClearRecs = $('btnClearRecs');

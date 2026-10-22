@@ -28,7 +28,8 @@
 <link rel="stylesheet" href="src/styles/13-result.css">
 <link rel="stylesheet" href="src/styles/14-animations.css">
 <link rel="stylesheet" href="src/styles/15-guide.css">
-<link rel="stylesheet" href="src/styles/16-responsive.css">
+<link rel="stylesheet" href="src/styles/16-records.css">
+<link rel="stylesheet" href="src/styles/17-responsive.css">
 </head>
 
 <body>
@@ -63,6 +64,16 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M20 12a8 8 0 1 1-2.6-5.9"></path>
           <path d="M20 4v5h-5"></path>
+        </svg>
+      </button>
+      <button class="icon-btn" id="btnRecords" type="button" aria-label="战绩与排行榜" aria-haspopup="dialog" aria-expanded="false" title="战绩与排行榜">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M8 3.5h8V9a4 4 0 0 1-8 0V3.5z"></path>
+          <path d="M8 5.2H5.2v1.2A3.4 3.4 0 0 0 8.6 9.8"></path>
+          <path d="M16 5.2h2.8v1.2a3.4 3.4 0 0 1-3.4 3.4"></path>
+          <path d="M12 13v3.2"></path>
+          <path d="M8.6 20.5h6.8"></path>
+          <path d="M10 16.2h4v4.3h-4z"></path>
         </svg>
       </button>
       <button class="icon-btn" id="btnSettings" type="button" aria-label="设置" aria-haspopup="dialog" aria-expanded="false">
@@ -263,6 +274,45 @@
     </div>
 
     <button class="btn sheet-done" id="btnDiffDone" type="button">知道了</button>
+  </div>
+</div>
+
+<div class="sheet-wrap" id="recWrap" hidden>
+  <div class="sheet-backdrop" id="recBackdrop"></div>
+  <div class="sheet rec-sheet" id="recSheet" role="dialog" aria-modal="true" aria-labelledby="recTitle" tabindex="-1">
+    <div class="sheet-head">
+      <h2 id="recTitle">战绩</h2>
+      <button class="icon-btn" id="btnCloseRec" type="button" aria-label="关闭战绩">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true">
+          <path d="M6 6l12 12M18 6L6 18"></path>
+        </svg>
+      </button>
+    </div>
+
+    <div class="rec-tabs" role="tablist" aria-label="战绩视图">
+      <button class="rtab is-on" id="tabRecs" type="button" role="tab" aria-selected="true" aria-controls="paneRecs">记录<i id="recTotal"></i></button>
+      <button class="rtab" id="tabBoard" type="button" role="tab" aria-selected="false" aria-controls="paneBoard">排行榜</button>
+    </div>
+
+    <div class="rec-pane" id="paneRecs" role="tabpanel" aria-labelledby="tabRecs">
+      <p class="rec-hint">解开或超时都会记一局。点开一条能看棋盘、复制分享码，或者原样再玩一遍。</p>
+      <div class="rec-list" id="recList"></div>
+      <p class="rec-empty" id="recEmpty" hidden>还没有战绩。解完一局就会记在这里。</p>
+      <button class="btn rec-more" id="btnMoreRecs" type="button" hidden>显示更多</button>
+    </div>
+
+    <div class="rec-pane" id="paneBoard" role="tabpanel" aria-labelledby="tabBoard" hidden>
+      <p class="group-title">限时</p>
+      <div class="rec-chips" id="limChips" role="group" aria-label="按限时筛选"></div>
+      <p class="group-title">难度</p>
+      <div class="rec-chips" id="lvChips" role="group" aria-label="按难度筛选"></div>
+      <p class="board-note" id="boardNote"></p>
+      <div class="rec-list" id="boardList"></div>
+      <p class="rec-empty" id="boardEmpty" hidden>这组还没有成绩。</p>
+    </div>
+
+    <p class="rec-status" id="recStatus" aria-live="polite"></p>
+    <button class="btn-text rec-clear" id="btnClearRecs" type="button" hidden>清空全部记录</button>
   </div>
 </div>
 

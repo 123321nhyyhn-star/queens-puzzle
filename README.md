@@ -3,6 +3,8 @@
 打开即玩的皇后推理小游戏：每行、每列、每个色块各放一只皇后，皇后之间不能相邻。
 支持 4×4–16×16，每盘唯一解，带难度评估、逐步提示、撤销、分享码与续玩。
 设置里还有「挑战」：限时、禁用提示、禁用撤销。
+顶栏的奖杯记战绩：每局留一张棋盘缩略图、分享码，排行榜按**限时 × 难度**分开排，
+全存在本机 localStorage 里。
 
 ## 快速开始
 
@@ -40,6 +42,39 @@ npm start                # 同上，只是包了一层
 - 超时后 `state.status = 'lost'`：棋盘只读、按钮全灰、结果层不能 Esc 掉，
   必须选「重试这一局」或「换一局新的」。
 - 限时与起算点写进对局存档，刷新之后倒计时接着走，不会白捡时间。
+
+## 战绩与排行榜
+
+顶栏第四颗按钮（奖杯）打开，两个标签页：
+
+**记录** —— 每局结束（解开或超时判负）写一条，新的在最上面。一条里有：
+
+- 棋盘缩略图：按这盘的色块现画的 SVG（配色跟棋盘上完全一致，一眼能认出是哪盘）
+- 用时、尺寸、难度档与体感分；小字里是限时、挑战标记、步数与结束时间
+- 点开展开：完整分享码 + 复制代码 / 复制链接 / 玩这盘 / 删除
+
+**排行榜** —— 先按限时、再按难度分组，组内只比用时：
+
+| 维度 | 挡位 |
+| --- | --- |
+| 限时 | 不限 / 3 / 5 / 10 / 20 分钟（就是 `LIMIT_OPTIONS`） |
+| 难度 | 容易 / 中等 / 困难 / 极难（本局难度评估的 `tone`） |
+
+不同限时、不同难度的时间本来就没法比（把 3 分钟的中等和 20 分钟的困难放一张表，
+第一名永远属于最简单的那个），所以干脆分成 5 × 4 个独立榜单。
+打开面板时默认落在**当前这一局**的组合上；胶囊上的小数字是这个组合里的成绩数。
+输掉的局记在记录里但**不进榜**。
+
+几条实现上的约定：
+
+- 记录只增不改：一局结束写一条，最多留 300 条（`RECORD_MAX`），超出丢最老的。
+- 存的是压缩数据：色块与解各压成十六进制串（`n*n` 与 `n` 个字符），
+  8×8 一条约 200 字节。分享码不存，用的时候由 `encodeShare()` 现算。
+- 列表一次只画 20 条（`RECORD_PAGE`），剩下的点「显示更多」——
+  300 条一起画会把面板卡住。
+- 排行榜每组最多显示 12 名（`RECORD_TOP`）。
+- 删除 / 清空都要点两次（第一次只是把按钮变红改字），误触不会丢数据。
+- 写盘失败（隐私模式、配额满）一律静默：战绩没了也不能让正在玩的局崩掉。
 
 ## 目录结构
 
@@ -89,11 +124,13 @@ core  ←  game  ←  ui  ←  app
 | `core/palette.js` | 18 色淡彩池 + 按邻接图做 Lab 色差分配 |
 | `core/audio.js` | WebAudio 实时合成音效 + 震动 |
 | `core/storage.js` | 设置与当前这局的存档（写盘 160ms 防抖），含限时与倒计时起点 |
+| `core/records.js` | 每局战绩：数据结构、localStorage 读写、按「限时 × 难度」分组排名（不碰 DOM） |
 | `core/clock.js` | 计时（只在有动作后起表）+ 限时剩余时间 `limitRemaining()` / 顶栏胶囊 `paintClock()` |
 | `game/rules.js` | 自动打叉、被逼定位、冲突对、色块计数、填错的色块 |
 | `game/geometry.js` | 格子边长、色块轮廓 path |
 | `game/board.js` | 棋盘 DOM 构建 + 色块长按高亮 |
 | `game/share-code.js` | 分享码编解码（纯函数，可单测） |
+| `game/preview.js` | 战绩里的棋盘缩略图：把一盘棋画成 SVG 字符串（塞进 `<img src="data:...">`） |
 | `game/vibe.js` | 本局难度评估（转调 `engine/difficulty.js`） |
 | `ui/render.js` | 把 state 画到 DOM：格子状态、描边、连线、红框防抖；工具栏按钮的可用状态 |
 | `ui/layout.js` | 棋盘尺寸计算（浮层开关不许挪动棋盘） |
@@ -102,6 +139,7 @@ core  ←  game  ←  ui  ←  app
 | `ui/settings.js` | 设置面板（尺寸/难度/挑战只写 `pending`，点「换一局」才落地） |
 | `ui/difficulty.js` | 难度标签与难度说明弹层 |
 | `ui/share.js` | 分享面板：复制 / 粘贴载入 / `#QNS1-...` 链接开局 |
+| `ui/records.js` | 战绩面板：记录列表（缩略图 / 分享码）、排行榜筛选与名次、删除与清空 |
 | `ui/win.js` | 胜利判定、礼花、结果层（解开 / 时间到共用一张卡）、`checkTimeout()` |
 | `app/actions.js` | 玩家动作：点格语义、落子、清空 |
 | `app/history.js` | 撤销 / 重做（整盘快照，最多 60 步；挑战里禁用时直接拦下） |
@@ -110,7 +148,7 @@ core  ←  game  ←  ui  ←  app
 ### 样式
 
 `src/styles/` 里的文件**按编号顺序加载**（`index.html` 里逐个 `<link>`），
-`01-tokens.css` 放设计令牌，`16-responsive.css` 必须最后。新增片段时按顺序插号即可。
+`01-tokens.css` 放设计令牌，`17-responsive.css` 必须最后。新增片段时按顺序插号即可。
 
 ## 常见改动去哪儿改
 
@@ -126,6 +164,10 @@ core  ←  game  ←  ui  ←  app
 | 改出题规则 | `src/js/engine/engine.js`（改动后跑 `node tools/test-engine.mjs`） |
 | 改提示措辞 / 推理等级 | `src/js/engine/hint.js`（`node tools/test-hint.mjs`） |
 | 改难度评分 | `src/js/engine/difficulty.js` + `game/vibe.js` |
+| 改战绩记什么 | `core/records.js` 的 `add()` / `tidy()`（加字段记得兼容老数据） |
+| 改排行榜怎么分组 / 排序 | `core/records.js` 的 `group()`；筛选项在 `ui/records.js` 的 `renderBoard()` |
+| 改战绩行 / 排行榜长什么样 | `ui/records.js` 的 `rowHtml()` / `lbRow()` + `16-records.css` |
+| 改棋盘缩略图 | `game/preview.js`（纯字符串，改完看 `tools/check-records.mjs`） |
 | 加键位 / 手势 | `src/js/events.js` |
 
 不要在两个模块里各建一份状态：新状态加进 `core/state.js`，需要可变引用就挂到 `view` 上。
@@ -139,6 +181,7 @@ npm test                 # 全量端到端回归（tools/e2e.mjs，100+ 项）
 node tools/test-engine.mjs   # 出题引擎（唯一解、连通性）
 node tools/test-hint.mjs     # 提示引擎
 node tools/check-challenge.mjs   # 挑战：限时 / 禁用提示 / 禁用撤销（60 项）
+node tools/check-records.mjs     # 战绩：记录写入 / 缩略图 / 分享码 / 排行榜分组 / 删除清空
 ```
 
 `tools/` 里还有一批针对性检查（难度标签与模型一致性、拖动涂抹、引导面板布局等），
@@ -154,12 +197,16 @@ node tools/check-challenge.mjs   # 挑战：限时 / 禁用提示 / 禁用撤销
 1. 以 `index.html` 为入口，Vite / Rollup 能直接吃掉这套原生模块，无需改代码；
 2. `src/js/engine/` 三个文件是「经典脚本 + CJS 双模」，浏览器里挂在 `window.Queens*`、
    Node 里用 `require`（`tools/` 大量依赖）。要转成纯 ESM 时，记得同步改 `tools/` 的 `require`；
-3. `index.html` 里的 16 个 `<link>` 会被打包器自动合并，不用手工合并 CSS。
+3. `index.html` 里的 17 个 `<link>` 会被打包器自动合并，不用手工合并 CSS。
 
 ## 约定
 
 - 键盘：`X` 标叉、`Q`/`Enter` 放皇后、`Z` 撤销、`Shift+Z` 重做、`H` 提示、`N` 新局、`Esc` 关浮层。
   挑战里禁用撤销 / 提示时，`Z` 与 `H` 只会换一句「挑战模式：这局不能…」。
-- 存档键：`queens.settings.v1` / `queens.game.v1`（改结构要升版本号）。
+- 存档键：`queens.settings.v1` / `queens.game.v1` / `queens.records.v1`（改结构要升版本号）。
 - 对局存档里的 `limit` / `limitFrom` 是挑战的限时与倒计时起点，老存档没有也照样读。
+- 战绩每条都自带一份色块与解（`rg` / `so` 十六进制串），所以删掉最后一局的存档也不会让
+  记录里的缩略图和分享码失效；读盘时逐条校验，坏掉的那条丢掉、不连累整份。
 - 分享码格式：`QNS1-<边长>-<色块>-<解>-<校验>`，见 `game/share-code.js`。
+- 面板类浮层（设置 / 难度 / 战绩）打开时 `app` 会被设成 `inert`，`canPlay()` 也要一起拦——
+  键盘事件挂在 `document` 上，不拦的话面板背后还能落子。
