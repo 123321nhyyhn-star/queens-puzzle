@@ -19,7 +19,7 @@ import { checkWin } from '../ui/win.js';
    ========================================================== */
 export function canPlay() {
   return state.status === 'playing' && !view.sheetOpen && !view.diffOpen && !view.resultOpen &&
-    !view.recordsOpen;
+    !view.recordsOpen && !view.lookOpen;
 }
 
 export function setMarks(next, anim) {
@@ -73,7 +73,7 @@ export function onCell(i) {
 
   if (state.auto && state.auto[i]) {
     buzz(3);
-    flashHint('这一格已被自动打叉，双击可以直接放皇后');
+    flashHint('这一格已经自动标记过了，双击可以直接放皇后');
     state.lastTap = { i: i, t: now, prev: 0, pushed: false };
     return;
   }

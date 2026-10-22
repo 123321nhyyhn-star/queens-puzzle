@@ -19,9 +19,10 @@ import { closeDiff, openDiff, updateDiffChip } from './ui/difficulty.js';
 import { closeGuide, guideNext, guidePrev, useHint } from './ui/guide.js';
 import { flashHint } from './ui/hint.js';
 import { relayout } from './ui/layout.js';
+import { applyLook, closeLook, openLook } from './ui/look.js';
 import { render, updateStats } from './ui/render.js';
 import { closeRecords, openRecords } from './ui/records.js';
-import { closeSheet, syncAutoBtn } from './ui/settings.js';
+import { closeSheet } from './ui/settings.js';
 import { takeHashCode, tryLoadShare } from './ui/share.js';
 import { checkTimeout, showResult } from './ui/win.js';
 
@@ -49,7 +50,8 @@ function boot() {
   }
 
   loadSettings();
-  syncAutoBtn();
+  // 外观要在建棋盘之前落地：buildBoard 会照 settings.pieceStyle 决定每格画什么
+  applyLook();
 
   // 链接里带了棋盘代码（#QNS1-...）就直接开那一盘，否则照常续玩
   var handed = takeHashCode();
@@ -136,7 +138,11 @@ window.__QUEENS_DEBUG__ = {
   recordDelete: records.remove,
   recordClear: records.clear,
   openRecords: openRecords,
-  closeRecords: closeRecords
+  closeRecords: closeRecords,
+  // 外观：面板开关 + 当前样式，只给 tools/ 里的自动化测试用
+  look: function () { return { mark: settings.markStyle, piece: settings.pieceStyle }; },
+  openLook: openLook,
+  closeLook: closeLook
 };
 
 boot();

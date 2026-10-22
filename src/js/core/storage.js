@@ -4,7 +4,8 @@
  * ========================================================================== */
 
 import { elapsedMs } from './clock.js';
-import { DIFF_ORDER, normalizeLimit, SIZE_MAX, SIZE_MIN, STORE_GAME, STORE_SETTINGS } from './config.js';
+import { DIFF_ORDER, MARK_STYLES, PIECE_STYLES, normalizeLimit, SIZE_MAX, SIZE_MIN,
+  STORE_GAME, STORE_SETTINGS, styleId } from './config.js';
 import { settings, state } from './state.js';
 import { clamp } from './utils.js';
 
@@ -27,6 +28,9 @@ export function loadSettings() {
     settings.timeLimit = normalizeLimit(s.timeLimit);
     settings.noHint = s.noHint === true;
     settings.noUndo = s.noUndo === true;
+    // 外观：老存档没这两个字段，认不出来的 id 也退回默认，不至于把棋盘画空
+    settings.markStyle = styleId(MARK_STYLES, s.markStyle);
+    settings.pieceStyle = styleId(PIECE_STYLES, s.pieceStyle);
   } catch (e) { /* file:// 或隐私模式忽略 */ }
 }
 

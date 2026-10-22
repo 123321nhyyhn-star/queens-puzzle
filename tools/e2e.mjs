@@ -79,6 +79,18 @@ const tap = async (i, { dbl = false, gap = 90 } = {}) => {
   await sleep(220);
 };
 
+// 自动打叉的开关只剩设置面板里一处（顶栏那颗按钮已换成「外观」），
+// 所以就着这个面板来回切，顺手把「面板开着时棋盘不动」一并验了。
+const setAutoMark = async (want) => {
+  const open = await page.evaluate(() => !document.getElementById('sheetWrap').hidden);
+  if (!open) { await page.click('#btnSettings'); await sleep(420); }
+  const cur = await page.evaluate(() =>
+    document.getElementById('swAuto').getAttribute('aria-checked') === 'true');
+  if (cur !== want) { await page.click('#swAuto'); await sleep(300); }
+  await page.click('#btnCloseSheet');
+  await sleep(320);
+};
+
 await tap(0);
 let s = await page.evaluate(() => ({ mark: __QUEENS_DEBUG__.state.marks[0], cls: document.querySelector('.cell[data-i="0"]').className }));
 check('单击标记 ×', s.mark === 1, `mark=${s.mark} cls=${s.cls}`);
@@ -137,7 +149,8 @@ check('自动 × 点不出手标', autoLock.mark === 0 && autoLock.stillAuto, `m
 check('提示解释了不能改', /自动/.test(autoLock.hint), autoLock.hint);
 await sleep(420);
 
-// ---------- 4b. 顶栏「自动打叉」开关 + 自动/手动 × 同款 ----------
+// ---------- 4b. 自动打叉（设置面板里的开关）+ 自动/手动 × 同款 ----------
+// 顶栏那颗按钮换成了「外观」，自动打叉只剩设置面板里这一个入口
 const freeIdx = await page.evaluate(() => [...document.querySelectorAll('.cell')]
   .findIndex(el => !el.classList.contains('is-auto') && !el.classList.contains('is-q')));
 await tap(freeIdx);
@@ -162,27 +175,33 @@ const parity = await page.evaluate(() => {
 });
 check('自动 × 与手动 × 样式一致', parity.same, `auto=${parity.a} manual=${parity.m}`);
 
-await page.click('#btnAuto');
-await sleep(340);
+check('顶栏不再有自动打叉按钮（换成外观）', await page.evaluate(() =>
+  !document.getElementById('btnAuto') && !!document.getElementById('btnLook')));
+
+await page.click('#btnSettings');
+await sleep(420);
+await page.click('#swAuto');
+await sleep(300);
 const autoOff = await page.evaluate(() => ({
   on: __QUEENS_DEBUG__.settings.autoMark,
   cells: document.querySelectorAll('.cell.is-auto').length,
-  pressed: document.getElementById('btnAuto').getAttribute('aria-pressed')
+  checked: document.getElementById('swAuto').getAttribute('aria-checked')
 }));
-check('顶栏可关闭自动打叉', autoOff.on === false && autoOff.cells === 0 && autoOff.pressed === 'false',
+check('设置里可关闭自动打叉', autoOff.on === false && autoOff.cells === 0 && autoOff.checked === 'false',
   `on=${autoOff.on} cells=${autoOff.cells}`);
 
-await page.click('#btnAuto');
-await sleep(340);
+await page.click('#swAuto');
+await sleep(300);
 const autoOn = await page.evaluate(() => ({
   on: __QUEENS_DEBUG__.settings.autoMark,
   cells: document.querySelectorAll('.cell.is-auto').length,
-  pressed: document.getElementById('btnAuto').getAttribute('aria-pressed'),
+  checked: document.getElementById('swAuto').getAttribute('aria-checked'),
   saved: JSON.parse(localStorage.getItem('queens.settings.v1') || '{}').autoMark
 }));
-check('再点一次恢复自动打叉', autoOn.on === true && autoOn.cells > 0 && autoOn.pressed === 'true',
+check('再点一次恢复自动打叉', autoOn.on === true && autoOn.cells > 0 && autoOn.checked === 'true',
   `cells=${autoOn.cells} saved=${autoOn.saved}`);
-
+await page.click('#btnCloseSheet');
+await sleep(320);
 // 细线：每格都带 inset 阴影，最右列/最下行不重复补线
 const grid = await page.evaluate(() => {
   const all = [...document.querySelectorAll('.cell')];
@@ -419,18 +438,27 @@ check('多种残局下色块 / 行 / 列 判定一致', sweep.bad.length === 0,
   `cases=${sweep.cases} bad=${JSON.stringify(sweep.bad)}`);
 
 // ---------- 8d. 提示只认「看得见的 ×」 ----------
-// 关掉自动打叉后棋盘上一片空白，这时不该凭空指出唯一位置
-await page.click('#btnAuto');
-await sleep(340);
-const noMark = await page.evaluate(() => ({
-  on: __QUEENS_DEBUG__.settings.autoMark,
-  auto: document.querySelectorAll('.cell.is-auto').length,
-  x: document.querySelectorAll('.cell.is-x').length,
-  forced: document.querySelectorAll('.cell.is-forced').length
-}));
-check('关自动打叉 + 无 × 时不出唯一位置提示',
-  noMark.on === false && noMark.auto === 0 && noMark.x === 0 && noMark.forced === 0,
-  `auto=${noMark.auto} x=${noMark.x} forced=${noMark.forced}`);
+// 关掉自动打叉后棋盘上一片空白，这时不该凭空指出唯一位置。
+// 例外：出题偶尔会生成「只有一格」的色块，那一格本来就是唯一位置，
+// 随机盘碰上它不算 bug —— 所以只要求「被点亮的那几格都落在单格色块里」。
+await setAutoMark(false);
+const noMark = await page.evaluate(() => {
+  const d = __QUEENS_DEBUG__, n = d.state.size;
+  const area = {};
+  for (let i = 0; i < n * n; i++) area[d.state.regions[i]] = (area[d.state.regions[i]] || 0) + 1;
+  const forced = [...document.querySelectorAll('.cell.is-forced')].map(e => +e.dataset.i);
+  return {
+    on: d.settings.autoMark,
+    auto: document.querySelectorAll('.cell.is-auto').length,
+    x: document.querySelectorAll('.cell.is-x').length,
+    forced: forced.length,
+    singleCell: forced.every(i => area[d.state.regions[i]] === 1)
+  };
+});
+check('关自动打叉 + 无 × 时不出唯一位置提示（单格色块除外）',
+  noMark.on === false && noMark.auto === 0 && noMark.x === 0 &&
+  (noMark.forced === 0 || noMark.singleCell),
+  `auto=${noMark.auto} x=${noMark.x} forced=${noMark.forced} 单格色块=${noMark.singleCell}`);
 
 // 手动把最后一行除正解外全划掉 → 这时才该提示
 const manualForced = await page.evaluate((want) => {
@@ -456,8 +484,7 @@ await page.evaluate(() => {
   for (let i = 0; i < d.state.marks.length; i++) if (d.state.marks[i] === 1) d.state.marks[i] = 0;
   d.render(false);
 });
-await page.click('#btnAuto');
-await sleep(340);
+await setAutoMark(true);
 const restored = await page.evaluate(() => ({
   on: __QUEENS_DEBUG__.settings.autoMark,
   forced: document.querySelectorAll('.cell.is-forced').length

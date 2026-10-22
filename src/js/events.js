@@ -8,12 +8,13 @@ import { newGame, retryGame } from './app/puzzle.js';
 import { audio, buzz, sfx } from './core/audio.js';
 import { pauseTimer, startTimer } from './core/clock.js';
 import { DIFF_BANDS, DIFF_ORDER, SIZE_MAX, SIZE_MIN } from './core/config.js';
-import { btnAgain, btnAuto, btnClear, btnClearRecs, btnCloseDiff, btnCloseRec, btnCloseSheet,
-  btnCopyCode, btnDiff, btnDiffDone, btnHint, btnLoadCode, btnMoreRecs, btnNew, btnPeek,
-  btnRecords, btnSettings, btnShuffle, btnSize, btnUndo, coachClose, coachNext, coachPrev,
-  diffBackdrop, diffOpts, diffSheet, gridEl, limChips, limitOpts, lvChips, quickRow,
-  recBackdrop, recList, boardList, regionsEl, resultEl, shareCode, shareStatus, sheet,
-  sheetBackdrop, sizeMinus, sizePlus, tabBoard, tabRecs } from './core/dom.js';
+import { btnAgain, btnClear, btnClearRecs, btnCloseDiff, btnCloseLook, btnCloseRec,
+  btnCloseSheet, btnCopyCode, btnDiff, btnDiffDone, btnHint, btnLoadCode, btnLook, btnLookDone,
+  btnMoreRecs, btnNew, btnPeek, btnRecords, btnSettings, btnShuffle, btnSize, btnUndo,
+  coachClose, coachNext, coachPrev, diffBackdrop, diffOpts, diffSheet, gridEl, limChips,
+  limitOpts, lookBackdrop, lookSheet, lvChips, quickRow, recBackdrop, recList, boardList,
+  regionsEl, resultEl, shareCode, shareStatus, sheet, sheetBackdrop, sizeMinus, sizePlus,
+  tabBoard, tabRecs } from './core/dom.js';
 import { guide, hasProgress, pending, settings, state, view } from './core/state.js';
 import { save, saveSettings } from './core/storage.js';
 import { announce, clamp } from './core/utils.js';
@@ -22,10 +23,11 @@ import { decodeShare } from './game/share-code.js';
 import { closeDiff, openDiff } from './ui/difficulty.js';
 import { closeGuide, guideNext, guidePrev, useHint } from './ui/guide.js';
 import { flashHint } from './ui/hint.js';
+import { closeLook, openLook, pickLook } from './ui/look.js';
 import { pushHistory, redo, undo } from './app/history.js';
 import { render } from './ui/render.js';
 import { closeSheet, commitChallenge, challengeSummary, openSheet, setPendingLimit,
-  setPendingSize, syncSheet, toggleAuto, trapFocus } from './ui/settings.js';
+  setPendingSize, syncSheet, trapFocus } from './ui/settings.js';
 import { copyText, isShareFocusHold, setShareStatus, shareReject, tryLoadShare } from './ui/share.js';
 import { dismissResult } from './ui/win.js';
 import { closeRecords, openRecords, pickChip, recAction, requestClearAll, showMore,
@@ -224,10 +226,21 @@ btnNew.addEventListener('click', function () {
 });
 
 btnSettings.addEventListener('click', openSheet);
-btnAuto.addEventListener('click', toggleAuto);
 btnSize.addEventListener('click', openSheet);
 btnCloseSheet.addEventListener('click', closeSheet);
 sheetBackdrop.addEventListener('click', closeSheet);
+
+/* ---- 外观：叉 / 皇后的样式，选完立刻生效 ---- */
+btnLook.addEventListener('click', openLook);
+btnCloseLook.addEventListener('click', closeLook);
+btnLookDone.addEventListener('click', closeLook);
+lookBackdrop.addEventListener('click', closeLook);
+lookSheet.addEventListener('click', function (e) {
+  var b = e.target.closest ? e.target.closest('.showcase') : null;
+  if (!b) return;
+  if (b.dataset.mark) pickLook('mark', b.dataset.mark);
+  else if (b.dataset.piece) pickLook('piece', b.dataset.piece);
+});
 
 btnDiff.addEventListener('click', openDiff);
 btnCloseDiff.addEventListener('click', function () { closeDiff(true); });
@@ -424,6 +437,7 @@ document.addEventListener('keydown', function (e) {
   if (e.key === 'Escape') {
     if (view.diffOpen) { e.preventDefault(); closeDiff(true); return; }
     if (view.recordsOpen) { e.preventDefault(); closeRecords(); return; }
+    if (view.lookOpen) { e.preventDefault(); closeLook(); return; }
     if (view.sheetOpen) { e.preventDefault(); closeSheet(); return; }
     if (view.resultOpen) { e.preventDefault(); dismissResult(); return; }
     if (guide.open) { e.preventDefault(); closeGuide(); return; }
@@ -437,6 +451,11 @@ document.addEventListener('keydown', function (e) {
 
   if (view.recordsOpen) {
     if (e.key === 'Tab') trapRecords(e);
+    return;
+  }
+
+  if (view.lookOpen) {
+    if (e.key === 'Tab') trapFocus(e, lookSheet);
     return;
   }
 

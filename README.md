@@ -5,6 +5,7 @@
 设置里还有「挑战」：限时、禁用提示、禁用撤销。
 顶栏的奖杯记战绩：每局留一张棋盘缩略图、分享码，排行榜按**限时 × 难度**分开排，
 全存在本机 localStorage 里。
+顶栏的调色盘是**外观**：叉可以换成点，皇后可以换成小猫——满盘 × 看得眼花时换一套就安静了。
 
 ## 快速开始
 
@@ -19,6 +20,27 @@ npm start                # 同上，只是包了一层
 
 > **不要直接双击 index.html。** 应用已拆成 ES 模块，`file://` 协议下浏览器会拦掉模块加载。
 > 编辑器里用 Live Server 之类的静态服务也可以，只要走 http。
+
+## 外观
+
+顶栏第一颗按钮（调色盘）打开，是一间小展柜：每个样式摆在玻璃罩里的台子上，
+下面一块名牌，选中的那间罩子亮着、名牌翻成墨底、右上角亮一枚勾。
+两排各一个开关：
+
+| 换什么 | 可选 | 说明 |
+| --- | --- | --- |
+| 叉 | **叉**（默认）/ **点** | 点是一个小圆点。16×16 满盘时，一片 × 会糊成噪点，点就安静得多 |
+| 皇后 | **皇后**（默认）/ **小猫** | 小猫是同一套墨色剪影（没有底色，格子自己的色块色就是它的底），墨色脸上留一对白眼和 ω 嘴 |
+
+- **即时生效**，跟音效 / 冲突高亮一个规矩：选完立刻写 `settings`、存盘、重画，不等「换一局」。
+  跟棋盘大小 / 难度 / 挑战那套 `pending` 不是一回事。
+- 换的只是**画法**，不碰 `state.marks`：局面、撤销栈、存档里的棋局都不动。
+- 自动打的标记和你手标的用同一套样式（自动 / 手动本来就同款，见 `render.js`）。
+  设置面板里的「自动打 ×」仍然只管**打不打**，不管长什么样。
+- 顶栏那颗按钮上挂一颗小黄点，表示「现在用的不是默认那套」——不然过几天会忘了原来长什么样。
+- 落地方式：`<html data-mark="x|dot" data-piece="queen|cat">` 是 CSS 钩子（`17-look.css`），
+  格子里的画由 `game/board.js` 的 `pieceSvg()` 决定，换样式只重画 `.piece` 里的 SVG。
+- 老存档没有这两个字段、或者存了认不出来的 id，一律退回默认（`styleId()`）。
 
 ## 挑战
 
@@ -45,7 +67,7 @@ npm start                # 同上，只是包了一层
 
 ## 战绩与排行榜
 
-顶栏第四颗按钮（奖杯）打开，两个标签页：
+顶栏第三颗按钮（奖杯）打开，两个标签页：
 
 **记录** —— 每局结束（解开或超时判负）写一条，新的在最上面。一条里有：
 
@@ -117,7 +139,7 @@ core  ←  game  ←  ui  ←  app
 
 | 文件 | 职责 |
 | --- | --- |
-| `core/config.js` | 尺寸范围、存储键、难度档位、限时挡位（`LIMIT_OPTIONS`）、默认设置、皇后 SVG |
+| `core/config.js` | 尺寸范围、存储键、难度档位、限时挡位（`LIMIT_OPTIONS`）、默认设置、皇后 / 小猫两套 SVG、外观样式表（`MARK_STYLES` / `PIECE_STYLES`） |
 | `core/state.js` | 全局状态：`state`（局面）/ `settings`（设置）/ `pending`（面板里未生效的意向）/ `guide`（引导进度）/ `view`（视图层可变引用） |
 | `core/dom.js` | 所有 DOM 元素引用，**只在这里取一次** |
 | `core/utils.js` | `clamp`、读屏播报、时间格式化、脉冲动画、`svgEl` |
@@ -128,7 +150,7 @@ core  ←  game  ←  ui  ←  app
 | `core/clock.js` | 计时（只在有动作后起表）+ 限时剩余时间 `limitRemaining()` / 顶栏胶囊 `paintClock()` |
 | `game/rules.js` | 自动打叉、被逼定位、冲突对、色块计数、填错的色块 |
 | `game/geometry.js` | 格子边长、色块轮廓 path |
-| `game/board.js` | 棋盘 DOM 构建 + 色块长按高亮 |
+| `game/board.js` | 棋盘 DOM 构建 + 色块长按高亮 + `pieceSvg()` 按外观决定每格画什么 |
 | `game/share-code.js` | 分享码编解码（纯函数，可单测） |
 | `game/preview.js` | 战绩里的棋盘缩略图：把一盘棋画成 SVG 字符串（塞进 `<img src="data:...">`） |
 | `game/vibe.js` | 本局难度评估（转调 `engine/difficulty.js`） |
@@ -137,6 +159,7 @@ core  ←  game  ←  ui  ←  app
 | `ui/guide.js` | 提示引导面板 + 棋盘圈画层 |
 | `ui/hint.js` | 顶部提示行文案 |
 | `ui/settings.js` | 设置面板（尺寸/难度/挑战只写 `pending`，点「换一局」才落地） |
+| `ui/look.js` | 外观面板：展柜生成、样式切换（即时生效）、`<html data-*>` 落地 |
 | `ui/difficulty.js` | 难度标签与难度说明弹层 |
 | `ui/share.js` | 分享面板：复制 / 粘贴载入 / `#QNS1-...` 链接开局 |
 | `ui/records.js` | 战绩面板：记录列表（缩略图 / 分享码）、排行榜筛选与名次、删除与清空 |
@@ -148,7 +171,7 @@ core  ←  game  ←  ui  ←  app
 ### 样式
 
 `src/styles/` 里的文件**按编号顺序加载**（`index.html` 里逐个 `<link>`），
-`01-tokens.css` 放设计令牌，`17-responsive.css` 必须最后。新增片段时按顺序插号即可。
+`01-tokens.css` 放设计令牌，`18-responsive.css` 必须最后。新增片段时按顺序插号即可。
 
 ## 常见改动去哪儿改
 
@@ -158,6 +181,7 @@ core  ←  game  ←  ui  ←  app
 | 改色块底色池 | `src/js/core/palette.js`（用 `node tools/gen-palette.mjs` 生成候选） |
 | 改顶栏 / 棋盘 / 面板外观 | 对应编号的 CSS 片段 |
 | 加一个设置开关 | `core/config.js` 的 `DEFAULT_SETTINGS`、`index.html` 里加一行 `.switch-row`、`ui/settings.js` 的 `syncSheet` 与 `sheet` 的 click 分支 |
+| 加一套棋子 / 叉的样式 | `core/config.js` 的 `MARK_STYLES` / `PIECE_STYLES` 加一条（面板会自己长出新的展位）+ `17-look.css` 补对应画法 + `ui/look.js` 的 `preview()` 补一个缩略画法 |
 | 改限时挡位 | `core/config.js` 的 `LIMIT_OPTIONS`（面板按钮是按它生成的） |
 | 加一项挑战 | 照「限时 / 禁用提示 / 禁用撤销」三件套：`DEFAULT_SETTINGS` + `pending`（`core/state.js`）+ `index.html` 的 `.challenge` 块 + `ui/settings.js` 的 `syncSheet`/`commitChallenge` + 动作入口里 `settings.xxx` 一拦 |
 | 改超时判负的时机 | `core/clock.js` 的 `limitExpired`、`ui/win.js` 的 `checkTimeout`（由 `main.js` 的 250ms 心跳调用） |
@@ -182,6 +206,7 @@ node tools/test-engine.mjs   # 出题引擎（唯一解、连通性）
 node tools/test-hint.mjs     # 提示引擎
 node tools/check-challenge.mjs   # 挑战：限时 / 禁用提示 / 禁用撤销（60 项）
 node tools/check-records.mjs     # 战绩：记录写入 / 缩略图 / 分享码 / 排行榜分组 / 删除清空
+node tools/check-look.mjs        # 外观：展柜面板 / 两套样式落地 / 存盘与兜底（50 项）
 ```
 
 `tools/` 里还有一批针对性检查（难度标签与模型一致性、拖动涂抹、引导面板布局等），
@@ -204,9 +229,11 @@ node tools/check-records.mjs     # 战绩：记录写入 / 缩略图 / 分享码
 - 键盘：`X` 标叉、`Q`/`Enter` 放皇后、`Z` 撤销、`Shift+Z` 重做、`H` 提示、`N` 新局、`Esc` 关浮层。
   挑战里禁用撤销 / 提示时，`Z` 与 `H` 只会换一句「挑战模式：这局不能…」。
 - 存档键：`queens.settings.v1` / `queens.game.v1` / `queens.records.v1`（改结构要升版本号）。
+- 外观存在 `settings.markStyle` / `settings.pieceStyle`，页面上表现为 `<html data-mark / data-piece>`；
+  它只改画法，别往里塞会影响规则的东西（那属于「挑战」）。
+- 面板类浮层（设置 / 难度 / 战绩 / 外观）打开时 `app` 会被设成 `inert`，`canPlay()` 也要一起拦——
+  键盘事件挂在 `document` 上，不拦的话面板背后还能落子。
 - 对局存档里的 `limit` / `limitFrom` 是挑战的限时与倒计时起点，老存档没有也照样读。
 - 战绩每条都自带一份色块与解（`rg` / `so` 十六进制串），所以删掉最后一局的存档也不会让
   记录里的缩略图和分享码失效；读盘时逐条校验，坏掉的那条丢掉、不连累整份。
 - 分享码格式：`QNS1-<边长>-<色块>-<解>-<校验>`，见 `game/share-code.js`。
-- 面板类浮层（设置 / 难度 / 战绩）打开时 `app` 会被设成 `inert`，`canPlay()` 也要一起拦——
-  键盘事件挂在 `document` 上，不拦的话面板背后还能落子。

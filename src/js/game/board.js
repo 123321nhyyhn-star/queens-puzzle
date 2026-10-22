@@ -3,12 +3,28 @@
  * 棋盘 DOM 构建与色块长按高亮。
  * ========================================================================== */
 
-import { QUEEN_SVG, REDUCE_MOTION } from '../core/config.js';
+import { CAT_SVG, QUEEN_SVG, REDUCE_MOTION } from '../core/config.js';
 import { gridEl, regionsEl, rlEl, rlPeek } from '../core/dom.js';
 import { REGION_COLORS, assignRegionColors, glowOf } from '../core/palette.js';
-import { state, view } from '../core/state.js';
+import { settings, state, view } from '../core/state.js';
 import { svgEl } from '../core/utils.js';
 import { cellSize, regionCellsPath, regionPath } from './geometry.js';
+
+/* 皇后那一格画什么：默认是皇后，外观面板里可以换成小猫。
+ * 两套画都塞进同一个 .piece 里，动画（落下 / 胜利小跳）都挂在 .piece 上，不用另写。 */
+export function pieceSvg() {
+  return settings.pieceStyle === 'cat' ? CAT_SVG : QUEEN_SVG;
+}
+
+/** 换皇后样式：只换 .piece 里的画，格子、事件、动画都不动。 */
+export function applyPieceStyle() {
+  var html = pieceSvg();
+  for (var i = 0; i < view.cells.length; i++) {
+    var piece = view.cells[i].querySelector('.piece');
+    if (piece) piece.innerHTML = html;
+  }
+  view.lookPiece = settings.pieceStyle;
+}
 
 /* ==========================================================
    棋盘构建
@@ -49,7 +65,7 @@ export function buildBoard(deal) {
 
       cell.innerHTML =
         '<span class="mark"><i></i><i></i></span>' +
-        '<span class="piece">' + QUEEN_SVG + '</span>' +
+        '<span class="piece">' + pieceSvg() + '</span>' +
         '<span class="ring"></span>';
 
       gridEl.appendChild(cell);

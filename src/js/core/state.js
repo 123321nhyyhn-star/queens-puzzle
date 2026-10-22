@@ -70,6 +70,9 @@ export const view = {
   diffOpen: false,
   resultOpen: false,
   recordsOpen: false,
+  lookOpen: false,     // 外观面板
+  /* 已经画进 .piece 的皇后样式：外观面板只在真的换了样式时才重画一遍格子里的画 */
+  lookPiece: '',
   /* 战绩面板的临时视图：看的是哪一页、哪个筛选、哪条展开着。
    * 每次打开面板都重置，不写盘。 */
   recTab: 'list',      // 'list' | 'board'

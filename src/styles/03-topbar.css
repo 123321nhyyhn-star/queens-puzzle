@@ -116,11 +116,21 @@
   box-shadow: none;
 }
 
-/* 自动打 × 的开关：开启时整颗按钮变黄，一眼能看出当前状态 */
-.icon-btn.is-on {
+/* 外观按钮上挂一颗小黄点：现在用的是换过的样式，不是默认那套。
+ * 只做「有改动」的提示，不用整颗变黄——外观没有开 / 关这回事，一眼看错反而麻烦。 */
+#btnLook { position: relative; }
+
+#btnLook.is-set::after {
+  content: "";
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
   background: var(--accent);
 }
-.icon-btn.is-on:active { box-shadow: none; }
 
 .actions {
   display: flex;

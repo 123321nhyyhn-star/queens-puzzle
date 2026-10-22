@@ -1,0 +1,236 @@
+/* 17-look.css — 外观：可换的棋子 / 标记样式，以及挑样式用的「展柜」面板。 */
+
+/* ============================================================
+   可换样式（<html data-mark / data-piece> 是开关）
+   ------------------------------------------------------------
+   样式只改「怎么画」，不碰 state.marks：换完局面不动，存档也不变。
+   ============================================================ */
+
+/* ---- 叉 → 点 ----
+   两根斜杠收成一根，剩下那一根变成圆点。尺寸也吃 --cell，
+   16×16 那种小格子里不至于糊成一坨。 */
+html[data-mark="dot"] .mark i {
+  width: clamp(3px, calc(var(--cell, 40px) * .2), 9px);
+  height: clamp(3px, calc(var(--cell, 40px) * .2), 9px);
+  min-height: 0;
+  max-height: none;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+html[data-mark="dot"] .mark i + i { display: none; }
+
+/* ---- 皇后 → 小猫 ----
+   小猫也是一层墨色剪影、没有底色，占位与动画跟皇后共用同一套规则，
+   这里只处理一处细活：.piece svg 默认那道白色投影（把棋子从底色上「托」起来的那层），
+   会让胡须、ω 嘴这些一两像素的细线整根变成白线。所以这一套把投影去掉——
+   墨色压在淡彩上本来就够清楚，用不着再托一层。 */
+html[data-piece="cat"] .piece svg { filter: none; }
+
+/* ============================================================
+   外观面板：两排展柜
+   ------------------------------------------------------------
+   一个展位 = 玻璃罩（顶灯 + 台面 + 反光）+ 下方的名牌。
+   罩子里的底色用两种淡彩，跟棋盘上的格子同一种调子：
+   这样看到的就是它摆在棋盘上的样子，不用来回关面板对照。
+   ============================================================ */
+.look-sheet { padding-top: 14px; }
+
+.case { margin-top: 12px; }
+
+.case-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.case-head b {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 2.6px;
+}
+
+.case-head span {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-faint);
+}
+
+.case-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+/* ---- 一个展位 ---- */
+.showcase {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  border: 2px solid transparent;
+  border-radius: 16px;
+  background: transparent;
+  cursor: pointer;
+  transition: border-color var(--t-fast), background var(--t-fast), box-shadow var(--t-fast),
+    transform var(--t-fast);
+}
+
+.showcase:active { transform: translateY(1px); }
+
+/* 选中：整格上一道墨框，名牌变墨底白字——跟「限时」那排按钮一个语气 */
+.showcase.is-on {
+  border-color: var(--ink);
+  background: var(--bg-body);
+  box-shadow: 0 2px 0 var(--ink);
+}
+
+/* ---- 玻璃罩 ---- */
+.sc-case {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 92px;
+  border-radius: 12px;
+  background: var(--sc-bg, #EAEAA4);
+  box-shadow: inset 0 2px 5px rgba(58, 51, 53, .16), inset 0 -1px 0 rgba(58, 51, 53, .12);
+  overflow: hidden;
+}
+
+#markRow .sc-case { --sc-bg: #EAEAA4; }
+#pieceRow .sc-case { --sc-bg: #CFF1F4; }
+
+/* 顶灯：从罩子上方打下来的一团暖光 */
+.sc-lamp {
+  position: absolute;
+  left: 50%;
+  top: -18px;
+  width: 130%;
+  height: 60px;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at 50% 0, rgba(255, 255, 255, .92), rgba(255, 255, 255, 0) 68%);
+  pointer-events: none;
+}
+
+/* 玻璃反光：一道斜过去的高光，罩子才像罩子 */
+.sc-glass {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(112deg,
+    rgba(255, 255, 255, .5) 0 11%,
+    rgba(255, 255, 255, 0) 26% 100%);
+  pointer-events: none;
+}
+
+/* 台面：摆件站的那一级台阶 */
+.sc-plinth {
+  position: absolute;
+  left: 17%;
+  right: 17%;
+  bottom: 12px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(58, 51, 53, .13);
+  box-shadow: 0 2px 0 rgba(58, 51, 53, .07);
+  pointer-events: none;
+}
+
+/* 摆件：方框尺寸定死，四个预览才一样大（52px ≈ 棋盘上 8×8 的一格） */
+.sc-item {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 8px;
+  color: var(--ink);
+}
+
+.sc-item svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* 叉的预览：跟棋盘上同一套比例（0.58 宽、0.075 粗） */
+.pv-x {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.pv-x i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 100%;
+  height: 13%;
+  border-radius: 2px;
+  background: var(--x-ink);
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.pv-x i + i { transform: translate(-50%, -50%) rotate(-45deg); }
+
+/* 点的预览 */
+.pv-dot {
+  width: 20%;
+  height: 20%;
+  border-radius: 50%;
+  background: var(--x-ink);
+}
+
+/* ---- 名牌 ---- */
+.sc-plate {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  background: var(--bg-card);
+  box-shadow: 0 2px 0 var(--ink);
+  transition: background var(--t-fast), color var(--t-fast);
+}
+
+.sc-plate b {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: .5px;
+}
+
+.showcase.is-on .sc-plate { background: var(--ink); color: var(--bg-body); }
+
+/* ---- 右上角那枚勾：选中才亮 ---- */
+.sc-tick {
+  position: absolute;
+  top: -7px;
+  right: -5px;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--ink);
+  opacity: 0;
+  transform: scale(.4);
+  transition: opacity var(--t-fast), transform .2s var(--spring);
+  pointer-events: none;
+}
+
+.sc-tick svg {
+  width: 12px;
+  height: 12px;
+}
+
+.showcase.is-on .sc-tick { opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sc-tick { transition-duration: .01s; }
+}

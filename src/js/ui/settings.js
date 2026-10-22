@@ -3,17 +3,14 @@
  * 设置面板：尺寸 / 难度 / 挑战只写 pending，点「换一局」才落地；其余开关即时生效。
  * ========================================================================== */
 
-import { buzz, sfx } from '../core/audio.js';
 import { DIFF_BANDS, LIMIT_OPTIONS, limitLabel, normalizeLimit, SIZE_MAX, SIZE_MIN } from '../core/config.js';
-import { app, btnAuto, btnSettings, btnShuffle, challengeTitle, diffHint, diffOpts, limitHint,
+import { app, btnSettings, btnShuffle, challengeTitle, diffHint, diffOpts, limitHint,
   limitOpts, quickRow, sheet, sheetNote, sheetWrap, shuffleHint, sizeMinus, sizePlus,
   sizeStepperEl, sizeVal, swAuto, swConflict, swForced, swHaptics, swNoHint, swNoUndo,
   swSound } from '../core/dom.js';
 import { pending, settings, state, view } from '../core/state.js';
 import { saveSettings } from '../core/storage.js';
 import { announce, clamp } from '../core/utils.js';
-import { flashHint } from './hint.js';
-import { render } from './render.js';
 import { refreshShareCode } from './share.js';
 
 /* ==========================================================
@@ -76,31 +73,6 @@ export function commitChallenge() {
 /* ==========================================================
    设置面板
    ========================================================== */
-export function syncAutoBtn() {
-  var on = !!settings.autoMark;
-  btnAuto.classList.toggle('is-on', on);
-  btnAuto.setAttribute('aria-pressed', on ? 'true' : 'false');
-  btnAuto.setAttribute('aria-label', on ? '自动打叉，已开启' : '自动打叉，已关闭');
-}
-
-export function toggleAuto() {
-  settings.autoMark = !settings.autoMark;
-  saveSettings();
-  syncAutoBtn();
-  if (view.sheetOpen) syncSheet();
-  render(true);
-  if (settings.autoMark) {
-    sfx('auto');
-    buzz(8);
-    flashHint('自动打叉已开启');
-  } else {
-    sfx('xOff');
-    buzz(6);
-    flashHint('自动打叉已关闭，只显示你手动标的 ×');
-  }
-}
-
-/* 面板上半部分（尺寸 / 难度）只写 pending，不碰正在玩的这一局 */
 export function syncSheet() {
   var diff = pending.difficulty;
   var target = diff && diff !== 'any' ? diff : null;
@@ -157,8 +129,6 @@ export function syncSheet() {
     challengeTitle.textContent = cbits.length ? '挑战 · 待换一局生效' : '挑战';
     challengeTitle.classList.toggle('is-pending', cbits.length > 0);
   }
-
-  syncAutoBtn();
 
   var chips = quickRow.querySelectorAll('.qbtn');
   for (var i = 0; i < chips.length; i++) {

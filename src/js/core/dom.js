@@ -38,7 +38,7 @@ export var timeText = $('timeText');
 export var queenPill = $('queenPill');
 export var btnNew = $('btnNew');
 export var btnSettings = $('btnSettings');
-export var btnAuto = $('btnAuto');
+export var btnLook = $('btnLook');
 export var btnRecords = $('btnRecords');
 
 export var btnUndo = $('btnUndo');
@@ -131,3 +131,15 @@ export var boardList = $('boardList');
 export var boardEmpty = $('boardEmpty');
 export var recStatus = $('recStatus');
 export var btnClearRecs = $('btnClearRecs');
+
+/* 外观面板：两排展柜（叉 / 皇后），选项按钮按 core/config.js 的样式表现场生成，
+ * 所以这里只取容器与「当前是什么」这两个标题。 */
+export var lookWrap = $('lookWrap');
+export var lookSheet = $('lookSheet');
+export var lookBackdrop = $('lookBackdrop');
+export var btnCloseLook = $('btnCloseLook');
+export var btnLookDone = $('btnLookDone');
+export var markRow = $('markRow');
+export var pieceRow = $('pieceRow');
+export var markNow = $('markNow');
+export var pieceNow = $('pieceNow');
