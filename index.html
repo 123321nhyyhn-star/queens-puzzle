@@ -410,6 +410,111 @@ button {
   stroke-linecap: square;
 }
 
+/* ---- 色块高亮层 ----
+   两件事都画在这一层：① 长按色卡时把那块圈出来；② 填错的色块发红光。
+   压在色块描边之上、提示圈画（.gl）之下，纯装饰、不吃点击。 */
+.rl {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 3;
+  pointer-events: none;
+  overflow: visible;
+  transition: opacity .18s ease;
+}
+
+/* 引导面板开着的时候，圈画层已经在讲事情了，这层先让开，别两个红框抢注意力 */
+.rl.is-guide { opacity: 0; }
+
+/* ---- 长按色卡：把这块「拎」起来 ----
+   沿用棋盘自己的描边语言：墨色笔锋压边（square 端点，和色块边界同一套画法），
+   底下透一层这块自己的高饱和色当光晕。不用白边——白边在这套配色里像缺口。
+   旁边再压一层极淡的墨（evenodd 挖掉这块），这块自己就浮出来了：
+   光靠加粗描边，大块淡彩里其实看不出「是哪一块」。 */
+.rl-peek-veil {
+  fill: rgba(58, 51, 53, .15);
+  animation: rlVeilIn .18s ease both;
+}
+@keyframes rlVeilIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.rl-peek-halo {
+  fill: none;
+  stroke: var(--peek, rgba(58, 51, 53, .5));
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: .5;
+  filter: blur(2.5px);
+}
+
+.rl-peek-line {
+  fill: none;
+  stroke: var(--ink);
+  stroke-linecap: square;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 2px 0 rgba(58, 51, 53, .2));
+}
+
+/* 按下时像用笔描一遍：起笔即到，0.24s 走完 */
+.rl-peek-line.is-draw { animation: rlDraw .24s ease-out both; }
+@keyframes rlDraw {
+  from { stroke-dashoffset: var(--len, 600); }
+  to { stroke-dashoffset: 0; }
+}
+
+/* ---- 填错的色块：整块被 × 填满却一颗皇后都没有 ----
+   描边发光 + 极淡的红洗，呼吸很慢，是「提醒」不是「警报」。
+   亮 / 灭不写在各笔上，而是整组一起过渡（见 #rlBad）：三笔各有各的呼吸动画，
+   再让它们各自淡入的话，呼吸和淡入会抢同一个 opacity，接缝处必「跳」一下。 */
+#rlBad {
+  opacity: 0;
+  transition: opacity .16s ease-out;   /* 出现淡入、消失淡出，都是这一条 */
+}
+#rlBad.is-on { opacity: 1; }
+
+.rl-bad-halo {
+  fill: none;
+  stroke: var(--danger);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: .3;
+  filter: blur(3px);
+  animation: badBreath 1.6s ease-in-out infinite;
+}
+
+.rl-bad-fill {
+  fill: rgba(255, 92, 92, .09);
+  animation: badWash 1.6s ease-in-out infinite;
+}
+
+.rl-bad-line {
+  fill: none;
+  stroke: var(--danger);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 3px rgba(255, 92, 92, .55));
+}
+
+@keyframes badBreath {
+  0%, 100% { opacity: .22; }
+  50% { opacity: .58; }
+}
+
+@keyframes badWash {
+  0%, 100% { opacity: .55; }
+  50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #rlBad { transition-duration: .01s; }
+  .rl-bad-halo, .rl-bad-fill { animation: none; }
+  .rl-peek-line.is-draw, .rl-peek-veil { animation: none; }
+  .chip.is-bad .chip-x { animation: none; }
+}
+
 @media (hover: hover) {
   .cell:hover::after {
     content: "";
@@ -650,6 +755,7 @@ button {
   color: var(--ink);
   transition: transform .22s var(--spring), box-shadow .18s ease, background .18s ease;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .chip.is-done { box-shadow: inset 0 0 0 1.5px var(--ink); }
@@ -662,7 +768,44 @@ button {
 }
 .chip.is-over::after { content: "!"; }
 
-.chip.flash { transform: scale(1.45); }
+/* ---- 填错的色块：色卡上打叉 ----
+   两笔手画感的白芯红叉：外圈白描边是为了压住任意底色都看得清，
+   内圈红笔画。整块都没皇后了，光靠棋盘的红色描边不够直观，得回到色卡上找。 */
+.chip-x {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.chip-x path {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.chip-x .cx-case { stroke: rgba(255, 255, 255, .9); stroke-width: 7; }
+.chip-x .cx-ink { stroke: var(--danger); stroke-width: 4; }
+
+.chip.is-bad .chip-x {
+  opacity: 1;
+  /* 和棋盘红框同一拍淡入（.18s），别一个淡出来、一个弹出来 */
+  animation: chipXIn .18s ease-out both;
+}
+
+@keyframes chipXIn {
+  from { opacity: 0; transform: scale(.82) rotate(-8deg); }
+  to { opacity: 1; transform: none; }
+}
+
+/* 长按查看色块位置时，这颗色卡自己也「捏」一下 */
+.chip.is-hold {
+  transform: translateY(-2px) scale(1.16);
+  border-color: var(--ink);
+  box-shadow: 0 2px 0 rgba(58, 51, 53, .45);
+  z-index: 3;
+}
 
 /* 引导讲到某个色块时：这颗色卡一直亮着（不是闪一下），面板翻到下一步之前
    它都不会消失，慢慢对颜色也来得及。 */
@@ -1758,6 +1901,10 @@ button {
     <div class="board" id="board">
       <div class="grid" id="grid" role="grid" aria-label="皇后棋盘"></div>
       <svg class="rb" id="rb" aria-hidden="true"></svg>
+      <svg class="rl" id="rl" aria-hidden="true">
+        <g id="rlBad"></g>
+        <g id="rlPeek"></g>
+      </svg>
       <svg class="links" id="links" aria-hidden="true"></svg>
       <svg class="gl" id="gl" aria-hidden="true"></svg>
       <div class="gl-tags" id="glTags" aria-hidden="true"></div>
@@ -2132,6 +2279,9 @@ button {
   var boardEl = $('board');
   var gridEl = $('grid');
   var rbEl = $('rb');
+  var rlEl = $('rl');
+  var rlBad = $('rlBad');
+  var rlPeek = $('rlPeek');
   var linksEl = $('links');
   var hintEl = $('hint');
   var hintRowEl = $('hintRow');
@@ -2590,6 +2740,8 @@ button {
      ========================================================== */
   function buildBoard(deal) {
     var n = state.size;
+    endPeek();               // 换盘时把上局长按留下的高亮清掉
+    resetBad();              // 上局的红框 / 待提醒计时也一起作废
     gridEl.innerHTML = '';
     cellEls = [];
     lastStates = new Array(n * n).fill('');
@@ -2648,28 +2800,99 @@ button {
       chip.className = 'chip';
       chip.style.setProperty('--c', (state.regionColors || REGION_COLORS)[g]);
       chip.dataset.g = String(g);
-      chip.title = '色块 ' + (g + 1);
-      chip.addEventListener('click', (function (gg) {
-        return function () { flashRegion(gg); };
-      })(g));
+      chip.title = '长按查看色块 ' + (g + 1) + ' 的位置';
+      // 打叉笔画在这里先建好，靠 .is-bad 显形（CSS 建不了两笔手画的叉）
+      chip.innerHTML = '<svg class="chip-x" viewBox="0 0 24 24" aria-hidden="true">' +
+        '<path class="cx-case" d="M6.6 6.6l10.8 10.8M17.4 6.6L6.6 17.4"/>' +
+        '<path class="cx-ink" d="M6.6 6.6l10.8 10.8M17.4 6.6L6.6 17.4"/>' +
+        '</svg>';
+      // 长按：按下就在棋盘上把这块圈出来（不是把格子缩小 —— 缩放会在格间漏白缝，
+      // 像给整块镶了道白边，跟这套墨线美术完全不搭）。
+      chip.addEventListener('pointerdown', (function (gg, el) {
+        return function (e) {
+          // 只认主键 / 手指；右键、中键不参与
+          if (e.pointerType === 'mouse' && e.button !== 0) return;
+          e.preventDefault();
+          if (chipEls[gg] !== el) return;
+          if (el.setPointerCapture) {
+            try { el.setPointerCapture(e.pointerId); } catch (err) { /* 老浏览器忽略 */ }
+          }
+          el.classList.add('is-hold');
+          // 90ms 才算「按住」：轻轻点一下不该在棋盘上闪一下高亮，那看着像手抖
+          if (peekTimer) window.clearTimeout(peekTimer);
+          peekTimer = window.setTimeout(function () {
+            peekTimer = 0;
+            showPeek(gg);
+          }, 90);
+        };
+      })(g, chip));
       regionsEl.appendChild(chip);
       chipEls.push(chip);
     }
   }
 
-  function flashRegion(g) {
-    chipEls[g].classList.add('flash');
-    window.setTimeout(function () { chipEls[g].classList.remove('flash'); }, 260);
-    for (var i = 0; i < state.regions.length; i++) {
-      if (state.regions[i] !== g) continue;
-      var cell = cellEls[i];
-      cell.style.transition = 'transform .12s ease';
-      cell.style.transform = 'scale(.9)';
-      window.setTimeout(function (el) {
-        return function () { el.style.transform = ''; };
-      }(cell), 120);
-    }
+  /* ==========================================================
+     色块高亮（长按色卡）
+     ----------------------------------------------------------
+     用同一套描边：regionPath 生成的边界 + 墨线笔锋，外面罩一层这块自己的
+     高饱和色当光晕。松手即灭，不留任何状态。
+     ========================================================== */
+  var peekG = -1;
+  var peekTimer = 0;
+
+  function showPeek(g) {
+    var n = state.size;
+    var cell = cellSize();
+    if (!cell || !state.regions || g < 0 || g >= n) return;
+    var d = regionPath(n, state.regions, g, cell);
+    if (!d) return;
+
+    var size = n * cell;
+    rlEl.setAttribute('viewBox', '0 0 ' + size + ' ' + size);
+    rlEl.setAttribute('width', String(size));
+    rlEl.setAttribute('height', String(size));
+
+    rlPeek.innerHTML = '';
+    // 光晕跟着这块自己的颜色走：淡彩棋盘上，白边像缺口，本色光才像「这块亮了」
+    rlPeek.style.setProperty('--peek', glowOf((state.regionColors || REGION_COLORS)[g]));
+
+    var lw = cell < 26 ? 2.8 : 3.6;
+    // 先给整盘压一层极淡的墨（evenodd 把这块的格子抠掉）：旁边退下去，
+    // 这块自己就浮出来了。光靠加粗描边，大块淡彩里其实看不太出「是哪一块」。
+    rlPeek.appendChild(svgEl('path', {
+      d: 'M0 0h' + size + 'v' + size + 'h' + (-size) + 'z' + regionCellsPath(n, state.regions, g, cell),
+      'class': 'rl-peek-veil',
+      'fill-rule': 'evenodd'
+    }));
+    rlPeek.appendChild(svgEl('path', {
+      d: d, 'class': 'rl-peek-halo', 'stroke-width': lw * 3
+    }));
+    var line = svgEl('path', { d: d, 'class': 'rl-peek-line', 'stroke-width': lw });
+    rlPeek.appendChild(line);
+
+    // 像拿笔描一遍：起笔到收笔 0.24s
+    try {
+      var len = line.getTotalLength();
+      line.style.strokeDasharray = String(len);
+      line.style.setProperty('--len', String(len));
+      line.classList.add('is-draw');
+    } catch (e) { /* 老浏览器不画描边动画 */ }
+
+    peekG = g;
   }
+
+  function endPeek() {
+    if (peekTimer) { window.clearTimeout(peekTimer); peekTimer = 0; }
+    peekG = -1;
+    rlPeek.innerHTML = '';
+    for (var i = 0; i < chipEls.length; i++) chipEls[i].classList.remove('is-hold');
+  }
+
+  // 松手 / 手势被打断 / 窗口失焦，都算结束（指针被捕获在老色卡上时也能兜住）
+  window.addEventListener('pointerup', endPeek, true);
+  window.addEventListener('pointercancel', endPeek, true);
+  window.addEventListener('blur', endPeek);
+  regionsEl.addEventListener('contextmenu', function (e) { e.preventDefault(); });
 
   /* ==========================================================
      渲染
@@ -2686,6 +2909,10 @@ button {
     state.conflicts = cf;
     state.forced = forced;
     state.regionCounts = counts;
+    // 整块被 × 填满却没皇后的色块：棋盘描红边、色卡打叉，两处一起说同一件事。
+    // 注意这里只是「算出实情」，亮不亮由 syncBad 按 1s 防抖决定（见 drawBadRegions 上方）
+    var bad = state.status === 'playing' ? badRegions(auto) : [];
+    state.badRegions = bad;
 
     for (var i = 0; i < n * n; i++) {
       var cell = cellEls[i];
@@ -2745,7 +2972,10 @@ button {
     for (var g2 = 0; g2 < chipEls.length; g2++) {
       chipEls[g2].classList.toggle('is-done', counts[g2] === 1);
       chipEls[g2].classList.toggle('is-over', counts[g2] > 1);
+      chipEls[g2].classList.toggle('is-bad', badShown.indexOf(g2) >= 0);
     }
+
+    syncBad(bad);
 
     drawLinks(showConflict ? cf : { pairs: [], cells: new Set(), count: 0 });
     updateHint();
@@ -2803,6 +3033,148 @@ button {
       }
     }
     if (d) rbEl.appendChild(svgEl('path', { d: d }));
+  }
+
+  function cellSize() {
+    return parseFloat(getComputedStyle(boardEl).getPropertyValue('--cell')) || 0;
+  }
+
+  /* ---- 填错的色块 ----
+   * 一个色块整块都被 × 填满、却一颗皇后都没有：这块已经不可能放下了，
+   * 说明前面哪一步铺错了。手动打的 × 和自动标出的 × 都算 —— 自动 × 本来就是
+   * 从已放的皇后推出来的，推空同样说明局面有矛盾。
+   * 判据只看「还有没有没打叉的格子」，不看皇后数：
+   * 有皇后就不算错（哪怕别处有冲突，那是冲突线的活儿）。 */
+  function badRegions(auto) {
+    var n = state.size, total = n * n;
+    var hasQ = new Uint8Array(n);
+    var open = new Uint16Array(n);
+    for (var i = 0; i < total; i++) {
+      var g = state.regions[i];
+      if (state.marks[i] === 2) { hasQ[g] = 1; continue; }
+      if (state.marks[i] !== 1 && !auto[i]) open[g]++;
+    }
+    var list = [];
+    for (var k = 0; k < n; k++) if (!hasQ[k] && open[k] === 0) list.push(k);
+    return list;
+  }
+
+  var lastBadSig = '';
+
+  /* ---- 红框防抖 ----
+   * 双击放皇后时，第一下先把这一格打成 ×、第二下才落子：中间那几十毫秒里，
+   * 这块可能刚好被划满 × 且没有皇后，红框就会闪一下又消失 —— 明明没做错事。
+   * 所以「变错」要等够 BAD_DELAY 才算数（期间局面再变就重新等），
+   * 而「不再错」立刻收回：宁可晚一点提醒，也不让红框多留一帧。 */
+  var BAD_DELAY = 1000;
+  var badShown = [];      // 已经亮在棋盘上的那几块
+  var badPending = null;  // 正在等计时的那几块
+  var badTimer = 0;
+  var badVisible = false; // 红框此刻是不是亮的（亮灭交给 #rlBad.is-on 过渡）
+
+  function sameBad(a, b) {
+    if (!a || !b || a.length !== b.length) return false;
+    for (var i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+    return true;
+  }
+
+  /* 亮灭都走同一条 .16s 的 opacity 过渡：灭的时候 DOM 留在原地，透明就看不见了。
+     这样「同一块又错了」时不必重建 path，淡入直接从 0 起，不会闪。 */
+  function paintBad(list) {
+    if (!list || !list.length) {
+      if (badVisible) {
+        badVisible = false;
+        rlBad.classList.remove('is-on');
+      }
+      return;
+    }
+    drawBadRegions(list);
+    if (!badVisible) {
+      badVisible = true;
+      // 先让「画好但透明」这一帧落地，再上 is-on，过渡才会真的播出来
+      rlBad.getBoundingClientRect();
+      rlBad.classList.add('is-on');
+    }
+  }
+
+  function applyBad(list) {
+    badShown = list.slice();
+    state.badShown = badShown;
+    for (var i = 0; i < chipEls.length; i++) {
+      chipEls[i].classList.toggle('is-bad', badShown.indexOf(i) >= 0);
+    }
+    var wasVisible = badVisible;
+    paintBad(badShown);
+    // 亮起来的那一下才震：这是「这块已经摆不下了」的唯一触觉信号
+    if (!wasVisible && badVisible && list.length) buzz([14, 46, 14]);
+  }
+
+  function syncBad(list) {
+    if (!list.length) {
+      // 不再错：立即收回，并取消还没到点的提醒
+      if (badTimer) { window.clearTimeout(badTimer); badTimer = 0; }
+      badPending = null;
+      if (badShown.length) applyBad([]);
+      return;
+    }
+    if (badVisible && sameBad(list, badShown)) {
+      // 已经亮着、且就是这几块：等着的那次提醒作废
+      if (badTimer) { window.clearTimeout(badTimer); badTimer = 0; }
+      badPending = null;
+      return;
+    }
+    // 同一批还在等：别重新计时，否则一直动就一直不提醒
+    if (badTimer && sameBad(list, badPending)) return;
+    if (badTimer) window.clearTimeout(badTimer);
+    badPending = list.slice();
+    badTimer = window.setTimeout(function () {
+      badTimer = 0;
+      var fire = badPending || [];
+      badPending = null;
+      applyBad(fire);
+    }, BAD_DELAY);
+  }
+
+  function resetBad() {
+    if (badTimer) { window.clearTimeout(badTimer); badTimer = 0; }
+    badPending = null;
+    badShown = [];
+    state.badShown = [];
+    badVisible = false;
+    if (rlBad) {
+      rlBad.classList.remove('is-on');
+      rlBad.innerHTML = '';
+    }
+    lastBadSig = '';
+  }
+
+  function drawBadRegions(list) {
+    if (!rlBad) return;
+    var n = state.size, cell = cellSize();
+    // 没变就不重画：path 一样的重建会把呼吸动画从头拨一遍，看着像抽了一下
+    var sig = (list || []).join(',') + '|' + cell + '|' + n;
+    if (!cell || !state.regions || !list || !list.length) {
+      rlBad.innerHTML = '';
+      lastBadSig = '';
+      return;
+    }
+    if (sig === lastBadSig) return;
+    lastBadSig = sig;
+    rlBad.innerHTML = '';
+
+    var size = n * cell;
+    rlEl.setAttribute('viewBox', '0 0 ' + size + ' ' + size);
+    rlEl.setAttribute('width', String(size));
+    rlEl.setAttribute('height', String(size));
+
+    var lw = cell < 26 ? 2.8 : 3.4;
+    for (var i = 0; i < list.length; i++) {
+      var d = regionPath(n, state.regions, list[i], cell);
+      if (!d) continue;
+      rlBad.appendChild(svgEl('path', { d: d, 'class': 'rl-bad-fill' }));
+      rlBad.appendChild(svgEl('path', { d: d, 'class': 'rl-bad-halo', 'stroke-width': lw * 3.4 }));
+      rlBad.appendChild(svgEl('path', { d: d, 'class': 'rl-bad-line', 'stroke-width': lw }));
+    }
   }
 
   function drawLinks(cf) {
@@ -2907,6 +3279,10 @@ button {
     gridEl.style.setProperty('--n', String(n));
 
     drawRegionBorders();
+    // 只重画看得见的那层：已经淡出的旧 path 不用管，下次亮之前会按新格子重画
+    if (badVisible) drawBadRegions(state.badShown || []);
+    // 格子尺寸变了，长按中的高亮也跟着重量一遍（否则横屏一转就错位）
+    if (peekG >= 0) showPeek(peekG);
     drawLinks(state.conflicts || { pairs: [], cells: new Set(), count: 0 });
     // 格子尺寸变了，圈画层里的坐标也得跟着重画（否则横屏一转就错位）
     if (guide.open && guide.plan && guide.plan.steps[guide.at]) {
@@ -3290,6 +3666,18 @@ button {
     return d;
   }
 
+  /* 一个色块占的所有格子（每格一个闭合矩形）：
+     配合 evenodd 和外框一起用，等于「整盘挖掉这块」。 */
+  function regionCellsPath(n, regions, g, cell) {
+    var d = '';
+    for (var i = 0; i < n * n; i++) {
+      if (regions[i] !== g) continue;
+      var x = (i % n) * cell, y = ((i / n) | 0) * cell;
+      d += 'M' + x + ' ' + y + 'h' + cell + 'v' + cell + 'h' + (-cell) + 'z';
+    }
+    return d;
+  }
+
   function addTag(text, x, y, kind) {
     var tag = document.createElement('span');
     tag.className = 'gl-tag' + (kind ? ' is-' + kind : '');
@@ -3321,6 +3709,8 @@ button {
     var cell = parseFloat(getComputedStyle(boardEl).getPropertyValue('--cell')) || 0;
     glEl.innerHTML = '';
     glTags.innerHTML = '';
+    // 引导一开，色块错误红光就让位：同一时刻只讲一件事
+    rlEl.classList.toggle('is-guide', !!hl);
     if (!hl || !cell) { setChipHints([]); return; }
 
     var size = n * cell;
