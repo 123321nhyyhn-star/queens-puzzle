@@ -25,6 +25,10 @@
   max-height: 92svh;
   overflow-y: auto;
   overscroll-behavior: contain;
+  /* 面板自己滚，但不画滚动条：内容超了照样能滑（手指 / 滚轮都行），
+     少一根灰条，卡片两侧的圆角与描边才是干净的。 */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   padding: 16px 18px calc(18px + env(safe-area-inset-bottom, 0px));
   background: var(--bg-card);
   border: 2px solid var(--ink);
@@ -32,6 +36,8 @@
   border-radius: 22px 22px 0 0;
   animation: slideUp .26s var(--spring) both;
 }
+
+.sheet::-webkit-scrollbar { width: 0; height: 0; display: none; }
 
 .sheet-head {
   display: flex;
@@ -181,4 +187,47 @@
 /* 「不限」选中还是素色；选了具体分钟数就用橙底——挑战是真开着的 */
 .lbtn.is-on { background: var(--bg-neutral); color: var(--ink); }
 .lbtn.is-on:not([data-limit="0"]) { background: #F2762E; color: #FFFFFF; }
+
+/* ============================================================
+   「显示更多选项」
+   ------------------------------------------------------------
+   换一局以下的那一坨（开关 + 分享）默认收起来：打开设置多半只是想换局，
+   一屏塞满开关反而找不到那个最大的按钮。点一下展开，状态不写盘。
+   ============================================================ */
+.more-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin: 10px 0 2px;
+  padding: 8px 10px;
+  border: 2px dashed rgba(58, 51, 53, .3);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--ink-mute);
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: .4px;
+  cursor: pointer;
+  transition: background var(--t-fast), color var(--t-fast), border-color var(--t-fast);
+}
+
+.more-btn:hover { background: var(--bg-body); color: var(--ink); }
+
+.more-btn:active { transform: translateY(1px); }
+
+.more-caret {
+  flex: 0 0 auto;
+  transition: transform .18s var(--spring);
+}
+
+.more-btn[aria-expanded="true"] .more-caret { transform: rotate(180deg); }
+
+/* 展开的那一叠：从按钮底下淡进来，别一下子把面板顶高一大截 */
+.sheet-more {
+  animation: fadeIn .18s ease both;
+}
+
+.sheet-more .switch-row:first-child { padding-top: 12px; }
 

@@ -8,8 +8,8 @@
  * 而棋盘上的变动走 **0.5 秒防抖**——手停下来才一起淡下去。
  *
  * 覆盖：
- *   1. 设置里有这两个开关、默认 × 淡 / 皇后不淡、aria 与标签对得上（文案不点名具体外观）
- *   2. 默认：× 格（手标 + 自动）0.5 秒后透成纸色；空格永不淡
+ *   1. 设置里有这两个开关、**两个默认都关**、aria 与标签对得上（文案不点名具体外观）
+ *   2. 拨开「淡化 ×」后：× 格（手标 + 自动）0.5 秒后透成纸色；空格永不淡
  *   3. 皇后默认不淡；打开开关立刻淡（不等防抖），关掉立刻回来
  *   4. 防抖：落子后 250ms 还没淡、600ms 之后淡了；连涂会从最后一笔重新计时
  *   5. 已经淡着的格子不跟着闪：新落一子只点亮那一格
@@ -76,6 +76,9 @@ console.log('\n--- 设置里的两个开关 ---');
 await page.click('#btnSettings');
 await page.waitForFunction(() => !document.getElementById('sheetWrap').hidden);
 await sleep(300);
+// 开关折在「显示更多选项」里，先展开再点
+await page.click('#btnMoreOpts');
+await sleep(260);
 const ui = await page.evaluate(() => {
   const m = document.getElementById('swFadeMark');
   const q = document.getElementById('swFadeQueen');
@@ -89,22 +92,29 @@ const ui = await page.evaluate(() => {
   };
 });
 ok('两个开关都在设置里', ui.mark.exists && ui.queen.exists);
-ok('默认：淡化 × 开、淡化皇后关',
-  ui.mark.checked === 'true' && ui.queen.checked === 'false' &&
-  ui.settings.mark === true && ui.settings.queen === false,
+ok('默认：两个都关（淡化 × 不再默认开）',
+  ui.mark.checked === 'false' && ui.queen.checked === 'false' &&
+  ui.settings.mark === false && ui.settings.queen === false,
   ui.settings);
 ok('标题与说明写清了 0.5 秒', /淡化 ×/.test(ui.mark.text) && /0\.5 秒/.test(ui.mark.text), ui.mark.text);
 ok('文案不点名具体外观（以后加新外观不用改字）',
   !/(小猫|圆点|「点」|叉的样式)/.test(ui.mark.text + ui.queen.text) && /外观/.test(ui.queen.text),
   `${ui.mark.text} / ${ui.queen.text}`);
-ok('开关紧跟在自动打叉后面',
-  ui.order.indexOf('swFadeMark') === ui.order.indexOf('swAuto') + 1 &&
-  ui.order.indexOf('swFadeQueen') === ui.order.indexOf('swAuto') + 2,
+ok('两个淡化开关挨在一起（自动打叉 / 拖动对齐之后）',
+  ui.order.indexOf('swFadeMark') === ui.order.indexOf('swAlignDrag') + 1 &&
+  ui.order.indexOf('swFadeQueen') === ui.order.indexOf('swAlignDrag') + 2,
   ui.order.join(','));
 await page.screenshot({ path: SHOTS + '22-fade-sheet.png' });
 
-// ---------- 2. 默认行为 ----------
-console.log('\n--- 默认：× 淡、皇后不淡 ---');
+// ---------- 2. 拨开「淡化 ×」后的行为 ----------
+console.log('\n--- 拨开淡化 ×：× 淡、皇后不淡 ---');
+await page.evaluate(() => document.getElementById('swFadeMark').click());
+await sleep(150);
+ok('拨开后设置与存档都跟上', await page.evaluate(() =>
+  __QUEENS_DEBUG__.settings.fadeMark === true &&
+  JSON.parse(localStorage.getItem('queens.settings.v1') || '{}').fadeMark === true));
+await page.evaluate(() => document.getElementById('btnCloseSheet').click());
+await sleep(320);
 const st = await setup();
 await sleep(120);
 const fresh = await page.evaluate(() => ({

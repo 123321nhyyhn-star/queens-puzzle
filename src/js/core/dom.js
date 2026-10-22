@@ -94,6 +94,7 @@ export var resTime = $('resTime');
 export var resTimeLbl = $('resTimeLbl');
 export var resHints = $('resHints');
 export var btnAgain = $('btnAgain');
+export var btnReplay = $('btnReplay');
 export var btnPeek = $('btnPeek');
 
 export var fxEl = $('fx');
@@ -103,12 +104,17 @@ export var srStatus = $('srStatus');
  * 但也放在这里，保证「元素引用只在一处取」这条约定不被打破。 */
 export var sizeStepperEl = $('sizeStepper');
 export var swAuto = $('swAuto');
+export var swAlignDrag = $('swAlignDrag');
 export var swFadeMark = $('swFadeMark');
 export var swFadeQueen = $('swFadeQueen');
 export var swConflict = $('swConflict');
 export var swForced = $('swForced');
 export var swSound = $('swSound');
 export var swHaptics = $('swHaptics');
+/* 「显示更多选项」：换一局以下的那堆开关与分享都折在这块里 */
+export var btnMoreOpts = $('btnMoreOpts');
+export var moreOptsLabel = $('moreOptsLabel');
+export var sheetMore = $('sheetMore');
 /* 挑战那一组 */
 export var swNoHint = $('swNoHint');
 export var swNoUndo = $('swNoUndo');

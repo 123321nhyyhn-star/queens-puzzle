@@ -12,10 +12,14 @@ import { queenCount } from '../game/rules.js';
  * 这期间 render() 触发的 updateHint() 不应该把话抢回去。 */
 var hintTimer = null;
 
-/* 常态那句「轻点标 ×」跟着外观走：换成「点」以后还念 × 会让人找不到东西 */
+/* 常态那句「轻点标 ×」跟着外观走：换成「点」以后还念 × 会让人找不到东西。
+ * 拖动方式（按行列对齐 / 随意涂）也是同一件事，一起在文案里说清楚。 */
 function idleHint() {
   for (var i = 0; i < MARK_STYLES.length; i++) {
-    if (MARK_STYLES[i].id === settings.markStyle) return MARK_STYLES[i].hint;
+    var st = MARK_STYLES[i];
+    if (st.id !== settings.markStyle) continue;
+    if (!settings.alignDrag && st.hintFree) return st.hintFree;
+    return st.hint;
   }
   return MARK_STYLES[0].hint;
 }

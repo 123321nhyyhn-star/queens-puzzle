@@ -6,8 +6,8 @@
 import { buzz, sfx } from '../core/audio.js';
 import { limitExpired, stopTimer } from '../core/clock.js';
 import { limitLabel, REDUCE_MOTION } from '../core/config.js';
-import { boardEl, btnAgain, btnPeek, fxEl, resHints, resSize, resTime, resTimeLbl, resultEl,
-  resultKicker, resultSub, resultTitle } from '../core/dom.js';
+import { boardEl, btnAgain, btnPeek, btnReplay, fxEl, resHints, resSize, resTime, resTimeLbl,
+  resultEl, resultKicker, resultSub, resultTitle } from '../core/dom.js';
 import { guide, settings, state, view } from '../core/state.js';
 import { add as addRecord } from '../core/records.js';
 import { save } from '../core/storage.js';
@@ -176,6 +176,8 @@ export function showResult() {
 
   btnAgain.textContent = lost ? '重试这一局' : '再来一局';
   btnPeek.textContent = lost ? '换一局新的' : '看看棋盘';
+  // 「重来这局」只在解开后露面：输掉的那屏第一个按钮就是重试同一盘，不必再给一个
+  btnReplay.hidden = lost;
 
   resultEl.hidden = false;
   window.setTimeout(function () { btnAgain.focus(); }, 80);

@@ -95,7 +95,10 @@
    不画边框、不在中间画东西：整格透出一层自己的颜色（--rc-glow 是这块底色
    的同色相加饱和版，见 glowOf），像这块自己亮了一下。
    因为光色贴着底色走，跟哪块都不撞色，也不会把格子切成「有框 / 没框」两种气质。
-   呼吸让它时隐时现，暗到几乎没有再慢慢亮回来，用动静而不是对比度来抓注意力。 */
+   呼吸让它时隐时现，暗到几乎没有再慢慢亮回来，用动静而不是对比度来抓注意力。
+
+   强度按「扫一眼就能看见」调过：只是把光调实（峰值更高、亮的那半拍更长），
+   仍然不描边——一局里同时被逼定的常常只有一两格，光够亮就够了。 */
 .cell.is-forced::before {
   content: "";
   position: absolute;
@@ -103,22 +106,21 @@
   /* 一层自己的颜色铺满整格（--rc-glow，见 glowOf），再压一小团极淡的白：
      纯平铺像「换了个颜色」，纯径向又像个圆球，两者叠起来才像这格自己发着光。 */
   background:
-    radial-gradient(circle at 50% 42%, rgba(255, 255, 255, .62) 0%, rgba(255, 255, 255, 0) 66%),
-    var(--rc-glow, rgba(58, 51, 53, .4));
+    radial-gradient(circle at 50% 42%, rgba(255, 255, 255, .78) 0%, rgba(255, 255, 255, 0) 64%),
+    var(--rc-glow, rgba(58, 51, 53, .45));
   pointer-events: none;
   opacity: 0;
-  animation: forcedGlow 3.2s ease-in-out infinite;
+  animation: forcedGlow 2.8s ease-in-out infinite;
 }
 
 /* 时隐时现：几乎看不见 → 亮起来 → 停半拍 → 再暗回去 */
 @keyframes forcedGlow {
-  0%, 100% { opacity: .03; }
-  40% { opacity: .44; }
-  58% { opacity: .44; }
+  0%, 100% { opacity: .04; }
+  34%, 62% { opacity: .68; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cell.is-forced::before { animation: none; opacity: .34; }
+  .cell.is-forced::before { animation: none; opacity: .55; }
 }
 
 .cell.stamp .mark {

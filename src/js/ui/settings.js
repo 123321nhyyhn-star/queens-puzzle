@@ -4,14 +4,14 @@
  * ========================================================================== */
 
 import { DIFF_BANDS, LIMIT_OPTIONS, limitLabel, normalizeLimit, SIZE_MAX, SIZE_MIN } from '../core/config.js';
-import { app, btnSettings, btnShuffle, challengeTitle, diffHint, diffOpts, limitHint,
-  limitOpts, quickRow, sheet, sheetNote, sheetWrap, shuffleHint, sizeMinus, sizePlus,
-  sizeStepperEl, sizeVal, swAuto, swConflict, swFadeMark, swFadeQueen, swForced, swHaptics,
-  swNoHint, swNoUndo, swSound } from '../core/dom.js';
+import { app, btnMoreOpts, btnSettings, btnShuffle, challengeTitle, diffHint, diffOpts, limitHint,
+  limitOpts, moreOptsLabel, quickRow, sheet, sheetMore, sheetNote, sheetWrap, shuffleHint,
+  sizeMinus, sizePlus, sizeStepperEl, sizeVal, swAlignDrag, swAuto, swConflict, swFadeMark,
+  swFadeQueen, swForced, swHaptics, swNoHint, swNoUndo, swSound } from '../core/dom.js';
 import { pending, settings, state, view } from '../core/state.js';
 import { saveSettings } from '../core/storage.js';
 import { announce, clamp } from '../core/utils.js';
-import { refreshShareCode } from './share.js';
+import { fitShareCode, refreshShareCode } from './share.js';
 
 /* ==========================================================
    挑战：限时挡位
@@ -102,6 +102,7 @@ export function syncSheet() {
   }
 
   swAuto.setAttribute('aria-checked', settings.autoMark ? 'true' : 'false');
+  swAlignDrag.setAttribute('aria-checked', settings.alignDrag ? 'true' : 'false');
   swFadeMark.setAttribute('aria-checked', settings.fadeMark ? 'true' : 'false');
   swFadeQueen.setAttribute('aria-checked', settings.fadeQueen ? 'true' : 'false');
   swConflict.setAttribute('aria-checked', settings.conflict ? 'true' : 'false');
@@ -161,6 +162,27 @@ export function syncShuffleRow() {
     : '换一幅新棋盘，上面的棋盘大小、目标难度与挑战一起生效';
 }
 
+/* ==========================================================
+   「显示更多选项」
+   ----------------------------------------------------------
+   默认只摊开「换一局」和它上面那几组——打开设置十次有九次只是想换个局，
+   开关和分享不该每次都铺在眼前。展开状态记在 view 上，只活在这一次会话里，
+   不写盘：刷新页面就回到收起的样子。
+   ========================================================== */
+export function setMoreOpen(open) {
+  view.sheetMore = !!open;
+  sheetMore.hidden = !view.sheetMore;
+  btnMoreOpts.setAttribute('aria-expanded', view.sheetMore ? 'true' : 'false');
+  moreOptsLabel.textContent = view.sheetMore ? '收起更多选项' : '显示更多选项';
+  // 分享框刚从 hidden 里出来时高度是 0，露出来之后再量一次
+  if (view.sheetMore) fitShareCode();
+}
+
+export function toggleMore() {
+  setMoreOpen(!view.sheetMore);
+  announce(view.sheetMore ? '已展开全部设置' : '已收起更多选项');
+}
+
 export function openSheet() {
   if (view.sheetOpen) return;
   view.sheetOpen = true;
@@ -171,6 +193,7 @@ export function openSheet() {
   pending.noHint = !!settings.noHint;
   pending.noUndo = !!settings.noUndo;
   syncSheet();
+  setMoreOpen(view.sheetMore);   // 沿用这次会话里上次的展开状态
   sheetWrap.hidden = false;
   refreshShareCode();   // 露出后再量高度，长代码才能自动撑开
   if ('inert' in HTMLElement.prototype) app.inert = true;

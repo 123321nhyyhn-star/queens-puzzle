@@ -205,54 +205,71 @@
       <p class="shuffle-hint" id="shuffleHint">换一幅新棋盘，上面的棋盘大小、目标难度与挑战一起生效</p>
     </div>
 
-    <div class="switch-row">
-      <div class="stepper-label">自动打 ×<small>同行、同列、相邻格和整片同色块都会自动打叉</small></div>
-      <button class="switch" id="swAuto" type="button" role="switch" aria-checked="true" aria-label="自动标记"></button>
-    </div>
+    <!-- 「更多选项」：默认只露出换一局和它上面那几组，开关与分享折在里面。
+         展开状态只活在这一次会话（view.sheetMore），刷新页面就收回去。 -->
+    <button class="more-btn" id="btnMoreOpts" type="button" aria-expanded="false" aria-controls="sheetMore">
+      <span id="moreOptsLabel">显示更多选项</span>
+      <svg class="more-caret" width="12" height="12" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M6 9l6 6 6-6"></path>
+      </svg>
+    </button>
 
-    <div class="switch-row">
-      <div class="stepper-label">淡化 ×<small>打过 × 的格子整格透成背景色，手停 0.5 秒后生效</small></div>
-      <button class="switch" id="swFadeMark" type="button" role="switch" aria-checked="true" aria-label="淡化叉"></button>
-    </div>
-
-    <div class="switch-row">
-      <div class="stepper-label">淡化皇后<small>放了皇后的格子整格透成背景色，换什么外观都一样</small></div>
-      <button class="switch" id="swFadeQueen" type="button" role="switch" aria-checked="false" aria-label="淡化皇后"></button>
-    </div>
-
-    <div class="switch-row">
-      <div class="stepper-label">冲突高亮<small>皇后互相冲突时闪红并连线</small></div>
-      <button class="switch" id="swConflict" type="button" role="switch" aria-checked="true" aria-label="冲突高亮"></button>
-    </div>
-
-    <div class="switch-row">
-      <div class="stepper-label">唯一位置提示<small>某行、某列或某个色块只剩一格没标 × 时，这格会亮一下</small></div>
-      <button class="switch" id="swForced" type="button" role="switch" aria-checked="true" aria-label="唯一位置提示"></button>
-    </div>
-
-    <div class="switch-row">
-      <div class="stepper-label">音效<small>落子、打叉、冲突与胜利提示音</small></div>
-      <button class="switch" id="swSound" type="button" role="switch" aria-checked="true" aria-label="音效"></button>
-    </div>
-
-    <div class="switch-row">
-      <div class="stepper-label">震动<small>手机上的触感反馈</small></div>
-      <button class="switch" id="swHaptics" type="button" role="switch" aria-checked="true" aria-label="震动"></button>
-    </div>
-
-    <div class="share">
-      <div class="share-head">
-        <div class="stepper-label">分享这一局<small>复制代码发给朋友，他粘进来就能玩同一盘</small></div>
-        <span class="share-tag" id="shareTag">8×8</span>
+    <div class="sheet-more" id="sheetMore" hidden>
+      <div class="switch-row">
+        <div class="stepper-label">自动打 ×<small>同行、同列、相邻格和整片同色块都会自动打叉</small></div>
+        <button class="switch" id="swAuto" type="button" role="switch" aria-checked="true" aria-label="自动标记"></button>
       </div>
-      <textarea class="share-code" id="shareCode" rows="2" spellcheck="false"
-        autocomplete="off" autocapitalize="off" autocorrect="off" wrap="soft"
-        aria-label="棋盘代码：可以直接复制，也可以粘贴别人的代码"></textarea>
-      <div class="share-btns">
-        <button class="btn" id="btnCopyCode" type="button">复制代码</button>
-        <button class="btn btn-hint" id="btnLoadCode" type="button">载入代码</button>
+
+      <div class="switch-row">
+        <div class="stepper-label">拖动按行列对齐<small>开着时长按拖动只涂一行或一列；关掉后可以顺着手指轨迹随意涂</small></div>
+        <button class="switch" id="swAlignDrag" type="button" role="switch" aria-checked="true" aria-label="拖动按行列对齐"></button>
       </div>
-      <p class="share-status" id="shareStatus" aria-live="polite"></p>
+
+      <div class="switch-row">
+        <div class="stepper-label">淡化 ×<small>打过 × 的格子整格透成背景色，手停 0.5 秒后生效</small></div>
+        <button class="switch" id="swFadeMark" type="button" role="switch" aria-checked="false" aria-label="淡化叉"></button>
+      </div>
+
+      <div class="switch-row">
+        <div class="stepper-label">淡化皇后<small>放了皇后的格子整格透成背景色，换什么外观都一样</small></div>
+        <button class="switch" id="swFadeQueen" type="button" role="switch" aria-checked="false" aria-label="淡化皇后"></button>
+      </div>
+
+      <div class="switch-row">
+        <div class="stepper-label">冲突高亮<small>皇后互相冲突时闪红并连线</small></div>
+        <button class="switch" id="swConflict" type="button" role="switch" aria-checked="true" aria-label="冲突高亮"></button>
+      </div>
+
+      <div class="switch-row">
+        <div class="stepper-label">唯一位置提示<small>某行、某列或某个色块只剩一格没标 × 时，这格会亮一下</small></div>
+        <button class="switch" id="swForced" type="button" role="switch" aria-checked="true" aria-label="唯一位置提示"></button>
+      </div>
+
+      <div class="switch-row">
+        <div class="stepper-label">音效<small>落子、打叉、冲突与胜利提示音</small></div>
+        <button class="switch" id="swSound" type="button" role="switch" aria-checked="true" aria-label="音效"></button>
+      </div>
+
+      <div class="switch-row">
+        <div class="stepper-label">震动<small>手机上的触感反馈</small></div>
+        <button class="switch" id="swHaptics" type="button" role="switch" aria-checked="true" aria-label="震动"></button>
+      </div>
+
+      <div class="share">
+        <div class="share-head">
+          <div class="stepper-label">分享这一局<small>复制代码发给朋友，他粘进来就能玩同一盘</small></div>
+          <span class="share-tag" id="shareTag">8×8</span>
+        </div>
+        <textarea class="share-code" id="shareCode" rows="2" spellcheck="false"
+          autocomplete="off" autocapitalize="off" autocorrect="off" wrap="soft"
+          aria-label="棋盘代码：可以直接复制，也可以粘贴别人的代码"></textarea>
+        <div class="share-btns">
+          <button class="btn" id="btnCopyCode" type="button">复制代码</button>
+          <button class="btn btn-hint" id="btnLoadCode" type="button">载入代码</button>
+        </div>
+        <p class="share-status" id="shareStatus" aria-live="polite"></p>
+      </div>
     </div>
   </div>
 </div>
@@ -368,7 +385,10 @@
       <div class="result-stat"><b id="resHints">0</b><span>提示</span></div>
     </div>
     <button class="btn btn-hint" id="btnAgain" type="button">再来一局</button>
-    <button class="btn-text" id="btnPeek" type="button">看看棋盘</button>
+    <div class="result-links">
+      <button class="btn-text" id="btnReplay" type="button">重来这局</button>
+      <button class="btn-text" id="btnPeek" type="button">看看棋盘</button>
+    </div>
   </div>
 </div>
 

@@ -9,6 +9,11 @@ export var STORE_SETTINGS = 'queens.settings.v1';
 export var STORE_GAME = 'queens.game.v1';
 export var STORE_RECORDS = 'queens.records.v1';
 
+/* 设置的存档版本：改了某个默认值、又想让老存档跟上新默认值时 +1。
+ *   v2：淡化 × 改成默认关闭（一铺半盘的 × 全淡下去，反而看不出棋盘的进度）。
+ * 老存档（没有 sv 字段）里这一项一律按新默认走，别的偏好照旧保留。 */
+export var SETTINGS_VERSION = 2;
+
 /* 战绩：最多留多少条（新的在前，超出丢最老的）、列表一次画多少条、
  * 排行榜每组最多显示几名。都只影响展示，不影响统计。 */
 export var RECORD_MAX = 300;
@@ -58,6 +63,9 @@ export var DEFAULT_SETTINGS = {
   forced: true,
   sound: true,
   haptics: true,
+  /* 拖动标 × 的落点方式：开着按行列对齐（锁一行 / 一列，见 events.js），
+   * 关掉就跟着手指走，想斜着涂也随便。 */
+  alignDrag: true,
   // 挑战（即时生效，也跟着存盘）
   timeLimit: 0,     // 本局限时（毫秒），0 = 不限时
   noHint: false,    // 禁用提示
@@ -66,9 +74,9 @@ export var DEFAULT_SETTINGS = {
   markStyle: 'x',
   pieceStyle: 'queen',
   /* 淡化（即时生效）：填过的格子退到后面去，别跟空格抢眼睛。
-   * × 是真正的干扰源（自动标记一铺就是半盘），默认开着；
-   * 皇后一局只有 n 只、还是解题的主线，默认不淡，想要安静再自己开。 */
-  fadeMark: true,
+   * 默认都关着——淡下去以后「这格处理过了」的分量也跟着没了，
+   * 想要安静的棋盘再自己开。 */
+  fadeMark: false,
   fadeQueen: false
 };
 
@@ -80,8 +88,10 @@ export var DEFAULT_SETTINGS = {
    加一套样式 = 这里加一条 + 补一条对应的 CSS（见 17-look.css）。
    ========================================================== */
 export var MARK_STYLES = [
-  { id: 'x', name: '叉', hint: '轻点标 ×，按住可整行整列连涂' },
-  { id: 'dot', name: '点', hint: '轻点标记，按住可整行整列连涂' }
+  { id: 'x', name: '叉', hint: '轻点标 ×，按住可整行整列连涂',
+    hintFree: '轻点标 ×，按住可以顺着手指随意涂' },
+  { id: 'dot', name: '点', hint: '轻点标记，按住可整行整列连涂',
+    hintFree: '轻点标记，按住可以顺着手指随意涂' }
 ];
 
 export var PIECE_STYLES = [

@@ -116,7 +116,7 @@ let ui = await sheetUi();
 ok('挑战组在「换一局」之上', ui.aboveShuffle);
 ok('限时挡位 5 个且首个是「不限」', ui.labels.length === 5 && ui.labels[0] === '不限', ui.labels);
 ok('默认选中「不限」', ui.on.length === 1 && ui.on[0] === '不限', ui.on);
-ok('开关共 9 个', ui.switches === 9, ui.switches);
+ok('开关共 10 个（多了「拖动按行列对齐」）', ui.switches === 10, ui.switches);
 ok('没有未落地改动时标题是「挑战」', ui.title === '挑战' && !ui.titlePending, ui.title);
 ok('面板不横向溢出', ui.overflowX <= 0, ui.overflowX);
 await page.screenshot({ path: `${SHOTS}/d1-sheet.png` });

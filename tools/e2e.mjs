@@ -79,11 +79,22 @@ const tap = async (i, { dbl = false, gap = 90 } = {}) => {
   await sleep(220);
 };
 
+// 设置面板默认只露出「换一局」以上，开关与分享折在「显示更多选项」里；
+// 要动它们先点开——这也顺带验了折叠本身没把谁藏死。
+const openMore = async () => {
+  const hidden = await page.evaluate(() => {
+    const sm = document.getElementById('sheetMore');
+    return !sm || sm.hidden;
+  });
+  if (hidden) { await page.click('#btnMoreOpts'); await sleep(300); }
+};
+
 // 自动打叉的开关只剩设置面板里一处（顶栏那颗按钮已换成「外观」），
 // 所以就着这个面板来回切，顺手把「面板开着时棋盘不动」一并验了。
 const setAutoMark = async (want) => {
   const open = await page.evaluate(() => !document.getElementById('sheetWrap').hidden);
   if (!open) { await page.click('#btnSettings'); await sleep(420); }
+  await openMore();
   const cur = await page.evaluate(() =>
     document.getElementById('swAuto').getAttribute('aria-checked') === 'true');
   if (cur !== want) { await page.click('#swAuto'); await sleep(300); }
@@ -182,6 +193,7 @@ check('顶栏不再有自动打叉按钮（换成外观）', await page.evaluate
 
 await page.click('#btnSettings');
 await sleep(420);
+await openMore();
 await page.click('#swAuto');
 await sleep(300);
 const autoOff = await page.evaluate(() => ({
@@ -496,6 +508,7 @@ check('恢复自动打叉后提示回到 1 格', restored.on === true && restore
 
 await page.click('#btnSettings');
 await sleep(420);
+await openMore();
 await page.click('#swForced');
 await sleep(260);
 const forcedOff = await page.evaluate(() => ({
@@ -562,9 +575,9 @@ const sheet = await page.evaluate(() => {
 });
 check('设置面板打开', sheet.open, `inView=${sheet.inView}`);
 check('设置面板完整可见', sheet.inView);
-// 7 个偏好开关（自动打叉 / 淡化 × / 淡化皇后 / 冲突 / 唯一位置 / 音效 / 震动）
+// 8 个偏好开关（自动打叉 / 拖动对齐 / 淡化 × / 淡化皇后 / 冲突 / 唯一位置 / 音效 / 震动）
 // + 挑战里的「禁用提示 / 禁用撤销」
-check('开关数量', sheet.sw === 9, `sw=${sheet.sw}`);
+check('开关数量', sheet.sw === 10, `sw=${sheet.sw}`);
 check('快捷尺寸', sheet.quick >= 5, `quick=${sheet.quick}`);
 await page.screenshot({ path: `${OUT}/06-settings.png` });
 
@@ -635,6 +648,7 @@ await page.evaluate(() => __QUEENS_DEBUG__.newGame(8));
 await sleep(900);
 await page.click('#btnSettings');
 await sleep(420);
+await openMore();
 
 const share = await page.evaluate(() => {
   const d = __QUEENS_DEBUG__, n = d.state.size;
@@ -699,6 +713,7 @@ check('载入后面板收起并提示', pasted.closed && /已载入/.test(pasted
 // 坏代码被拒
 await page.click('#btnSettings');
 await sleep(400);
+await openMore();
 const badIn = await page.evaluate(() => {
   const ta = document.getElementById('shareCode');
   ta.value = 'QNS1-08-00112233445566778899AABBCCDDEEFF00112233445566778899AABBCCDDEEFF-01234567-ABCDEF';

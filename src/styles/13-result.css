@@ -80,6 +80,15 @@
 
 .result-card .btn { width: 100%; }
 
+/* 主按钮下面那排小字按钮：重来这局 / 看看棋盘 */
+.result-links {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+}
+
+.result-links .btn-text { margin-top: 8px; }
+
 /* 超时判负：同一张卡，红色调，按钮换成「重试这一局」 */
 .result[data-kind="lost"] .result-kicker { color: #C62828; }
 

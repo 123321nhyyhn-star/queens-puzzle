@@ -4,23 +4,31 @@
  * ========================================================================== */
 
 import { elapsedMs } from './clock.js';
-import { DIFF_ORDER, MARK_STYLES, PIECE_STYLES, normalizeLimit, SIZE_MAX, SIZE_MIN,
-  STORE_GAME, STORE_SETTINGS, styleId } from './config.js';
+import { DEFAULT_SETTINGS, DIFF_ORDER, MARK_STYLES, PIECE_STYLES, normalizeLimit,
+  SETTINGS_VERSION, SIZE_MAX, SIZE_MIN, STORE_GAME, STORE_SETTINGS, styleId } from './config.js';
 import { settings, state } from './state.js';
 import { clamp } from './utils.js';
 
 /* ==========================================================
    设置读写
    ========================================================== */
+/* 存盘时带上版本号：读的时候靠它判断「这个默认值是不是改过了」。
+ * sv 只出现在盘上，不塞进 settings 本体，免得有人把它当成一个偏好。 */
+function settingsJSON() {
+  return JSON.stringify(Object.assign({ sv: SETTINGS_VERSION }, settings));
+}
+
 export function loadSettings() {
   try {
     var raw = window.localStorage.getItem(STORE_SETTINGS);
     if (!raw) return;
     var s = JSON.parse(raw);
     if (!s || typeof s !== 'object') return;
+    var ver = parseInt(s.sv, 10) || 1;
     settings.size = clamp(parseInt(s.size, 10) || 8, SIZE_MIN, SIZE_MAX);
     settings.difficulty = DIFF_ORDER.indexOf(s.difficulty) >= 0 ? s.difficulty : 'any';
     settings.autoMark = s.autoMark !== false;
+    settings.alignDrag = s.alignDrag !== false;
     settings.conflict = s.conflict !== false;
     settings.forced = s.forced !== false;
     settings.sound = s.sound !== false;
@@ -31,15 +39,16 @@ export function loadSettings() {
     // 外观：老存档没这两个字段，认不出来的 id 也退回默认，不至于把棋盘画空
     settings.markStyle = styleId(MARK_STYLES, s.markStyle);
     settings.pieceStyle = styleId(PIECE_STYLES, s.pieceStyle);
-    // 淡化：老存档没这两个字段时照默认来（× 淡、皇后不淡）
-    settings.fadeMark = s.fadeMark !== false;
+    /* 淡化：v2 起「淡化 ×」默认关闭。老存档没法区分「用户自己开过」和
+     * 「旧默认开着」，所以干脆统一按新默认来——想淡回去面板里一拨就有。 */
+    settings.fadeMark = ver >= SETTINGS_VERSION ? s.fadeMark === true : DEFAULT_SETTINGS.fadeMark;
     settings.fadeQueen = s.fadeQueen === true;
   } catch (e) { /* file:// 或隐私模式忽略 */ }
 }
 
 export function saveSettings() {
   try {
-    window.localStorage.setItem(STORE_SETTINGS, JSON.stringify(settings));
+    window.localStorage.setItem(STORE_SETTINGS, settingsJSON());
   } catch (e) { /* 忽略 */ }
 }
 
@@ -57,7 +66,7 @@ export function save() {
 export function doSave() {
   saveTimer = null;
   try {
-    window.localStorage.setItem(STORE_SETTINGS, JSON.stringify(settings));
+    window.localStorage.setItem(STORE_SETTINGS, settingsJSON());
     if (!state.regions) return;
     var g = {
       v: 1,

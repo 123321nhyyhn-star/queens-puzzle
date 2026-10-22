@@ -67,6 +67,9 @@ export const view = {
   undo: [],
   redo: [],
   sheetOpen: false,
+  /* 设置面板的「更多选项」展开着没有。只活在这一次会话里：刷新页面就收回，
+   * 不写盘——大多数人打开设置只是换一局，开关那一堆不该每次都摊在眼前。 */
+  sheetMore: false,
   diffOpen: false,
   resultOpen: false,
   recordsOpen: false,

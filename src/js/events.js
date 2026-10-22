@@ -10,9 +10,9 @@ import { pauseTimer, startTimer } from './core/clock.js';
 import { DIFF_BANDS, DIFF_ORDER, SIZE_MAX, SIZE_MIN } from './core/config.js';
 import { btnAgain, btnClear, btnClearRecs, btnCloseDiff, btnCloseLook, btnCloseRec,
   btnCloseSheet, btnCopyCode, btnDiff, btnDiffDone, btnHint, btnLoadCode, btnLook, btnLookDone,
-  btnMoreRecs, btnNew, btnPeek, btnRecords, btnSettings, btnShuffle, btnSize, btnUndo,
-  coachClose, coachNext, coachPrev, diffBackdrop, diffOpts, diffSheet, gridEl, limChips,
-  limitOpts, lookBackdrop, lookSheet, lvChips, quickRow, recBackdrop, recList, boardList,
+  btnMoreOpts, btnMoreRecs, btnNew, btnPeek, btnRecords, btnReplay, btnSettings, btnShuffle,
+  btnSize, btnUndo, coachClose, coachNext, coachPrev, diffBackdrop, diffOpts, diffSheet, gridEl,
+  limChips, limitOpts, lookBackdrop, lookSheet, lvChips, quickRow, recBackdrop, recList, boardList,
   regionsEl, resultEl, shareCode, shareStatus, sheet, sheetBackdrop, sizeMinus, sizePlus,
   tabBoard, tabRecs } from './core/dom.js';
 import { guide, hasProgress, pending, settings, state, view } from './core/state.js';
@@ -23,12 +23,12 @@ import { decodeShare } from './game/share-code.js';
 import { closeDiff, openDiff } from './ui/difficulty.js';
 import { applyFadeNow } from './ui/fade.js';
 import { closeGuide, guideNext, guidePrev, useHint } from './ui/guide.js';
-import { flashHint } from './ui/hint.js';
+import { flashHint, updateHint } from './ui/hint.js';
 import { closeLook, openLook, pickLook } from './ui/look.js';
 import { pushHistory, redo, undo } from './app/history.js';
 import { render } from './ui/render.js';
 import { closeSheet, commitChallenge, challengeSummary, openSheet, setPendingLimit,
-  setPendingSize, syncSheet, trapFocus } from './ui/settings.js';
+  setPendingSize, syncSheet, toggleMore, trapFocus } from './ui/settings.js';
 import { copyText, isShareFocusHold, setShareStatus, shareReject, tryLoadShare } from './ui/share.js';
 import { dismissResult } from './ui/win.js';
 import { closeRecords, openRecords, pickChip, recAction, requestClearAll, showMore,
@@ -73,6 +73,10 @@ function paintOne(i, mode) {
     if (state.marks[i] !== 0) return false;
     if (state.auto && state.auto[i]) return false;
     state.marks[i] = 1;
+    /* 每涂上一格震一下：拖动时手指盖住了棋盘，靠这一下知道「这格算进去了」。
+     * 每次 pointermove 通常只跨一格，所以震动脉冲之间有空隙，听着是连点，
+     * 不是一直嗡嗡响。 */
+    buzz(4);
     return true;
   }
   if (mode === 'erase') {
@@ -154,23 +158,35 @@ gridEl.addEventListener('pointermove', function (e) {
     var ax = Math.abs(dx), ay = Math.abs(dy);
     var big = Math.max(ax, ay);
     if (big < PAINT_SLOP) return;
-    // 两个方向差不多时再等等，免得手指刚起手的一下抖动把方向判反
-    if (big < PAINT_SLOP * 2 && big < Math.min(ax, ay) * 1.8) return;
-    // 先明确的那个方向定死整笔走向：横向只涂这一行，纵向只涂这一列
-    stroke.axis = ax >= ay ? 'x' : 'y';
+    if (settings.alignDrag) {
+      // 两个方向差不多时再等等，免得手指刚起手的一下抖动把方向判反
+      if (big < PAINT_SLOP * 2 && big < Math.min(ax, ay) * 1.8) return;
+      // 先明确的那个方向定死整笔走向：横向只涂这一行，纵向只涂这一列
+      stroke.axis = ax >= ay ? 'x' : 'y';
+    } else {
+      // 不对齐：方向不重要，跟着指针走就是（'free' 只是「已经起笔」的标记）
+      stroke.axis = 'free';
+    }
     stroke.moved = true;
     state.lastTap = null;  // 开始拖动后就不再判双击，免得划回原格变放皇后
     gridEl.classList.add('is-painting');
   }
   e.preventDefault();
   var n = state.size;
-  var i = cellAt(e.clientX, e.clientY, true);
-  if (i < 0) return;
-  var r = stroke.startR;
-  var c = stroke.startC;
-  if (stroke.axis === 'x') c = i % n;
-  else r = (i / n) | 0;
-  var target = r * n + c;
+  var target;
+  if (stroke.axis === 'free') {
+    // 随便涂的格子：指针出棋盘就停手，不往边上贴（贴边会把边缘一整排都涂掉）
+    target = cellAt(e.clientX, e.clientY, false);
+    if (target < 0) return;
+  } else {
+    var i = cellAt(e.clientX, e.clientY, true);
+    if (i < 0) return;
+    var r = stroke.startR;
+    var c = stroke.startC;
+    if (stroke.axis === 'x') c = i % n;
+    else r = (i / n) | 0;
+    target = r * n + c;
+  }
   if (target === stroke.last) return;
   var changed = paintAlong(target, stroke.mode);
   stroke.last = target;
@@ -230,6 +246,8 @@ btnSettings.addEventListener('click', openSheet);
 btnSize.addEventListener('click', openSheet);
 btnCloseSheet.addEventListener('click', closeSheet);
 sheetBackdrop.addEventListener('click', closeSheet);
+/* 「显示更多选项」：只改面板露出多少，不碰任何设置；展开状态留在这一次会话里 */
+btnMoreOpts.addEventListener('click', toggleMore);
 
 /* ---- 外观：叉 / 皇后的样式，选完立刻生效 ---- */
 btnLook.addEventListener('click', openLook);
@@ -381,6 +399,11 @@ sheet.addEventListener('click', function (e) {
   if (id === 'swAuto') {
     settings.autoMark = !settings.autoMark;
     render();
+  } else if (id === 'swAlignDrag') {
+    // 拖动对齐只影响手指怎么涂，棋盘不用重画；提示行那句话跟着换
+    settings.alignDrag = !settings.alignDrag;
+    updateHint();
+    announce(settings.alignDrag ? '拖动：按行列对齐' : '拖动：可以随意涂');
   } else if (id === 'swFadeMark' || id === 'swFadeQueen') {
     // 淡化是纯外观，不用重画格子：只加减一个类。拨开关的人正盯着效果，
     // 这里不跟 0.5 秒防抖，立刻落地（见 ui/fade.js 的 applyFadeNow）。
@@ -416,6 +439,12 @@ btnAgain.addEventListener('click', function () {
   var lost = state.status === 'lost';
   dismissResult(true);
   if (lost) retryGame(); else newGame(state.size);
+});
+/* 重来这局：同一盘棋从零再下一遍（解开后才会露出来）。
+ * 输了那一屏的主按钮本来就是「重试这一局」，这里就不重复了。 */
+btnReplay.addEventListener('click', function () {
+  dismissResult(true);
+  retryGame();
 });
 btnPeek.addEventListener('click', function () {
   var lost = state.status === 'lost';
