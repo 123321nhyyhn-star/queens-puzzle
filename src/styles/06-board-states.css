@@ -1,0 +1,187 @@
+/* 06-board-states.css — 格子状态：×、皇后、冲突、被逼定、连线、翻入与胜利。 */
+
+/* ---- × ---- */
+.mark {
+  position: absolute;
+  inset: 0;
+  display: block;
+  opacity: 0;
+  transform: scale(.35) rotate(-14deg);
+  transition: opacity .14s ease, transform .22s var(--spring);
+  pointer-events: none;
+}
+
+.cell.is-x .mark,
+.cell.is-auto .mark {
+  opacity: 1;
+  transform: none;
+}
+
+.mark i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  /* 用 --cell 定尺寸而不是百分比：色块粗边会让格子内框窄 2px，
+     百分比会让带边的格子里的 × 略小一点，这里统一掉 */
+  width: calc(var(--cell, 40px) * .58);
+  height: calc(var(--cell, 40px) * .075);
+  min-height: 1.5px;
+  max-height: 3px;
+  border-radius: 2px;
+  background: var(--x-ink);
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.mark i + i { transform: translate(-50%, -50%) rotate(-45deg); }
+
+/* ---- 皇后 ---- */
+.piece {
+  position: absolute;
+  inset: 5%;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  opacity: 0;
+  transform: translateY(-130%) scale(.7);
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.cell.is-q .piece {
+  opacity: 1;
+  transform: none;
+  transition: transform .44s var(--spring-soft), opacity .12s ease;
+}
+
+.piece svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 calc(var(--cell, 40px) * .02) 0 rgba(255, 255, 255, .6));
+}
+
+.cell.drop .piece {
+  animation: queenDrop .46s cubic-bezier(.2, 1.3, .45, 1) both;
+}
+
+@keyframes queenDrop {
+  0% { opacity: 0; transform: translateY(-165%) scale(.72); }
+  55% { opacity: 1; transform: translateY(6%) scale(1.08, .92); }
+  76% { transform: translateY(-2%) scale(.97, 1.04); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ---- 冲突光环（提示不再画在格子上，改用 .gl 圈画层，见 12.5） ---- */
+.ring {
+  position: absolute;
+  inset: 4%;
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.cell.is-conflict .ring {
+  opacity: 1;
+  box-shadow: inset 0 0 0 2px var(--danger), 0 0 10px 2px rgba(255, 92, 92, .6);
+  animation: conflictPulse 1.05s ease-in-out infinite;
+}
+
+@keyframes conflictPulse {
+  0%, 100% { box-shadow: inset 0 0 0 2px var(--danger), 0 0 6px 1px rgba(255, 92, 92, .45); }
+  50% { box-shadow: inset 0 0 0 3px var(--danger), 0 0 16px 5px rgba(255, 92, 92, .75); }
+}
+
+/* ---- 「这一格被逼定了」的轻提示 ----
+   不画边框、不在中间画东西：整格透出一层自己的颜色（--rc-glow 是这块底色
+   的同色相加饱和版，见 glowOf），像这块自己亮了一下。
+   因为光色贴着底色走，跟哪块都不撞色，也不会把格子切成「有框 / 没框」两种气质。
+   呼吸让它时隐时现，暗到几乎没有再慢慢亮回来，用动静而不是对比度来抓注意力。 */
+.cell.is-forced::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  /* 一层自己的颜色铺满整格（--rc-glow，见 glowOf），再压一小团极淡的白：
+     纯平铺像「换了个颜色」，纯径向又像个圆球，两者叠起来才像这格自己发着光。 */
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255, 255, 255, .62) 0%, rgba(255, 255, 255, 0) 66%),
+    var(--rc-glow, rgba(58, 51, 53, .4));
+  pointer-events: none;
+  opacity: 0;
+  animation: forcedGlow 3.2s ease-in-out infinite;
+}
+
+/* 时隐时现：几乎看不见 → 亮起来 → 停半拍 → 再暗回去 */
+@keyframes forcedGlow {
+  0%, 100% { opacity: .03; }
+  40% { opacity: .44; }
+  58% { opacity: .44; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cell.is-forced::before { animation: none; opacity: .34; }
+}
+
+.cell.stamp .mark {
+  animation: stamp .32s var(--spring) both;
+  animation-delay: var(--stamp-delay, 0ms);
+}
+
+@keyframes stamp {
+  0% { opacity: 0; transform: scale(1.7) rotate(-16deg); }
+  60% { opacity: 1; }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+
+.cell.shake { animation: cellShake .3s ease; }
+
+@keyframes cellShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  50% { transform: translateX(2px); }
+  75% { transform: translateX(-1px); }
+}
+
+/* ---- 连线 ---- */
+.links {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.links line {
+  stroke: var(--danger);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 4 5;
+  opacity: .9;
+  animation: dashMove 1s linear infinite;
+}
+
+@keyframes dashMove {
+  to { stroke-dashoffset: -18; }
+}
+
+/* ---- 开局翻入 ---- */
+.cell.deal {
+  animation: dealIn .42s var(--spring) both;
+  animation-delay: var(--deal-delay, 0ms);
+}
+
+@keyframes dealIn {
+  from { opacity: 0; transform: scale(.72); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* ---- 胜利 ---- */
+.board.is-won .piece {
+  animation: winHop .5s var(--spring-soft) both;
+  animation-delay: var(--win-delay, 0ms);
+}
+
+@keyframes winHop {
+  0%, 100% { transform: translateY(0); }
+  45% { transform: translateY(-16%) scale(1.06); }
+}

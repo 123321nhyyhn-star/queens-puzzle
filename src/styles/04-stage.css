@@ -1,0 +1,108 @@
+/* 04-stage.css — 舞台：提示行、难度标签、棋盘外框定位。 */
+
+
+/* ============================================================
+   04. 舞台
+   ============================================================ */
+.stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 0 12px calc(10px + env(safe-area-inset-bottom, 0px));
+}
+
+/* 上下两块弹性空白，把「提示 + 棋盘 + 调色板」这一串贴在一起，
+   只让工具栏落到底部。比例 1:3 —— 上面留一点气，下面就够拇指按。
+   都写成 0 基准，空间紧张时它们会先缩到 0，不占棋盘的地方。 */
+.stage::before,
+.stage::after {
+  content: "";
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.stage::after { flex-grow: 3; }
+
+/* 工具栏排在这两块空白之后，自然被顶到最下面 */
+.stage .toolbar { order: 2; }
+
+.hint {
+  margin: 0;
+  text-align: center;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 17px;
+  color: var(--ink-faint);
+  transition: color var(--t-fast);
+  /* 最多两行：行高锁死，换行也不会把棋盘往下推 */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+.hint.is-alert { color: var(--ink); font-weight: 800; }
+.hint.is-ok { color: var(--ok); font-weight: 800; }
+
+/* ---- 提示行 + 难度标签（同一行：提示居中，难度靠右） ----
+   整行宽度跟着棋盘走（--board-w 由 relayout 写入），
+   这样小尺寸棋盘上「难度」也不会飘到屏幕最右边去。
+   高度写死 36px：文案换行、难度标签出现/消失都不会改变舞台里其它块的位置。
+   文案在「标签左边剩下的宽度」里居中 —— 不再额外镜像标签的宽度，
+   否则 4×4 这种窄棋盘上文案会被挤成两行（一行放得下的字才是好文案）。 */
+.hint-row {
+  flex: 0 0 auto;
+  width: min(100%, var(--board-w, 100%));
+  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hint-row .hint {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.diff-chip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 22px;
+  padding: 0 8px;
+  border: 1.5px solid var(--hair);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-mute);
+  font-size: 10.5px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--t-fast), border-color var(--t-fast), transform var(--t-fast);
+}
+
+.diff-chip:active { transform: translateY(1px); }
+.diff-chip:hover { border-color: var(--ink); }
+
+.diff-chip b { color: var(--ink); font-weight: 900; }
+.diff-chip span { font-variant-numeric: tabular-nums; }
+
+.diff-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink-faint);
+}
+
+.diff-chip[data-tone="easy"] .diff-dot { background: #22B573; }
+.diff-chip[data-tone="mid"] .diff-dot { background: #E0A800; }
+.diff-chip[data-tone="hard"] .diff-dot { background: #F2762E; }
+.diff-chip[data-tone="extreme"] .diff-dot { background: #E23B3B; }

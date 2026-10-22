@@ -1,0 +1,259 @@
+/* 11-sheet-difficulty.css — 设置面板里的目标难度、换一局，以及难度说明弹层。 */
+
+/* ---- 目标难度 ---- */
+.diff-row {
+  padding: 12px 0 10px;
+  border-bottom: 1px dashed rgba(58, 51, 53, .14);
+}
+
+.diff-opts {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.dbtn {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 30px;
+  padding: 2px 4px;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  background: var(--bg-card);
+  box-shadow: 0 2px 0 var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .02em;
+  cursor: pointer;
+  transition: transform var(--t-fast), box-shadow var(--t-fast), background var(--t-fast), color var(--t-fast);
+}
+
+.dbtn:active:not(.is-on) { transform: translateY(2px); box-shadow: none; }
+.dbtn.is-on { background: var(--ink); color: var(--bg-body); }
+
+.dbtn[data-level="easy"].is-on { background: #22B573; color: #fff; }
+.dbtn[data-level="mid"].is-on { background: var(--accent); color: var(--ink); }
+.dbtn[data-level="hard"].is-on { background: #F2762E; color: #fff; }
+.dbtn[data-level="extreme"].is-on { background: #E23B3B; color: #fff; }
+
+/* 目标难度生效时，尺寸控件交出控制权 */
+.diff-locked {
+  opacity: .45;
+  pointer-events: none;
+}
+
+.diff-locked .step-btn,
+.diff-locked .qbtn { box-shadow: none; }
+
+.quick-row .q-label {
+  align-self: center;
+  margin-right: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-faint);
+}
+
+.qbtn {
+  min-height: 28px;
+  padding: 2px 9px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--bg-card);
+  box-shadow: 0 2px 0 var(--ink);
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform var(--t-fast), box-shadow var(--t-fast), background var(--t-fast);
+}
+
+.qbtn:active { transform: translateY(2px); box-shadow: none; }
+.qbtn.is-on { background: var(--accent); }
+
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 0;
+  border-bottom: 1px dashed rgba(58, 51, 53, .14);
+}
+
+.switch-row:last-of-type { border-bottom: 0; }
+
+.switch {
+  position: relative;
+  flex: 0 0 auto;
+  width: 52px;
+  height: 30px;
+  padding: 0;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--bg-neutral);
+  cursor: pointer;
+  transition: background .18s ease;
+}
+
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  border: 2px solid var(--ink);
+  transition: transform .18s var(--spring);
+}
+
+.switch[aria-checked="true"] { background: var(--ok); }
+.switch[aria-checked="true"]::after { transform: translateX(22px); }
+
+/* ---- 换一局（分隔线以上：改了要点这里才生效） ---- */
+.shuffle-row {
+  padding: 12px 0 10px;
+  border-bottom: 1px dashed rgba(58, 51, 53, .14);
+}
+
+.shuffle-row .btn {
+  width: 100%;
+  min-height: 42px;
+  letter-spacing: 1px;
+}
+
+.shuffle-row .btn.is-pending {
+  animation: pendingNudge 2.4s ease-in-out infinite;
+}
+
+@keyframes pendingNudge {
+  0%, 100% { box-shadow: var(--shadow-btn); }
+  50% { box-shadow: 0 3px 0 var(--ink), 0 0 0 3px rgba(255, 217, 61, .55); }
+}
+
+.shuffle-hint {
+  margin: 7px 0 0;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--ink-faint);
+  transition: color var(--t-fast);
+}
+
+.shuffle-hint.is-pending { color: var(--ink); }
+
+.sheet-done { width: 100%; margin-top: 10px; }
+
+/* ---- 难度说明 ---- */
+.diff-hero {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 2px 0 4px;
+}
+
+.diff-score {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.diff-score b {
+  font-size: 42px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.diff-score span {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--ink-mute);
+}
+
+.diff-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  box-shadow: var(--shadow-pill);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: .04em;
+  background: var(--bg-card);
+}
+
+.diff-badge[data-tone="easy"] { background: #DFF5E8; }
+.diff-badge[data-tone="mid"] { background: var(--accent-soft); }
+.diff-badge[data-tone="hard"] { background: #FFE4D2; }
+.diff-badge[data-tone="extreme"] { background: #FFDDDD; }
+
+.diff-lead {
+  margin: 8px 0 14px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--ink-mute);
+}
+
+.diff-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin: 4px 0 14px;
+}
+
+.diff-step {
+  display: grid;
+  grid-template-columns: 76px 1fr 42px;
+  align-items: center;
+  gap: 9px;
+  font-size: 12.5px;
+}
+
+.diff-step .ds-name {
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.diff-step .ds-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--bg-neutral);
+  overflow: hidden;
+}
+
+.diff-step .ds-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--ink-faint);
+  transition: width .5s var(--spring);
+}
+
+.diff-step .ds-n {
+  text-align: right;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.diff-step.is-zero { opacity: .42; }
+.diff-step.is-key .ds-bar i { background: var(--accent); }
+.diff-step.is-probe .ds-bar i { background: #F2762E; }
+.diff-step.is-guess .ds-bar i { background: #E23B3B; }
+
+.diff-legend {
+  margin: 0 0 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--bg-neutral);
+  font-size: 11.5px;
+  line-height: 1.85;
+  color: var(--ink-mute);
+}
+
+.diff-legend b { color: var(--ink); font-weight: 800; }
+

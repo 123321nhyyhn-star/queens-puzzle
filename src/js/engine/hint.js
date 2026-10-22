@@ -387,6 +387,76 @@
     return s;
   }
 
+  /* ------------------------------------------- 盘面一致性（文案要对得上眼睛） */
+  /* 引擎的推演状态只从「放对的皇后」出发，玩家自己画 × 一律不信。
+     于是会出现：引擎早就知道某几格不能放，可玩家还没把它们划掉。
+     这时若直接念「只剩这一格没被划掉」，玩家一抬头就看见两格空的 —— 文案在说谎。
+     所以凡是引用某个单位（色块 / 行 / 列）的文案，都要先确认：
+     这个单位里「引擎判死但玩家还没划掉」的格子已经清空，否则先引导玩家补划掉。
+     这些格子一律由已放好的皇后直接排除（同行 / 同列 / 同色块 / 斜着挨着），
+     所以划掉它们永远不会误伤真解。 */
+
+  /* 一次推理引用到的单位 */
+  function unitsOfHit(hit) {
+    var u = { rows: [], cols: [], regions: [] }, i;
+    if (hit.rule === 'R1') { u.regions.push(hit.g); return u; }
+    if (hit.rule === 'R2') { u.rows.push(hit.line); return u; }
+    if (hit.rule === 'R3') { u.cols.push(hit.line); return u; }
+    var units = hit.rule.charAt(0) === 'A' ? hit.units : hit.regions;
+    for (i = 0; i < units.length; i++) u.regions.push(units[i]);
+    var lines = hit.lines || [];
+    for (i = 0; i < lines.length; i++) {
+      if (hit.dir === 'row') u.rows.push(lines[i]);
+      else u.cols.push(lines[i]);
+    }
+    return u;
+  }
+
+  /* 单位里「引擎已判死、玩家盘面上还空着」的格子 */
+  function staleIn(st, ctx, units, isDone) {
+    var seen = {}, out = [];
+    function add(cells) {
+      for (var i = 0; i < cells.length; i++) {
+        var c = cells[i];
+        if (seen[c] || st.alive[c] || isDone(c)) continue;
+        seen[c] = 1;
+        out.push(c);
+      }
+    }
+    var i;
+    for (i = 0; i < units.regions.length; i++) add(ctx.regCells[units.regions[i]]);
+    for (i = 0; i < units.rows.length; i++) add(ctx.rowCells[units.rows[i]]);
+    for (i = 0; i < units.cols.length; i++) add(ctx.colCells[units.cols[i]]);
+    out.sort(function (a, b) { return a - b; });
+    return out;
+  }
+
+  function unitTxt(units) {
+    if (units.regions.length === 1 && !units.rows.length && !units.cols.length) return '先看 ' + reg(units.regions[0]) + '色块';
+    if (units.rows.length === 1 && !units.regions.length && !units.cols.length) return '先看' + lineTxt('row', units.rows);
+    if (units.cols.length === 1 && !units.regions.length && !units.rows.length) return '先看' + lineTxt('col', units.cols);
+    return '先看这几处';
+  }
+
+  /* 让玩家把「早就该划掉、但还没划」的格子补上，再回来听结论 */
+  function catchUpPlan(ctx, units, stale, head) {
+    var hl = { rows: units.rows, cols: units.cols, regions: units.regions };
+    var both = {
+      rows: units.rows, cols: units.cols, regions: units.regions,
+      cells: stale, kill: true
+    };
+    var steps = [head || step(unitTxt(units), hl)];
+    steps.push(step('这里还有 ' + stale.length + ' 格没被划掉',
+      { rows: units.rows, cols: units.cols, regions: units.regions, cells: stale },
+      { focus: stale[0] }));
+    steps.push(step('它们都被已经放好的皇后管着（同行、同列、同色块，或者斜着挨着），先划掉',
+      both, { focus: stale[0] }));
+    return {
+      kind: 'cross', rule: 'C1', level: 1, title: '补划',
+      steps: steps, action: { type: 'cross', cells: stale }
+    };
+  }
+
   /* ------------------------------------------------- 把一次推理编成脚本 */
   function scriptOf(hit, ctx, st, isDone) {
     var n = ctx.n;
@@ -440,13 +510,14 @@
         steps.push(step('这 ' + k + ' 个色块一共要放 ' + k + ' 只皇后，正好占满这 ' + k + ' ' + lwA,
           { regions: hit.units, rows: rowsHl, cols: colsHl, lines: hit.lines, dir: hit.dir }));
       }
-      var cN = hit.kills.filter(function (x) { return !isDone(x); }).length;
-      steps.push(step(lineA + '里其他色块的 ' + cN + ' 个格子都可以划掉',
-        { rows: rowsHl, cols: colsHl, cells: hit.kills, regions: hit.units, kill: true },
-        { focus: hit.kills[0] }));
+      // 只把「还没划掉的」圈出来：文案里念的是几个格子，图上就该圈几个
+      var newA = hit.kills.filter(function (x) { return !isDone(x); });
+      steps.push(step(lineA + '里其他色块的 ' + newA.length + ' 个格子都可以划掉',
+        { rows: rowsHl, cols: colsHl, cells: newA, regions: hit.units, kill: true },
+        { focus: newA[0] }));
       return {
         rule: hit.rule, level: 2, title: '数色块',
-        steps: steps, action: { type: 'cross', cells: hit.kills }
+        steps: steps, action: { type: 'cross', cells: newA }
       };
     }
 
@@ -470,16 +541,16 @@
         steps.push(step('这 ' + k2 + ' 只皇后只能放在这 ' + k2 + ' ' + lwB + '里',
           { rows: rows2, cols: cols2, regions: hit.regions }));
       }
-      var cN2 = hit.kills.filter(function (x) { return !isDone(x); }).length;
+      var newB = hit.kills.filter(function (x) { return !isDone(x); });
       var killTxt = k2 === 1
-        ? reg(hit.regions[0]) + '色块在别处的 ' + cN2 + ' 个格子都可以划掉'
-        : '这 ' + k2 + ' 个色块（' + regList(hit.regions) + '）在别处的 ' + cN2 + ' 个格子都可以划掉';
+        ? reg(hit.regions[0]) + '色块在别处的 ' + newB.length + ' 个格子都可以划掉'
+        : '这 ' + k2 + ' 个色块（' + regList(hit.regions) + '）在别处的 ' + newB.length + ' 个格子都可以划掉';
       steps.push(step(killTxt,
-        { rows: rows2, cols: cols2, regions: hit.regions, cells: hit.kills, kill: true },
-        { focus: hit.kills[0] }));
+        { rows: rows2, cols: cols2, regions: hit.regions, cells: newB, kill: true },
+        { focus: newB[0] }));
       return {
         rule: hit.rule, level: 3, title: '数线',
-        steps: steps, action: { type: 'cross', cells: hit.kills }
+        steps: steps, action: { type: 'cross', cells: newB }
       };
     }
 
@@ -504,6 +575,18 @@
     }
 
     return null;
+  }
+
+  /* 玩家把「必须放皇后」的格子画成了 × → 先让他撤掉 */
+  function fixCrossPlan(cell, n) {
+    return {
+      kind: 'fixCross', rule: 'FX', level: 0, title: '检查',
+      steps: [
+        step('这一格不该画 ×', { cells: [cell], bad: true }, { focus: cell }),
+        step(cellTxt(cell, n) + '必须放皇后，先把 × 清掉', { cells: [cell], bad: true }, { focus: cell })
+      ],
+      action: { type: 'unmark', cell: cell }
+    };
   }
 
   /* --------------------------------------------------------------- 主入口 */
@@ -557,6 +640,10 @@
     for (var guard = 0; guard < 400; guard++) {
       hit = findHit(work, ctx, maxK);
       if (!hit || hit.dead) { hit = null; break; }
+      // 「这一格必须放皇后」的结论落在玩家画的 × 上：这个 × 是错的。
+      // 绝不能当成「已经反映在盘面上」跳过 —— 那会把这格的整行整列整块静默作废，
+      // 后面所有文案就和玩家的盘面对不上了（玩家会看到「明明还有两格没划掉」）。
+      if (hit.kind === 'place' && marks[hit.cell] === 1) return fixCrossPlan(hit.cell, n);
       var actionable = hit.kind === 'place'
         ? !isDone(hit.cell)
         : hit.kills.some(function (x) { return !isDone(x); });
@@ -568,22 +655,18 @@
 
     // ③ 结论落在玩家自己画错的 × 上 → 先叫他撤掉
     if (hit && hit.kind === 'place' && marks[hit.cell] === 1) {
-      var fx = hit.cell;
-      return {
-        kind: 'fixCross', rule: 'FX', level: 0, title: '检查',
-        steps: [
-          step('这一格不该画 ×', { cells: [fx], bad: true }, { focus: fx }),
-          step(cellTxt(fx, n) + '必须放皇后，先把 × 清掉', { cells: [fx], bad: true }, { focus: fx })
-        ],
-        action: { type: 'unmark', cell: fx }
-      };
+      return fixCrossPlan(hit.cell, n);
     }
 
     if (hit) {
-      var sc = scriptOf(hit, ctx, work, isDone);
-      if (sc) {
-        sc.kind = hit.kind === 'place' ? 'place' : 'cross';
-        return sc;
+      // ③b 文案要经得起「抬头对照盘面」：这个单位里还有没补划掉的格子 → 先补划
+      var sc0 = scriptOf(hit, ctx, work, isDone);
+      if (sc0) {
+        var units = unitsOfHit(hit);
+        var stale = staleIn(work, ctx, units, isDone);
+        if (stale.length) return catchUpPlan(ctx, units, stale, sc0.steps[0]);
+        sc0.kind = hit.kind === 'place' ? 'place' : 'cross';
+        return sc0;
       }
     }
 
@@ -597,24 +680,38 @@
     }
 
     // ⑤ 真是没招了：如果玩家把某格皇后划掉了，先提醒
-    if (wrongX.length) {
-      var wx = wrongX[0];
-      return {
-        kind: 'fixCross', rule: 'FX', level: 0, title: '检查',
-        steps: [
-          step('这一格不该画 ×', { cells: [wx], bad: true }, { focus: wx }),
-          step(cellTxt(wx, n) + '必须放皇后，先把 × 清掉', { cells: [wx], bad: true }, { focus: wx })
-        ],
-        action: { type: 'unmark', cell: wx }
-      };
-    }
+    if (wrongX.length) return fixCrossPlan(wrongX[0], n);
 
     // ⑥ 到了必须猜的地方：把「二选一」的那几格指出来，不替玩家选
-    var guess = smallestChoice(work, ctx);
+    var guess = smallestChoice(work, ctx, isDone);
     if (guess) {
+      var gUnits = {
+        rows: guess.type === 'row' ? [guess.index] : [],
+        cols: guess.type === 'col' ? [guess.index] : [],
+        regions: guess.type === 'region' ? [guess.index] : []
+      };
+      // 同一个道理：盘面上还有没补划掉的格子时，先说「只剩 N 个位置」也是错的
+      var gStale = staleIn(work, ctx, gUnits, isDone);
+      if (gStale.length) return catchUpPlan(ctx, gUnits, gStale, null);
+
       var gt = guess.type === 'row' ? '第' + (guess.index + 1) + '行'
         : guess.type === 'col' ? '第' + (guess.index + 1) + '列'
           : reg(guess.index) + '色块';
+      if (guess.pin) {
+        // 盘面上这一单位只剩一格没划掉：按玩家自己划掉的结果交回去，不冒充证明
+        var pinCell = guess.cells[0];
+        var pinSteps = [
+          step('靠计数能推的都推完了', {}),
+          step(gt + '只剩' + cellTxt(pinCell, n) + '这一格没被划掉',
+            cellsHl(guess.type, guess.index, guess.cells)),
+          step('按你现在划掉的结果，只能先试这一格，放错会马上出现冲突',
+            cellsHl(guess.type, guess.index, guess.cells), { focus: pinCell })
+        ];
+        return {
+          kind: 'guess', rule: 'G1', level: 5, title: '该猜了',
+          steps: pinSteps, action: null, choices: guess.cells
+        };
+      }
       var gsteps = [
         step('靠计数能推的都推完了', {}),
         step(gt + '只剩 ' + guess.cells.length + ' 个位置', cellsHl(guess.type, guess.index, guess.cells)),
@@ -634,17 +731,30 @@
     return hl;
   }
 
-  /* 找「选择最少」的单位；只剩 2–3 格时适合让玩家自己试 */
-  function smallestChoice(st, ctx) {
-    var n = ctx.n, best = null, bestLen = 99;
+  /* 找「选择最少」的单位；只剩 2–3 格时适合让玩家自己试。
+     数的是玩家盘面上**还空着**的格子：已经划掉的格子既没法「试」，
+     也不该被算进「只剩 N 个位置」里，否则又和眼睛看到的盘面对不上。
+     如果每个单位都只剩 1 格没划掉（说明玩家自己已经排到这一步了），
+     就把那一格交回去，并说明「这是按你划掉的看的」，不冒充成证明过的结论。 */
+  function smallestChoice(st, ctx, isDone) {
+    var n = ctx.n, best = null, bestLen = 99, pin = null, pinLive = 99;
     function consider(type, index, cells) {
-      if (cells.length < 2 || cells.length > 3) return;
-      if (cells.length < bestLen) { bestLen = cells.length; best = { type: type, index: index, cells: cells }; }
+      var live = [], i;
+      for (i = 0; i < cells.length; i++) if (!isDone || !isDone(cells[i])) live.push(cells[i]);
+      if (live.length >= 2 && live.length <= 3) {
+        if (live.length < bestLen) { bestLen = live.length; best = { type: type, index: index, cells: live, pin: false }; }
+        return;
+      }
+      // 盘面只剩一格、引擎却还留着别的可能 → 只能「按你划掉的」先试
+      if (live.length === 1 && cells.length > 1 && cells.length < pinLive) {
+        pinLive = cells.length;
+        pin = { type: type, index: index, cells: live, pin: true };
+      }
     }
     for (var g = 0; g < n; g++) if (!st.regDone[g]) consider('region', g, liveCells(st, ctx.regCells[g]));
     for (var r = 0; r < n; r++) if (!st.rowDone[r]) consider('row', r, liveCells(st, ctx.rowCells[r]));
     for (var c = 0; c < n; c++) if (!st.colDone[c]) consider('col', c, liveCells(st, ctx.colCells[c]));
-    return best;
+    return best || pin;
   }
 
   return {

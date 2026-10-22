@@ -1,0 +1,122 @@
+/* 10-sheet.css — 设置面板外壳：尺寸步进器、常用尺寸。 */
+
+/* ============================================================
+   09. 设置面板
+   ============================================================ */
+.sheet-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(58, 51, 53, .42);
+  animation: fadeIn .18s ease both;
+}
+
+.sheet {
+  position: relative;
+  width: min(100%, 560px);
+  max-height: 92svh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px 18px calc(18px + env(safe-area-inset-bottom, 0px));
+  background: var(--bg-card);
+  border: 2px solid var(--ink);
+  border-bottom: 0;
+  border-radius: 22px 22px 0 0;
+  animation: slideUp .26s var(--spring) both;
+}
+
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+.sheet-head h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+
+.sheet-note {
+  margin: 0 0 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink-faint);
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 0;
+  border-bottom: 1px dashed rgba(58, 51, 53, .14);
+}
+
+.stepper-label {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.stepper-label small {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-mute);
+}
+
+.stepper-ctl {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+}
+
+.step-btn {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  background: var(--bg-card);
+  box-shadow: 0 2px 0 var(--ink);
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform var(--t-fast), box-shadow var(--t-fast), opacity var(--t-fast);
+}
+
+.step-btn:active:not(:disabled) { transform: translateY(2px); box-shadow: none; }
+.step-btn:disabled { opacity: .28; box-shadow: none; cursor: not-allowed; }
+
+.step-val {
+  min-width: 34px;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.quick-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 0 2px;
+  border-bottom: 1px dashed rgba(58, 51, 53, .14);
+}
+

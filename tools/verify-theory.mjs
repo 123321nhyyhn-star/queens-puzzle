@@ -18,8 +18,8 @@ import { countSolutions } from './refsolve.mjs';
 
 const require = createRequire(import.meta.url);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const engine = require('../engine.js');
-const diff = require('../difficulty.js');
+const engine = require('../src/js/engine/engine.js');
+const diff = require('../src/js/engine/difficulty.js');
 
 const per = Math.max(1, Number(process.argv[2]) || 10);
 const sizes = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];

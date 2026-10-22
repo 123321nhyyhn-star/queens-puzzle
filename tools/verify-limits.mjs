@@ -12,10 +12,10 @@ import { countSolutions } from './refsolve.mjs';
 const require = createRequire(import.meta.url);
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
-const diff = require('../difficulty.js');
+const diff = require('../src/js/engine/difficulty.js');
 
 function loadPatched(maxSize, extra = []) {
-  let src = fs.readFileSync(path.join(root, 'engine.js'), 'utf8');
+  let src = fs.readFileSync(path.join(root, 'src/js/engine/engine.js'), 'utf8');
   src = src.replace('Math.min(16,', 'Math.min(' + maxSize + ',');
   for (const [a, b] of extra) {
     if (!src.includes(a)) throw new Error('补丁未命中: ' + a);
@@ -67,7 +67,7 @@ if (pts.length > 3) {
 }
 
 /* --------------------------------------------------- ② 同色相邻（16 色上限）*/
-console.log('\n=== ② 配色上限：REGION_COLORS 只有 16 种（index.html 用 g % 16） ===');
+console.log('\n=== ② 配色上限：REGION_COLORS 只有 16 种（palette.js 用 g % 18） ===');
 for (const n of [16, 17, 18, 20]) {
   let collided = 0, boards = 0, cells = 0;
   for (let k = 0; k < 4; k++) {

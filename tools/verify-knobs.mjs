@@ -17,10 +17,10 @@ import { fileURLToPath } from 'node:url';
 const require = createRequire(import.meta.url);
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
-const diff = require('../difficulty.js');
+const diff = require('../src/js/engine/difficulty.js');
 
 function loadVariant(id, patches) {
-  let src = fs.readFileSync(path.join(root, 'engine.js'), 'utf8');
+  let src = fs.readFileSync(path.join(root, 'src/js/engine/engine.js'), 'utf8');
   src = src.replace('Math.min(16,', 'Math.min(16,');
   for (const [a, b] of patches) {
     if (!src.includes(a)) throw new Error(`[${id}] 补丁未命中: ${a}`);

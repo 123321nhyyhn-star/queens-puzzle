@@ -123,7 +123,7 @@ def main(argv):
             return 2
 
     if not os.path.exists(os.path.join(ROOT, "index.html")):
-        print("找不到 index.html —— 请把 serve.py 放在 index.html 同一个文件夹里。")
+        print("找不到 index.html —— 请把 serve.py 放在 index.html 同一个文件夹里（src/ 也应在同级）。")
         return 1
 
     httpd = None

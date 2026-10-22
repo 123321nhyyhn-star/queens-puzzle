@@ -1,0 +1,91 @@
+/* 07-regions.css — 底部的色块进度条（可长按高亮整块）。 */
+
+/* ============================================================
+   06. 色块进度条
+   ============================================================ */
+.regions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  min-height: 20px;
+  max-width: 100%;
+  padding: 4px 4px;
+}
+
+.chip {
+  position: relative;
+  width: var(--chip, 16px);
+  height: var(--chip, 16px);
+  display: grid;
+  place-items: center;
+  border: 1.5px solid rgba(58, 51, 53, .5);
+  border-radius: 5px;
+  background: var(--c, #FFF);
+  font-size: calc(var(--chip, 16px) * .62);
+  font-weight: 900;
+  line-height: 1;
+  color: var(--ink);
+  transition: transform .22s var(--spring), box-shadow .18s ease, background .18s ease;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.chip.is-done { box-shadow: inset 0 0 0 1.5px var(--ink); }
+.chip.is-done::after { content: "✓"; }
+
+.chip.is-over {
+  background: var(--danger);
+  color: #FFFFFF;
+  border-color: var(--ink);
+}
+.chip.is-over::after { content: "!"; }
+
+/* ---- 填错的色块：色卡上打叉 ----
+   两笔手画感的白芯红叉：外圈白描边是为了压住任意底色都看得清，
+   内圈红笔画。整块都没皇后了，光靠棋盘的红色描边不够直观，得回到色卡上找。 */
+.chip-x {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.chip-x path {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.chip-x .cx-case { stroke: rgba(255, 255, 255, .9); stroke-width: 7; }
+.chip-x .cx-ink { stroke: var(--danger); stroke-width: 4; }
+
+.chip.is-bad .chip-x {
+  opacity: 1;
+  /* 和棋盘红框同一拍淡入（.18s），别一个淡出来、一个弹出来 */
+  animation: chipXIn .18s ease-out both;
+}
+
+@keyframes chipXIn {
+  from { opacity: 0; transform: scale(.82) rotate(-8deg); }
+  to { opacity: 1; transform: none; }
+}
+
+/* 长按查看色块位置时，这颗色卡自己也「捏」一下 */
+.chip.is-hold {
+  transform: translateY(-2px) scale(1.16);
+  border-color: var(--ink);
+  box-shadow: 0 2px 0 rgba(58, 51, 53, .45);
+  z-index: 3;
+}
+
+/* 引导讲到某个色块时：这颗色卡一直亮着（不是闪一下），面板翻到下一步之前
+   它都不会消失，慢慢对颜色也来得及。 */
+.chip.is-hint {
+  transform: translateY(-1px) scale(1.2);
+  border-color: var(--ink);
+  box-shadow: 0 0 0 2px var(--bg-card), 0 0 0 3.4px var(--ink);
+  z-index: 2;
+}

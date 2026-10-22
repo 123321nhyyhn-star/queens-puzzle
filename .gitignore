@@ -1,2 +1,4 @@
 .workbuddy
 /tools/shots
+node_modules/
+dist/

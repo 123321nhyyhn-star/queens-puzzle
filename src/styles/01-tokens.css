@@ -1,0 +1,31 @@
+/* 01-tokens.css — 设计令牌：颜色、圆角、阴影、动效曲线。改配色先改这里。 */
+
+/* ============================================================
+   01. 设计令牌
+   ============================================================ */
+:root {
+  --bg-body: #FEF3E2;
+  --bg-card: #FFFFFF;
+  --bg-neutral: #F1E8DA;
+
+  --ink: #3A3335;
+  --ink-mute: #8D8285;
+  --ink-faint: #C9BCA8;
+  --hair: rgba(58, 51, 53, .2);    /* 格子之间的细分隔线：看得清界限，但不抢眼 */
+  --x-ink: rgba(58, 51, 53, .82);  /* × 统一墨色（自动 / 手动同款） */
+
+  --accent: #FFD93D;
+  --accent-soft: #FFF0B8;
+  --danger: #FF5C5C;
+  --ok: #22B573;
+
+  --radius-card: 18px;
+  --shadow-card: 0 4px 0 var(--ink);
+  --shadow-btn: 0 3px 0 var(--ink);
+  --shadow-pill: 0 2px 0 var(--ink);
+  --spring: cubic-bezier(.175, .885, .32, 1.275);
+  --spring-soft: cubic-bezier(.2, 1.35, .45, 1);
+  --t-fast: .15s ease;
+
+  --topbar-h: 56px;
+}

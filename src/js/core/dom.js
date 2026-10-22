@@ -1,0 +1,101 @@
+/* ============================================================================
+ * dom.js
+ * DOM 引用集中处：所有元素只在这里取一次，模块里直接 import 用。
+ * ========================================================================== */
+
+/* ==========================================================
+   DOM
+   ========================================================== */
+export function $(id) { return document.getElementById(id); }
+
+export var app = $('app');
+export var stage = $('stage');
+export var boardEl = $('board');
+export var gridEl = $('grid');
+export var rbEl = $('rb');
+export var rlEl = $('rl');
+export var rlBad = $('rlBad');
+export var rlPeek = $('rlPeek');
+export var linksEl = $('links');
+export var hintEl = $('hint');
+export var hintRowEl = $('hintRow');
+export var regionsEl = $('regions');
+export var toolbarEl = $('toolbar');
+
+export var coachEl = $('coach');
+export var coachText = $('coachText');
+export var coachTier = $('coachTier');
+export var coachDots = $('coachDots');
+export var coachPrev = $('coachPrev');
+export var coachNext = $('coachNext');
+export var coachClose = $('coachClose');
+export var glEl = $('gl');
+export var glTags = $('glTags');
+
+export var btnSize = $('btnSize');
+export var timePill = $('timePill');
+export var timeText = $('timeText');
+export var queenPill = $('queenPill');
+export var btnNew = $('btnNew');
+export var btnSettings = $('btnSettings');
+export var btnAuto = $('btnAuto');
+
+export var btnUndo = $('btnUndo');
+export var btnHint = $('btnHint');
+export var btnClear = $('btnClear');
+
+export var veil = $('veil');
+export var veilTitle = $('veilTitle');
+
+export var sheetWrap = $('sheetWrap');
+export var sheet = $('sheet');
+export var sheetBackdrop = $('sheetBackdrop');
+export var btnCloseSheet = $('btnCloseSheet');
+export var btnShuffle = $('btnShuffle');
+export var shuffleHint = $('shuffleHint');
+export var sizeMinus = $('sizeMinus');
+export var sizePlus = $('sizePlus');
+export var sizeVal = $('sizeVal');
+export var quickRow = $('quickRow');
+export var sheetNote = $('sheetNote');
+export var diffOpts = $('diffOpts');
+export var diffHint = $('diffHint');
+
+export var shareCode = $('shareCode');
+export var shareTag = $('shareTag');
+export var shareStatus = $('shareStatus');
+export var btnCopyCode = $('btnCopyCode');
+export var btnLoadCode = $('btnLoadCode');
+
+export var btnDiff = $('btnDiff');
+export var diffLevelEl = $('diffLevel');
+export var diffScoreEl = $('diffScore');
+export var diffWrap = $('diffWrap');
+export var diffSheet = $('diffSheet');
+export var diffBackdrop = $('diffBackdrop');
+export var btnCloseDiff = $('btnCloseDiff');
+export var btnDiffDone = $('btnDiffDone');
+export var diffBig = $('diffBig');
+export var diffBadge = $('diffBadge');
+export var diffLead = $('diffLead');
+export var diffSteps = $('diffSteps');
+
+export var resultEl = $('result');
+export var resultSub = $('resultSub');
+export var resSize = $('resSize');
+export var resTime = $('resTime');
+export var resHints = $('resHints');
+export var btnAgain = $('btnAgain');
+export var btnPeek = $('btnPeek');
+
+export var fxEl = $('fx');
+export var srStatus = $('srStatus');
+
+/* 设置面板里的尺寸步进器与几个开关：只有设置面板会用到，
+ * 但也放在这里，保证「元素引用只在一处取」这条约定不被打破。 */
+export var sizeStepperEl = $('sizeStepper');
+export var swAuto = $('swAuto');
+export var swConflict = $('swConflict');
+export var swForced = $('swForced');
+export var swSound = $('swSound');
+export var swHaptics = $('swHaptics');

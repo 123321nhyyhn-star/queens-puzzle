@@ -27,8 +27,8 @@ const outFile = args.get('out') || (big ? 'tools/big-board.json' : 'tools/diffic
 
 /* --- 载入引擎：--big 时把 16 的上限放宽，用来试探超界行为 --------------- */
 function loadEngine(maxSize) {
-  const src = fs.readFileSync(path.join(root, 'engine.js'), 'utf8');
-  if (!maxSize) return require('../engine.js');
+  const src = fs.readFileSync(path.join(root, 'src/js/engine/engine.js'), 'utf8');
+  if (!maxSize) return require('../src/js/engine/engine.js');
   const patched = src.replace('Math.min(16,', 'Math.min(' + maxSize + ',');
   if (patched === src) throw new Error('未能改写尺寸上限');
   const tmp = path.join(here, '.tmp-engine-big.cjs');
@@ -37,7 +37,7 @@ function loadEngine(maxSize) {
 }
 
 const engine = loadEngine(big ? 64 : 0);
-const diff = require('../difficulty.js');
+const diff = require('../src/js/engine/difficulty.js');
 
 const rows = [];
 const boards = [];

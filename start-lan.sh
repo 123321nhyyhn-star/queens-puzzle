@@ -14,7 +14,7 @@ if [ ! -f serve.py ]; then
   exit 1
 fi
 if [ ! -f index.html ]; then
-  echo "  [缺少 index.html] 请把 index.html、engine.js 和本文件放在同一个文件夹里。"
+  echo "  [缺少 index.html] 请确认 index.html 与 src/ 目录都在本文件所在目录。"
   exit 1
 fi
 

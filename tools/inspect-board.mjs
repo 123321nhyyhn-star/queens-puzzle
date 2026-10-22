@@ -6,8 +6,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 const require = createRequire(import.meta.url);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const engine = require('../engine.js');
-const diff = require('../difficulty.js');
+const engine = require('../src/js/engine/engine.js');
+const diff = require('../src/js/engine/difficulty.js');
 
 const n = Number(process.argv[2] || 8);
 const seed = Number(process.argv[3] || 12345);

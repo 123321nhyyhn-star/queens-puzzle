@@ -1,0 +1,122 @@
+/* 13-result.css — 通关结果层与礼花。 */
+
+/* ============================================================
+   10. 结果层
+   ============================================================ */
+.result {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(254, 243, 226, .84);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  animation: fadeIn .2s ease both;
+}
+
+.result-card {
+  width: min(330px, 100%);
+  padding: 22px 20px 16px;
+  text-align: center;
+  background: var(--bg-card);
+  border: 2px solid var(--ink);
+  border-radius: 20px;
+  box-shadow: 0 6px 0 var(--ink);
+  animation: popIn .34s var(--spring) both;
+}
+
+.result-kicker {
+  margin: 0 0 4px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 2.4px;
+  color: var(--ink-faint);
+}
+
+.result-title {
+  margin: 0 0 4px;
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+}
+
+.result-sub {
+  margin: 0 0 16px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink-mute);
+}
+
+.result-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.result-stat {
+  padding: 8px 4px;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  background: var(--bg-body);
+}
+
+.result-stat b {
+  display: block;
+  font-size: 16px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.result-stat span {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink-mute);
+}
+
+.result-card .btn { width: 100%; }
+
+.btn-text {
+  margin-top: 10px;
+  padding: 6px;
+  border: 0;
+  background: none;
+  color: var(--ink-mute);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ============================================================
+   11. 礼花
+   ============================================================ */
+.fx {
+  position: fixed;
+  inset: 0;
+  z-index: 65;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.confetti {
+  position: absolute;
+  width: 8px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--c, #FFD93D);
+  opacity: 0;
+  animation: confetti 1.5s cubic-bezier(.18, .7, .3, 1) forwards;
+  animation-delay: var(--d, 0ms);
+}
+
+@keyframes confetti {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0) scale(.5); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--x, 60px), var(--y, 220px)) rotate(var(--r, 240deg)) scale(1); }
+}

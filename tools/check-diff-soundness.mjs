@@ -15,9 +15,9 @@ import { fileURLToPath } from 'node:url';
 const require = createRequire(import.meta.url);
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
-const engine = require('../engine.js');
-const diff = require('../difficulty.js');
-const hint = require('../hint.js');
+const engine = require('../src/js/engine/engine.js');
+const diff = require('../src/js/engine/difficulty.js');
+const hint = require('../src/js/engine/hint.js');
 
 const args = new Map();
 for (const a of process.argv.slice(2)) {

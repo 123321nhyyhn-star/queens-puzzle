@@ -1,0 +1,212 @@
+/* 05-board.css — 棋盘基础网格、格子、描边层、长按高亮、错误色块。 */
+
+/* ============================================================
+   05. 棋盘
+   ============================================================ */
+.board {
+  position: relative;
+  flex: 0 0 auto;
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  background: var(--bg-card);
+  box-shadow: 0 6px 0 var(--ink);
+  overflow: hidden;
+  touch-action: manipulation;
+  transition: transform .2s var(--spring);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(var(--n, 8), var(--cell, 40px));
+  grid-auto-rows: var(--cell, 40px);
+  width: calc(var(--n, 8) * var(--cell, 40px));
+  height: calc(var(--n, 8) * var(--cell, 40px));
+  /* 拖动涂抹时不触发布局滚动 / 手势取消 */
+  touch-action: none;
+}
+
+/* 拖动涂抹进行中：鼠标变成十字，格子轻微跟手 */
+.grid.is-painting { cursor: crosshair; }
+.grid.is-painting .cell { cursor: crosshair; }
+.grid.is-painting .cell.is-x .mark,
+.grid.is-painting .cell.is-auto .mark {
+  transition-duration: .06s;
+}
+
+.cell {
+  position: relative;
+  width: var(--cell, 40px);
+  height: var(--cell, 40px);
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--rc, #FFFFFF);
+  cursor: pointer;
+  overflow: hidden;
+  -webkit-appearance: none;
+  appearance: none;
+  touch-action: manipulation;
+  transition: background-color .18s ease;
+  /* 每格画右/下两条 1px 细线，构成整盘的格子经纬 */
+  box-shadow: inset -1px -1px 0 0 var(--hair);
+}
+
+/* 最右列 / 最下行不再补线，避免和棋盘外框贴成双线 */
+.cell.edge-r { box-shadow: inset 0 -1px 0 0 var(--hair); }
+.cell.edge-b { box-shadow: inset -1px 0 0 0 var(--hair); }
+.cell.edge-r.edge-b { box-shadow: none; }
+
+/* ---- 色块描边层 ----
+   以前粗边是画在各自格子上的（border-top / border-left），两格的边在高分屏上
+   各画各的、各自抗锯齿，拐角处就漏出一像素的缝，看着像断线。
+   现在改成一整张 SVG：同一条色块边界合并成一笔（M…L…），
+   stroke-linecap: square 让每笔两端多伸出半个线宽，横竖交汇处自然叠实，
+   外圈那半个线宽被棋盘外框裁掉，正好接上。 */
+.rb {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.rb path {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: var(--bw, 2px);
+  stroke-linecap: square;
+}
+
+/* ---- 色块高亮层 ----
+   两件事都画在这一层：① 长按色卡时把那块圈出来；② 填错的色块发红光。
+   压在色块描边之上、提示圈画（.gl）之下，纯装饰、不吃点击。 */
+.rl {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 3;
+  pointer-events: none;
+  overflow: visible;
+  transition: opacity .18s ease;
+}
+
+/* 引导面板开着的时候，圈画层已经在讲事情了，这层先让开，别两个红框抢注意力 */
+.rl.is-guide { opacity: 0; }
+
+/* ---- 长按色卡：把这块「拎」起来 ----
+   沿用棋盘自己的描边语言：墨色笔锋压边（square 端点，和色块边界同一套画法），
+   底下透一层这块自己的高饱和色当光晕。不用白边——白边在这套配色里像缺口。
+   旁边再压一层极淡的墨（evenodd 挖掉这块），这块自己就浮出来了：
+   光靠加粗描边，大块淡彩里其实看不出「是哪一块」。 */
+.rl-peek-veil {
+  fill: rgba(58, 51, 53, .15);
+  animation: rlVeilIn .18s ease both;
+}
+@keyframes rlVeilIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.rl-peek-halo {
+  fill: none;
+  stroke: var(--peek, rgba(58, 51, 53, .5));
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: .5;
+  filter: blur(2.5px);
+}
+
+.rl-peek-line {
+  fill: none;
+  stroke: var(--ink);
+  stroke-linecap: square;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 2px 0 rgba(58, 51, 53, .2));
+}
+
+/* 按下时像用笔描一遍：起笔即到，0.24s 走完 */
+.rl-peek-line.is-draw { animation: rlDraw .24s ease-out both; }
+@keyframes rlDraw {
+  from { stroke-dashoffset: var(--len, 600); }
+  to { stroke-dashoffset: 0; }
+}
+
+/* ---- 填错的色块：整块被 × 填满却一颗皇后都没有 ----
+   描边发光 + 极淡的红洗，呼吸很慢，是「提醒」不是「警报」。
+   亮 / 灭不写在各笔上，而是整组一起过渡（见 #rlBad）：三笔各有各的呼吸动画，
+   再让它们各自淡入的话，呼吸和淡入会抢同一个 opacity，接缝处必「跳」一下。 */
+#rlBad {
+  opacity: 0;
+  transition: opacity .16s ease-out;   /* 出现淡入、消失淡出，都是这一条 */
+}
+#rlBad.is-on { opacity: 1; }
+
+.rl-bad-halo {
+  fill: none;
+  stroke: var(--danger);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: .3;
+  filter: blur(3px);
+  animation: badBreath 1.6s ease-in-out infinite;
+}
+
+.rl-bad-fill {
+  fill: rgba(255, 92, 92, .09);
+  animation: badWash 1.6s ease-in-out infinite;
+}
+
+.rl-bad-line {
+  fill: none;
+  stroke: var(--danger);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 3px rgba(255, 92, 92, .55));
+}
+
+@keyframes badBreath {
+  0%, 100% { opacity: .22; }
+  50% { opacity: .58; }
+}
+
+@keyframes badWash {
+  0%, 100% { opacity: .55; }
+  50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #rlBad { transition-duration: .01s; }
+  .rl-bad-halo, .rl-bad-fill { animation: none; }
+  .rl-peek-line.is-draw, .rl-peek-veil { animation: none; }
+  .chip.is-bad .chip-x { animation: none; }
+}
+
+@media (hover: hover) {
+  .cell:hover::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(58, 51, 53, .07);
+    pointer-events: none;
+  }
+}
+
+.cell:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+  z-index: 4;
+}
+
+.cell.r-ok { background-image: linear-gradient(rgba(255, 255, 255, .22), rgba(255, 255, 255, .22)); }
+.cell.r-over {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255, 92, 92, .22) 0 3px,
+    rgba(255, 92, 92, 0) 3px 7px
+  );
+}
+

@@ -1,4 +1,4 @@
-/* 生成 index.html 里那份色块底色池。
+/* 生成 src/js/core/palette.js 里那份色块底色池。
  *
  * 目标：一整套「淡彩」但**任意两色都不像**的色板（棋盘最多 16 个色块，色池至少 18 色）。
  * 做法：
@@ -7,7 +7,7 @@
  *      （否则这种色块看着像「没上色」）
  *   3. 用「最远点采样」把候选排成一条从最分散开始的序列
  *   4. 按 ΔE 下限（FLOOR）硬过滤：跟已收的每一色都差 FLOOR 以上才收
- * 用法：node tools/gen-palette.mjs   然后把它打印的数组贴回 index.html
+ * 用法：node tools/gen-palette.mjs   然后把它打印的数组贴回 src/js/core/palette.js
  */
 function hsl2rgb(h, s, l) {
   h = (((h % 360) + 360) % 360) / 360;

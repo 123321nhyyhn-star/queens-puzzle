@@ -1,0 +1,57 @@
+/* 09-veil.css — 出题时的生成遮罩。 */
+
+/* ============================================================
+   08. 生成遮罩
+   ============================================================ */
+.veil {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(254, 243, 226, .78);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  animation: fadeIn .16s ease both;
+}
+
+/* 主线程即将被占满时用：直接整块出现，不做淡入（淡入会冻在半透明那帧） */
+.veil.is-instant { animation: none; }
+
+.veil-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 26px;
+  border: 2px solid var(--ink);
+  border-radius: 18px;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-card);
+}
+
+.veil-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: .5px;
+}
+
+.veil-dots { display: flex; gap: 6px; }
+
+.veil-dots i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--ink);
+  animation: dotBounce .9s ease-in-out infinite;
+}
+
+.veil-dots i:nth-child(2) { animation-delay: .12s; background: var(--accent); }
+.veil-dots i:nth-child(3) { animation-delay: .24s; }
+
+@keyframes dotBounce {
+  0%, 100% { transform: translateY(0); opacity: .4; }
+  45% { transform: translateY(-7px); opacity: 1; }
+}

@@ -24,9 +24,9 @@ for (const a of process.argv.slice(2)) {
 const [sLo, sHi] = (args.get('sizes') || '13-16').split('-').map(Number);
 const per = Math.max(1, Number(args.get('per')) || 5);
 
-const engine = require('../engine.js');
-const diff = require('../difficulty.js');
-const hint = require('../hint.js');
+const engine = require('../src/js/engine/engine.js');
+const diff = require('../src/js/engine/difficulty.js');
+const hint = require('../src/js/engine/hint.js');
 
 /* ---- 按提示走完全局：只信提示给的 action，统计各技巧用了几次 ---------- */
 function playByHint(n, regions, solution) {

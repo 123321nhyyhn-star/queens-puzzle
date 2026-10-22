@@ -590,6 +590,26 @@
   这种情况应该直接触发断言报错，而不是挑一条显示。
 </div>
 
+<h3>5.2 盘面还没跟上时，先补划（C1）</h3>
+<div class="callout">
+  <p style="margin:0 0 8px">
+    引擎只从<b>放对的皇后</b>出发推理，玩家自己画的 × 一律不信。代价是：引擎常常比盘面先走一步——
+    它早就知道某几格不能放，玩家却还没把它们划掉。这时如果直接念「这个色块只剩第 3 行第 8 列这一格没被划掉」，
+    玩家一抬头却看见两格空的，提示就成了假话（玩家真实反馈过这个）。
+  </p>
+  <p style="margin:0">
+    <b>规矩：凡是引用某个单位（色块 / 行 / 列）的文案，都要先确认这个单位里「引擎判死、盘面上还空着」的格子已经清空。</b>
+    没清空就先给一条 <code>C1</code>：
+  </p>
+  <p style="margin:8px 0 0" class="note">
+    「先看 {G} 色块」→「这里还有 {c} 格没被划掉」→「它们都被已经放好的皇后管着（同行、同列、同色块，或者斜着挨着），先划掉」
+  </p>
+  <p style="margin:8px 0 0" class="note">
+    这些格子只由<b>已放好的皇后</b>直接排除，所以补划永远误伤不到真解；玩家照做之后再看提示，就是原来那条 H1/H2/H3。
+    「该猜了」那一步同理：只剩 2–3 个位置的说法也只数盘面上还空着的格子。
+  </p>
+</div>
+
 <h2><span class="no">6</span>同一句话的六种语气</h2>
 
 <p class="lead">上面 15 条是"内容"。同一条内容在不同场合要说不同的话，这一层可以统一套，不用每条规则重写。</p>
@@ -679,14 +699,18 @@
             long: <span class="s">"第 {C1}、{C2} 两列没被划掉的格子，只属于 {G1}、{G2} 两个色块。这两列各要一只皇后，一共两只，只能来自这两个色块——所以它们俩的皇后都在这两列里，它们在这两列以外的 {c} 格都可以划掉。"</span> },
   <span class="s">"H15"</span>: { tier:<span class="s">"L3"</span>, act:<span class="s">"cross"</span>, k:3, dir:<span class="s">"col"</span>,
             short:<span class="s">"第{C1}、{C2}、{C3}列只剩{G1}、{G2}、{G3}号"</span>,
-            long: <span class="s">"第 {C1}、{C2}、{C3} 三列没被划掉的格子，只属于 {G1}、{G2}、{G3} 三个色块。三列各要一只皇后，正好三只，只能来自它们——这三个色块的皇后都在这三列里，它们在三列以外的 {c} 格都可以划掉。"</span> }
+            long: <span class="s">"第 {C1}、{C2}、{C3} 三列没被划掉的格子，只属于 {G1}、{G2}、{G3} 三个色块。三列各要一只皇后，正好三只，只能来自它们——这三个色块的皇后都在这三列里，它们在三列以外的 {c} 格都可以划掉。"</span> },
+
+  <span class="s">"C1"</span>: { tier:<span class="s">"L1"</span>, act:<span class="s">"cross"</span>, name:<span class="s">"补划（盘面还没跟上）"</span>,
+            short:<span class="s">"这里还有 {c} 格没被划掉，先划掉"</span>,
+            long: <span class="s">"这里还有 {c} 格没被划掉，它们都被已经放好的皇后管着（同行、同列、同色块，或者斜着挨着），先划掉。"</span> }
 }</pre>
 
 <p class="note">
   <code>act</code> 只有两种：<code>place</code>（落子）和 <code>cross</code>（划叉）。<code>merge</code> 是"这几条同时命中同一格时改用本条"的声明。
 </p>
 
-<h2><span class="no">8</span>15 条速查表</h2>
+<h2><span class="no">8</span>速查表：H1–H15 与补划 C1</h2>
 
 <table>
   <tr><th style="width:46px">编号</th><th style="width:42px">档</th><th>触发（人话）</th><th>动作</th><th>一行版</th></tr>
@@ -707,6 +731,7 @@
   <tr><td><b>H13</b></td><td class="c">L3</td><td>某列里只剩 1 个色块</td><td class="c">划叉</td><td><code>第{C}列只剩{G}号，{G}号别处全划掉</code></td></tr>
   <tr><td><b>H14</b></td><td class="c">L3</td><td>某 2 列里只剩 2 个色块</td><td class="c">划叉</td><td><code>第{C1}、{C2}列只剩{G1}、{G2}号，它俩别处划掉</code></td></tr>
   <tr><td><b>H15</b></td><td class="c">L3</td><td>某 3 列里只剩 3 个色块</td><td class="c">划叉</td><td><code>第{C1}、{C2}、{C3}列只剩{G1}、{G2}、{G3}号</code></td></tr>
+  <tr><td><b>C1</b></td><td class="c">L1</td><td>盘面落后于推理：单位里还有被皇后管着、却没划掉的格子</td><td class="c">划叉</td><td><code>这里还有 {c} 格没被划掉</code>（见 5.2）</td></tr>
 </table>
 
 <h2><span class="no">9</span>写文案的 8 条禁忌</h2>

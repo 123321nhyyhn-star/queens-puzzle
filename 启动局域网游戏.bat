@@ -77,7 +77,7 @@ exit /b 1
 
 :no_index
 echo  [缺少 index.html]
-echo  请把 index.html、engine.js 和本文件放在同一个文件夹里。
+echo  请确认 index.html 与 src 文件夹都在本文件所在目录。
 echo.
 pause
 exit /b 1

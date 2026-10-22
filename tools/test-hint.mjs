@@ -14,8 +14,8 @@ import { fileURLToPath } from 'node:url';
 const require = createRequire(import.meta.url);
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
-const engine = require(path.join(root, 'engine.js'));
-const Hint = require(path.join(root, 'hint.js'));
+const engine = require(path.join(root, 'src/js/engine/engine.js'));
+const Hint = require(path.join(root, 'src/js/engine/hint.js'));
 
 const noProbe = process.argv.indexOf('--no-probe') >= 0;
 const sizes = [6, 8, 10, 12, 16];

@@ -2,7 +2,7 @@
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const engine = require('../engine.js');
+const engine = require('../src/js/engine/engine.js');
 
 const perSize = Math.max(1, Number(process.argv[2]) || 30);
 const sizes = [];

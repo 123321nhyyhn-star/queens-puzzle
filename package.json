@@ -1,0 +1,16 @@
+{
+  "name": "queens-puzzle",
+  "version": "1.0.0",
+  "private": true,
+  "description": "皇后 Queens · 打开即玩的皇后推理小游戏（4×4–16×16，唯一解，带逐步提示）",
+  "scripts": {
+    "start": "python serve.py",
+    "dev": "python serve.py --no-open",
+    "test": "node tools/e2e.mjs",
+    "test:engine": "node tools/test-engine.mjs",
+    "test:hint": "node tools/test-hint.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
