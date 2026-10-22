@@ -31,6 +31,9 @@ export function loadSettings() {
     // 外观：老存档没这两个字段，认不出来的 id 也退回默认，不至于把棋盘画空
     settings.markStyle = styleId(MARK_STYLES, s.markStyle);
     settings.pieceStyle = styleId(PIECE_STYLES, s.pieceStyle);
+    // 淡化：老存档没这两个字段时照默认来（× 淡、皇后不淡）
+    settings.fadeMark = s.fadeMark !== false;
+    settings.fadeQueen = s.fadeQueen === true;
   } catch (e) { /* file:// 或隐私模式忽略 */ }
 }
 

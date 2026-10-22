@@ -194,3 +194,64 @@
   filter: saturate(.7);
   transition: opacity .3s ease, filter .3s ease;
 }
+
+/* ---- 淡化：填过的格子退到后面去 ----
+   开在设置里（「淡化 ×」/「淡化皇后」，见 ui/fade.js），这里只管淡成什么样；
+   要不要淡、什么时候淡（0.5 秒防抖）都在 JS 那边，挂的是一个 .is-dim 类。
+
+   做法是**把底色换成背景纸色**，不是把颜色掺白：掺白只会得到一层更浅的彩色，
+   凑近看还是一坨颜色；换成纸色才是「这一格透了，后面就是纸」。
+   经纬细线（格子自己的 inset 阴影）留着，所以它还看得出是一格，
+   只是这一格已经没有颜色了 —— 满盘 × 的时候，棋盘会安静成一张纸。
+
+   色块边线不跟着淡：它画在棋盘的另一层（#rb 那张 SVG，见 05-board.css），
+   根本不在这套 .cell 里。块界是解题信息，格子里填过什么是「做过的活」，
+   两件事本来就该分开对待。
+
+   格子里那笔画（× 也好，皇后也好）再退一档：淡化不是擦掉，
+   还得看得出「这格处理过了」。两个开关各管各的，可以只开一半。 */
+.cell.is-dim.is-x,
+.cell.is-dim.is-auto,
+.cell.is-dim.is-q {
+  background-color: var(--bg-body);
+  transition: background-color .3s ease;
+}
+
+.cell.is-dim.is-x .mark,
+.cell.is-dim.is-auto .mark {
+  opacity: .34;
+  transition: opacity .3s ease, transform .22s var(--spring);
+}
+
+.cell.is-dim.is-q .piece {
+  opacity: .45;
+  transition: opacity .3s ease, transform .44s var(--spring-soft);
+}
+
+/* 冲突的格子不淡（底色与画都还原）：正在出问题的那两格要一眼看得到 */
+.cell.is-dim.is-conflict {
+  background-color: var(--rc, #FFFFFF);
+}
+
+.cell.is-dim.is-conflict .mark,
+.cell.is-dim.is-conflict .piece {
+  opacity: 1;
+}
+
+/* 键盘焦点落在淡下去的格子上时，把那格还原，别让焦点停在一片纸上 */
+.cell.is-dim:focus-visible {
+  background-color: var(--rc, #FFFFFF);
+}
+
+.cell.is-dim:focus-visible .mark,
+.cell.is-dim:focus-visible .piece {
+  opacity: 1;
+}
+
+/* 解开那一刻把皇后那几格亮回来：这盘棋就是奖品，不该还空着 */
+.board.is-won .cell.is-dim.is-q {
+  background-color: var(--rc, #FFFFFF);
+}
+
+.board.is-won .cell.is-dim.is-q .piece { opacity: 1; }
+

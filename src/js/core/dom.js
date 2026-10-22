@@ -103,6 +103,8 @@ export var srStatus = $('srStatus');
  * 但也放在这里，保证「元素引用只在一处取」这条约定不被打破。 */
 export var sizeStepperEl = $('sizeStepper');
 export var swAuto = $('swAuto');
+export var swFadeMark = $('swFadeMark');
+export var swFadeQueen = $('swFadeQueen');
 export var swConflict = $('swConflict');
 export var swForced = $('swForced');
 export var swSound = $('swSound');

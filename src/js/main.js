@@ -16,6 +16,7 @@ import { buildBoard, buildRegionBar } from './game/board.js';
 import { decodeShare, encodeShare } from './game/share-code.js';
 import { computeVibe } from './game/vibe.js';
 import { closeDiff, openDiff, updateDiffChip } from './ui/difficulty.js';
+import { applyFadeNow } from './ui/fade.js';
 import { closeGuide, guideNext, guidePrev, useHint } from './ui/guide.js';
 import { flashHint } from './ui/hint.js';
 import { relayout } from './ui/layout.js';
@@ -68,6 +69,9 @@ function boot() {
     buildRegionBar();
     relayout();
     render();
+    /* 续玩的盘已经写满了标记：这一步直接淡好，
+     * 别让它先整盘亮 0.5 秒再透下去（那不是「刚做的」，是「早就有的」）。 */
+    applyFadeNow();
     updateStats();
     updateDiffChip();
 

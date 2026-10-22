@@ -154,7 +154,9 @@ await sleep(420);
 const freeIdx = await page.evaluate(() => [...document.querySelectorAll('.cell')]
   .findIndex(el => !el.classList.contains('is-auto') && !el.classList.contains('is-q')));
 await tap(freeIdx);
-await sleep(280);
+// 等淡化的 0.5 秒防抖 + 过渡走完：自动 × 早就淡着了，手标这一格得等它跟上，
+// 否则比的是「淡化状态」而不是「样式」
+await sleep(900);
 const parity = await page.evaluate(() => {
   const pick = (sel) => {
     const el = document.querySelector(sel + ' .mark i');
@@ -560,8 +562,9 @@ const sheet = await page.evaluate(() => {
 });
 check('设置面板打开', sheet.open, `inView=${sheet.inView}`);
 check('设置面板完整可见', sheet.inView);
-// 5 个偏好开关 + 挑战里的「禁用提示 / 禁用撤销」
-check('开关数量', sheet.sw === 7, `sw=${sheet.sw}`);
+// 7 个偏好开关（自动打叉 / 淡化 × / 淡化皇后 / 冲突 / 唯一位置 / 音效 / 震动）
+// + 挑战里的「禁用提示 / 禁用撤销」
+check('开关数量', sheet.sw === 9, `sw=${sheet.sw}`);
 check('快捷尺寸', sheet.quick >= 5, `quick=${sheet.quick}`);
 await page.screenshot({ path: `${OUT}/06-settings.png` });
 

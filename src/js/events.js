@@ -21,6 +21,7 @@ import { announce, clamp } from './core/utils.js';
 import { endPeek } from './game/board.js';
 import { decodeShare } from './game/share-code.js';
 import { closeDiff, openDiff } from './ui/difficulty.js';
+import { applyFadeNow } from './ui/fade.js';
 import { closeGuide, guideNext, guidePrev, useHint } from './ui/guide.js';
 import { flashHint } from './ui/hint.js';
 import { closeLook, openLook, pickLook } from './ui/look.js';
@@ -380,6 +381,12 @@ sheet.addEventListener('click', function (e) {
   if (id === 'swAuto') {
     settings.autoMark = !settings.autoMark;
     render();
+  } else if (id === 'swFadeMark' || id === 'swFadeQueen') {
+    // 淡化是纯外观，不用重画格子：只加减一个类。拨开关的人正盯着效果，
+    // 这里不跟 0.5 秒防抖，立刻落地（见 ui/fade.js 的 applyFadeNow）。
+    if (id === 'swFadeMark') settings.fadeMark = !settings.fadeMark;
+    else settings.fadeQueen = !settings.fadeQueen;
+    applyFadeNow();
   } else if (id === 'swConflict') {
     settings.conflict = !settings.conflict;
     if (!settings.conflict) view.lastConflictCount = 0;

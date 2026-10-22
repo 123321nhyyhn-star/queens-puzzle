@@ -6,8 +6,8 @@
 import { DIFF_BANDS, LIMIT_OPTIONS, limitLabel, normalizeLimit, SIZE_MAX, SIZE_MIN } from '../core/config.js';
 import { app, btnSettings, btnShuffle, challengeTitle, diffHint, diffOpts, limitHint,
   limitOpts, quickRow, sheet, sheetNote, sheetWrap, shuffleHint, sizeMinus, sizePlus,
-  sizeStepperEl, sizeVal, swAuto, swConflict, swForced, swHaptics, swNoHint, swNoUndo,
-  swSound } from '../core/dom.js';
+  sizeStepperEl, sizeVal, swAuto, swConflict, swFadeMark, swFadeQueen, swForced, swHaptics,
+  swNoHint, swNoUndo, swSound } from '../core/dom.js';
 import { pending, settings, state, view } from '../core/state.js';
 import { saveSettings } from '../core/storage.js';
 import { announce, clamp } from '../core/utils.js';
@@ -102,6 +102,8 @@ export function syncSheet() {
   }
 
   swAuto.setAttribute('aria-checked', settings.autoMark ? 'true' : 'false');
+  swFadeMark.setAttribute('aria-checked', settings.fadeMark ? 'true' : 'false');
+  swFadeQueen.setAttribute('aria-checked', settings.fadeQueen ? 'true' : 'false');
   swConflict.setAttribute('aria-checked', settings.conflict ? 'true' : 'false');
   swForced.setAttribute('aria-checked', settings.forced ? 'true' : 'false');
   swSound.setAttribute('aria-checked', settings.sound ? 'true' : 'false');

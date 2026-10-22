@@ -64,7 +64,12 @@ export var DEFAULT_SETTINGS = {
   noUndo: false,    // 禁用撤销
   // 外观（即时生效，跟着存盘）：叉的样式、皇后样式
   markStyle: 'x',
-  pieceStyle: 'queen'
+  pieceStyle: 'queen',
+  /* 淡化（即时生效）：填过的格子退到后面去，别跟空格抢眼睛。
+   * × 是真正的干扰源（自动标记一铺就是半盘），默认开着；
+   * 皇后一局只有 n 只、还是解题的主线，默认不淡，想要安静再自己开。 */
+  fadeMark: true,
+  fadeQueen: false
 };
 
 /* ==========================================================

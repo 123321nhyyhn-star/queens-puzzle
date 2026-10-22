@@ -13,6 +13,7 @@ import { cellSize, regionPath } from '../game/geometry.js';
 import { FORCED_COL, FORCED_REGION, FORCED_ROW, badRegions, computeAuto, computeConflicts,
   computeForced, queenCount, regionCounts } from '../game/rules.js';
 import { updateHint } from './hint.js';
+import { fadeCell, settleFade } from './fade.js';
 
 /* ==========================================================
    渲染
@@ -48,6 +49,10 @@ export function render(anim) {
     cell.classList.toggle('r-over', counts[g] > 1);
     cell.classList.toggle('is-conflict', showConflict && cf.cells.has(i));
     cell.classList.toggle('is-forced', forced[i] !== 0);
+
+    /* 淡化：刚变过的这一格先亮着，手停下来 0.5 秒后才整盘一起淡
+     * （见 ui/fade.js；淡成什么样在 06-board-states.css 里） */
+    fadeCell(cell, i, s !== prev);
 
     if (anim) {
       if (s === 'q' && prev !== 'q') {
@@ -87,6 +92,8 @@ export function render(anim) {
 
     view.lastStates[i] = s;
   }
+
+  settleFade();
 
   // 色块进度条
   for (var g2 = 0; g2 < view.chips.length; g2++) {

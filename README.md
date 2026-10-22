@@ -2,7 +2,7 @@
 
 打开即玩的皇后推理小游戏：每行、每列、每个色块各放一只皇后，皇后之间不能相邻。
 支持 4×4–16×16，每盘唯一解，带难度评估、逐步提示、撤销、分享码与续玩。
-设置里还有「挑战」：限时、禁用提示、禁用撤销。
+设置里还有「挑战」（限时、禁用提示、禁用撤销）与「淡化」（填过的格子整格透成背景色，手停半秒才淡）。
 顶栏的奖杯记战绩：每局留一张棋盘缩略图、分享码，排行榜按**限时 × 难度**分开排，
 全存在本机 localStorage 里。
 顶栏的调色盘是**外观**：叉可以换成点，皇后可以换成小猫——满盘 × 看得眼花时换一套就安静了。
@@ -41,6 +41,33 @@ npm start                # 同上，只是包了一层
 - 落地方式：`<html data-mark="x|dot" data-piece="queen|cat">` 是 CSS 钩子（`17-look.css`），
   格子里的画由 `game/board.js` 的 `pieceSvg()` 决定，换样式只重画 `.piece` 里的 SVG。
 - 老存档没有这两个字段、或者存了认不出来的 id，一律退回默认（`styleId()`）。
+
+## 淡化
+
+棋盘填到一半以后，满屏的 × 和皇后会跟还没处理的空格抢眼睛。设置面板里
+「自动打 ×」下面两个开关，**即时生效**（跟音效 / 冲突高亮一个规矩，不用换一局）：
+
+| 选项 | 默认 | 作用 |
+| --- | --- | --- |
+| 淡化 × | 开 | 手标和自动打的 × 格子整格透成背景色 |
+| 淡化皇后 | 关 | 放了皇后的格子整格透成背景色 |
+
+- 淡的是**整个格子**：底色直接换成背景纸色（`--bg-body`），格子里的画（× / 皇后）
+  再退到一档透明度。**不是把颜色掺白**——掺白只会得到一层更浅的彩色，凑近看还是一坨颜色；
+  换成纸色才是「这一格透了、后面就是纸」。经纬细线留着，所以它还看得出是一格，
+  只是这一格已经没有颜色了。
+- **色块边线不淡**：它画在棋盘的另一层（`#rb` 那张 SVG，见 `05-board.css`），
+  根本不在这套 `.cell` 里。块与块的界线是解题信息，格子里填过什么是「做过的活」，
+  两件事本来就该分开对待，所以格子怎么退，块界都照样清楚。
+- 冲突的格子不淡（底色还原成色块色），键盘焦点落在哪一格就把哪一格还原。
+- **0.5 秒防抖**：刚落下的子、刚打的叉先原样亮着，手停下来半秒才一起淡下去。
+  没有这道延迟的话，连标十几格就是十几下「亮 → 暗」的闪，比不淡还吵。
+  等待期间已经淡着的格子不动：新的一笔只点亮刚变的那几格，整盘不会闪一下。
+- 判断只看 `state.marks` / `state.auto`（这格有没有 ×、有没有皇后），
+  跟外观面板选的是哪种画法无关——以后加新外观不用动 `ui/fade.js`。
+- 落地：`settings.fadeMark` / `settings.fadeQueen` + `.cell.is-dim`（`06-board-states.css` 管淡成什么样，
+  `DIM_DELAY` 管等多久）。续玩恢复出来的盘直接就淡着，不会先整盘亮半秒。
+- 解开那一刻皇后那几格亮回来（`.board.is-won` 里那一条）：这盘棋就是奖品，不该还灰着。
 
 ## 挑战
 
@@ -155,6 +182,7 @@ core  ←  game  ←  ui  ←  app
 | `game/preview.js` | 战绩里的棋盘缩略图：把一盘棋画成 SVG 字符串（塞进 `<img src="data:...">`） |
 | `game/vibe.js` | 本局难度评估（转调 `engine/difficulty.js`） |
 | `ui/render.js` | 把 state 画到 DOM：格子状态、描边、连线、红框防抖；工具栏按钮的可用状态 |
+| `ui/fade.js` | 淡化：整格透成背景色 + 0.5 秒防抖，拨开关时 `applyFadeNow()` 立刻落地 |
 | `ui/layout.js` | 棋盘尺寸计算（浮层开关不许挪动棋盘） |
 | `ui/guide.js` | 提示引导面板 + 棋盘圈画层 |
 | `ui/hint.js` | 顶部提示行文案 |
@@ -181,6 +209,7 @@ core  ←  game  ←  ui  ←  app
 | 改色块底色池 | `src/js/core/palette.js`（用 `node tools/gen-palette.mjs` 生成候选） |
 | 改顶栏 / 棋盘 / 面板外观 | 对应编号的 CSS 片段 |
 | 加一个设置开关 | `core/config.js` 的 `DEFAULT_SETTINGS`、`index.html` 里加一行 `.switch-row`、`ui/settings.js` 的 `syncSheet` 与 `sheet` 的 click 分支 |
+| 改淡化淡成什么样 / 等多久 | `06-board-states.css` 的 `.is-dim`（底色与画的透明度）、`ui/fade.js` 的 `DIM_DELAY`（防抖） |
 | 加一套棋子 / 叉的样式 | `core/config.js` 的 `MARK_STYLES` / `PIECE_STYLES` 加一条（面板会自己长出新的展位）+ `17-look.css` 补对应画法 + `ui/look.js` 的 `preview()` 补一个缩略画法 |
 | 改限时挡位 | `core/config.js` 的 `LIMIT_OPTIONS`（面板按钮是按它生成的） |
 | 加一项挑战 | 照「限时 / 禁用提示 / 禁用撤销」三件套：`DEFAULT_SETTINGS` + `pending`（`core/state.js`）+ `index.html` 的 `.challenge` 块 + `ui/settings.js` 的 `syncSheet`/`commitChallenge` + 动作入口里 `settings.xxx` 一拦 |
@@ -207,6 +236,7 @@ node tools/test-hint.mjs     # 提示引擎
 node tools/check-challenge.mjs   # 挑战：限时 / 禁用提示 / 禁用撤销（60 项）
 node tools/check-records.mjs     # 战绩：记录写入 / 缩略图 / 分享码 / 排行榜分组 / 删除清空
 node tools/check-look.mjs        # 外观：展柜面板 / 两套样式落地 / 存盘与兜底（50 项）
+node tools/check-fade.mjs        # 淡化：透成纸色 / 边线不动 / 0.5 秒防抖（37 项）
 ```
 
 `tools/` 里还有一批针对性检查（难度标签与模型一致性、拖动涂抹、引导面板布局等），
