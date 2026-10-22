@@ -343,10 +343,36 @@
   }
 
   /* ------------------------------------------------------------- 文案 */
-  function regTxt(list) {
-    if (list.length === 1) return (list[0] + 1) + ' 号';
-    return list.map(function (x) { return x + 1; }).join('、') + ' 号';
+  /* 文案措辞约定（玩家反馈过两轮，别改回去）：
+     · 不拟人：「活着的格子」「别家的」「给它」这类说法玩家看不懂，
+       一律说成「没被划掉的格子」「其他色块的」「这个色块的」。
+     · 不念编号：色块写成 REF 占位符，网页里换成和棋盘同色的小色卡，
+       数字只在纯文本（测试输出、文案库）里兜底。 */
+  var REF_OPEN = '\u0001', REF_CLOSE = '\u0002';
+  var REF_RE = /\u0001(\d+)\u0002/g;
+
+  /* 一个色块的引用 → 网页里渲染成小色卡 */
+  function reg(g) { return REF_OPEN + g + REF_CLOSE; }
+  /* 多个色块：「3 号、5 号」 */
+  function regList(list) { return list.map(reg).join('、'); }
+
+  function plainText(s) {
+    return String(s).replace(REF_RE, function (all, d) { return (Number(d) + 1) + ' 号'; });
   }
+
+  /* 拆成 [{ t: '先看 ' }, { g: 2 }, { t: '色块' }]，前端照着拼 DOM 即可 */
+  function segsOf(s) {
+    var out = [], src = String(s), last = 0;
+    src.replace(REF_RE, function (all, d, at) {
+      if (at > last) out.push({ t: src.slice(last, at) });
+      out.push({ g: Number(d) });
+      last = at + all.length;
+      return all;
+    });
+    if (last < src.length) out.push({ t: src.slice(last) });
+    return out;
+  }
+
   function lineTxt(dir, list) {
     var body = list.map(function (x) { return x + 1; }).join('、');
     return '第' + body + (dir === 'row' ? '行' : '列');
@@ -354,12 +380,9 @@
   function cellTxt(i, n) {
     return '第' + (((i / n) | 0) + 1) + '行第' + ((i % n) + 1) + '列';
   }
-  function unitName(t) {
-    return t === 'row' ? '行' : t === 'col' ? '列' : '色块';
-  }
 
   function step(text, hl, extra) {
-    var s = { text: text, hl: hl || {} };
+    var s = { text: plainText(text), segs: segsOf(text), hl: hl || {} };
     if (extra) for (var k in extra) if (extra.hasOwnProperty(k)) s[k] = extra[k];
     return s;
   }
@@ -371,10 +394,10 @@
 
     if (hit.rule === 'R1') {
       var cell = hit.cell, g = hit.g;
-      var r = (cell / n) | 0, c = cell % n;
-      steps.push(step('先看 ' + (g + 1) + ' 号色块', { regions: [g] }, { focus: cell }));
-      steps.push(step('这一块只剩' + cellTxt(cell, n) + '能放', { regions: [g], cells: [cell] }, { focus: cell }));
-      steps.push(step('它的皇后就在这里', { regions: [g], cells: [cell] }, { focus: cell, keep: true }));
+      steps.push(step('先看 ' + reg(g) + '色块', { regions: [g] }, { focus: cell }));
+      steps.push(step('这个色块只剩' + cellTxt(cell, n) + '这一格没被划掉',
+        { regions: [g], cells: [cell] }, { focus: cell }));
+      steps.push(step('这个色块的皇后就放在这里', { regions: [g], cells: [cell] }, { focus: cell, keep: true }));
       return {
         rule: 'R1', level: 1, title: '直读',
         steps: steps, action: { type: 'place', cell: cell }
@@ -384,11 +407,12 @@
     if (hit.rule === 'R2' || hit.rule === 'R3') {
       var isRow = hit.rule === 'R2';
       var line = hit.line, cl = hit.cell;
+      var lw = isRow ? '行' : '列';
       var hlUnit = isRow ? { rows: [line] } : { cols: [line] };
       steps.push(step('先看' + lineTxt(hit.dir, [line]), hlUnit, { focus: cl }));
-      steps.push(step(isRow ? '这一行只剩' + cellTxt(cl, n) + '一格' : '这一列只剩' + cellTxt(cl, n) + '一格',
+      steps.push(step('这一' + lw + '只剩' + cellTxt(cl, n) + '这一格没被划掉',
         { rows: isRow ? [line] : [], cols: isRow ? [] : [line], cells: [cl] }, { focus: cl }));
-      steps.push(step(isRow ? '这一行的皇后就在这里' : '这一列的皇后就在这里',
+      steps.push(step('这一' + lw + '的皇后就放在这里',
         { rows: isRow ? [line] : [], cols: isRow ? [] : [line], cells: [cl] }, { focus: cl }));
       return {
         rule: hit.rule, level: 1, title: '直读',
@@ -400,23 +424,24 @@
       var k = hit.k;
       var rowsHl = hit.dir === 'row' ? hit.lines : [];
       var colsHl = hit.dir === 'col' ? hit.lines : [];
-      var lineSet = { rows: rowsHl, cols: colsHl };
+      var lwA = hit.dir === 'row' ? '行' : '列';
+      var lineA = lineTxt(hit.dir, hit.lines);
       if (k === 1) {
         var g1 = hit.units[0];
-        steps.push(step('先看 ' + (g1 + 1) + ' 号色块', { regions: [g1] }));
-        steps.push(step('它还活着的格子，全在' + lineTxt(hit.dir, hit.lines) + '里',
+        steps.push(step('先看 ' + reg(g1) + '色块', { regions: [g1] }));
+        steps.push(step('这个色块没被划掉的格子，全在' + lineA + '里',
           { regions: [g1], rows: rowsHl, cols: colsHl }));
-        steps.push(step(lineTxt(hit.dir, hit.lines) + '的皇后只能给它',
+        steps.push(step(lineA + '里只能放这个色块的皇后',
           { regions: [g1], rows: rowsHl, cols: colsHl }));
       } else {
-        steps.push(step('先看这 ' + k + ' 个色块：' + regTxt(hit.units), { regions: hit.units }));
-        steps.push(step('它们还活着的格子，全在' + lineTxt(hit.dir, hit.lines) + '里',
+        steps.push(step('先看这 ' + k + ' 个色块：' + regList(hit.units), { regions: hit.units }));
+        steps.push(step('这 ' + k + ' 个色块没被划掉的格子，全在' + lineA + '里',
           { regions: hit.units, rows: rowsHl, cols: colsHl }));
-        steps.push(step(k + ' 个色块 ' + k + ' 只皇后，一行一只，正好占满这 ' + k + (hit.dir === 'row' ? ' 行' : ' 列'),
+        steps.push(step('这 ' + k + ' 个色块一共要放 ' + k + ' 只皇后，正好占满这 ' + k + ' ' + lwA,
           { regions: hit.units, rows: rowsHl, cols: colsHl, lines: hit.lines, dir: hit.dir }));
       }
       var cN = hit.kills.filter(function (x) { return !isDone(x); }).length;
-      steps.push(step(lineTxt(hit.dir, hit.lines) + '里别家的 ' + cN + ' 格都可以划掉',
+      steps.push(step(lineA + '里其他色块的 ' + cN + ' 个格子都可以划掉',
         { rows: rowsHl, cols: colsHl, cells: hit.kills, regions: hit.units, kill: true },
         { focus: hit.kills[0] }));
       return {
@@ -429,22 +454,27 @@
       var k2 = hit.k;
       var rows2 = hit.dir === 'row' ? hit.lines : [];
       var cols2 = hit.dir === 'col' ? hit.lines : [];
+      var lwB = hit.dir === 'row' ? '行' : '列';
+      var lineB = lineTxt(hit.dir, hit.lines);
       if (k2 === 1) {
         var g2 = hit.regions[0];
-        steps.push(step('先看' + lineTxt(hit.dir, hit.lines), { rows: rows2, cols: cols2 }));
-        steps.push(step('这一' + (hit.dir === 'row' ? '行' : '列') + '还活着的格子，全是 ' + (g2 + 1) + ' 号的',
+        steps.push(step('先看' + lineB, { rows: rows2, cols: cols2 }));
+        steps.push(step('这一' + lwB + '没被划掉的格子，都属于 ' + reg(g2) + '色块',
           { rows: rows2, cols: cols2, regions: [g2] }));
-        steps.push(step('所以 ' + (g2 + 1) + ' 号的皇后就在这一' + (hit.dir === 'row' ? '行' : '列'),
+        steps.push(step('所以 ' + reg(g2) + '色块的皇后只能放在这一' + lwB,
           { rows: rows2, cols: cols2, regions: [g2] }));
       } else {
-        steps.push(step('先看这 ' + k2 + ' 行：' + lineTxt(hit.dir, hit.lines), { rows: rows2, cols: cols2 }));
-        steps.push(step('这几' + (hit.dir === 'row' ? '行' : '列') + '还活着的格子，只有这 ' + k2 + ' 个色块的',
+        steps.push(step('先看' + lineB, { rows: rows2, cols: cols2 }));
+        steps.push(step('这 ' + k2 + ' ' + lwB + '没被划掉的格子，只属于这 ' + k2 + ' 个色块：' + regList(hit.regions),
           { rows: rows2, cols: cols2, regions: hit.regions }));
-        steps.push(step(k2 + ' 只皇后只能由它们出，都在这 ' + k2 + (hit.dir === 'row' ? ' 行' : ' 列') + '里',
+        steps.push(step('这 ' + k2 + ' 只皇后只能放在这 ' + k2 + ' ' + lwB + '里',
           { rows: rows2, cols: cols2, regions: hit.regions }));
       }
       var cN2 = hit.kills.filter(function (x) { return !isDone(x); }).length;
-      steps.push(step(regTxt(hit.regions) + '在别处的 ' + cN2 + ' 格都可以划掉',
+      var killTxt = k2 === 1
+        ? reg(hit.regions[0]) + '色块在别处的 ' + cN2 + ' 个格子都可以划掉'
+        : '这 ' + k2 + ' 个色块（' + regList(hit.regions) + '）在别处的 ' + cN2 + ' 个格子都可以划掉';
+      steps.push(step(killTxt,
         { rows: rows2, cols: cols2, regions: hit.regions, cells: hit.kills, kill: true },
         { focus: hit.kills[0] }));
       return {
@@ -455,16 +485,15 @@
 
     if (hit.rule === 'P') {
       var pc = hit.cell;
-      var pr = (pc / n) | 0, pcd = pc % n;
       var dead = hit.dead;
       var deadHl = {};
       var deadAt = '';
       if (dead.type === 'row') { deadHl.rows = [dead.index]; deadAt = '第' + (dead.index + 1) + '行'; }
       else if (dead.type === 'col') { deadHl.cols = [dead.index]; deadAt = '第' + (dead.index + 1) + '列'; }
-      else { deadHl.regions = [dead.index]; deadAt = (dead.index + 1) + ' 号色块'; }
-      steps.push(step('简单的数法都用完了，试一个假设', { cells: [pc] }, { focus: pc }));
+      else { deadHl.regions = [dead.index]; deadAt = reg(dead.index) + '色块'; }
+      steps.push(step('常规的数法都推不动了，试一个假设', { cells: [pc] }, { focus: pc }));
       steps.push(step('假设' + cellTxt(pc, n) + '放皇后，往下推', { cells: [pc] }, { focus: pc }));
-      steps.push(step('推到这里就发现' + deadAt + '一个位置都不剩了',
+      steps.push(step('往下推会发现：' + deadAt + '已经没有位置可放',
         { cells: [pc], rows: deadHl.rows, cols: deadHl.cols, regions: deadHl.regions, dead: true },
         { focus: pc }));
       steps.push(step('所以' + cellTxt(pc, n) + '不能放皇后', { cells: [pc], kill: true }, { focus: pc }));
@@ -511,12 +540,12 @@
     // ① 放错的皇后：先纠这个，否则后面越推越乱
     if (wrongQ.length) {
       var wq = wrongQ[0];
-      var wr = (wq / n) | 0, wc = wq % n;
+      var wr = (wq / n) | 0;
       return {
         kind: 'fixQueen', rule: 'FQ', level: 0, title: '检查',
         steps: [
-          step('这只皇后放错位置了', { cells: [wq], bad: true }, { focus: wq }),
-          step('第' + (wr + 1) + '行应该放在别的列，先把它拿走', { cells: [wq], bad: true }, { focus: wq })
+          step('这枚皇后放错位置了', { cells: [wq], bad: true }, { focus: wq }),
+          step('第' + (wr + 1) + '行的皇后应该在别的列，先把它拿掉', { cells: [wq], bad: true }, { focus: wq })
         ],
         action: { type: 'remove', cell: wq }
       };
@@ -539,12 +568,12 @@
 
     // ③ 结论落在玩家自己画错的 × 上 → 先叫他撤掉
     if (hit && hit.kind === 'place' && marks[hit.cell] === 1) {
-      var fx = hit.cell, fr = (fx / n) | 0, fc = fx % n;
+      var fx = hit.cell;
       return {
         kind: 'fixCross', rule: 'FX', level: 0, title: '检查',
         steps: [
-          step('这里画错 × 了', { cells: [fx], bad: true }, { focus: fx }),
-          step('第' + (fr + 1) + '行第' + (fc + 1) + '列必须放皇后，先把 × 清掉', { cells: [fx], bad: true }, { focus: fx })
+          step('这一格不该画 ×', { cells: [fx], bad: true }, { focus: fx }),
+          step(cellTxt(fx, n) + '必须放皇后，先把 × 清掉', { cells: [fx], bad: true }, { focus: fx })
         ],
         action: { type: 'unmark', cell: fx }
       };
@@ -569,12 +598,12 @@
 
     // ⑤ 真是没招了：如果玩家把某格皇后划掉了，先提醒
     if (wrongX.length) {
-      var wx = wrongX[0], xr = (wx / n) | 0, xc = wx % n;
+      var wx = wrongX[0];
       return {
         kind: 'fixCross', rule: 'FX', level: 0, title: '检查',
         steps: [
-          step('这里画错 × 了', { cells: [wx], bad: true }, { focus: wx }),
-          step('第' + (xr + 1) + '行第' + (xc + 1) + '列必须放皇后，先把 × 清掉', { cells: [wx], bad: true }, { focus: wx })
+          step('这一格不该画 ×', { cells: [wx], bad: true }, { focus: wx }),
+          step(cellTxt(wx, n) + '必须放皇后，先把 × 清掉', { cells: [wx], bad: true }, { focus: wx })
         ],
         action: { type: 'unmark', cell: wx }
       };
@@ -585,16 +614,16 @@
     if (guess) {
       var gt = guess.type === 'row' ? '第' + (guess.index + 1) + '行'
         : guess.type === 'col' ? '第' + (guess.index + 1) + '列'
-          : (guess.index + 1) + ' 号色块';
+          : reg(guess.index) + '色块';
       var gsteps = [
-        step('能直接数出来的都用完了', {}),
+        step('靠计数能推的都推完了', {}),
         step(gt + '只剩 ' + guess.cells.length + ' 个位置', cellsHl(guess.type, guess.index, guess.cells)),
-        step('先试其中一个，不对的话会马上矛盾', cellsHl(guess.type, guess.index, guess.cells), { focus: guess.cells[0] })
+        step('先试其中一个，放错会马上出现冲突', cellsHl(guess.type, guess.index, guess.cells), { focus: guess.cells[0] })
       ];
       return { kind: 'guess', rule: 'G', level: 5, title: '该猜了', steps: gsteps, action: null, choices: guess.cells };
     }
 
-    return { kind: 'none', rule: null, level: 0, title: '提示', steps: [step('这一步没有能一眼说清的走法了')], action: null };
+    return { kind: 'none', rule: null, level: 0, title: '提示', steps: [step('这一步没有能直接推出来的结论')], action: null };
   }
 
   function cellsHl(type, index, cells) {

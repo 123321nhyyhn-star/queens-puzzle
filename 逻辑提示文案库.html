@@ -181,7 +181,7 @@
   <p style="margin-top:0"><strong>先把范围说清楚：到 L3 为止一共 15 条规则，没有第 16 条。</strong></p>
   <ul style="margin-bottom:0">
     <li><b>L1 直读</b>（3 条）：某行 / 某列 / 某个色块，只剩一格还空着 → <b>落子</b></li>
-    <li><b>L2 数色块</b>（6 条）：k 个色块被挤在 k 条线里 → 这 k 条线里<b>别家的格子作废</b></li>
+    <li><b>L2 数色块</b>（6 条）：k 个色块被挤在 k 条线里 → 这 k 条线里<b>其他色块的格子作废</b></li>
     <li><b>L3 数线</b>（6 条）：k 条线里只剩 k 个色块 → 这 k 个色块<b>在线外的格子作废</b></li>
   </ul>
   <p class="note" style="margin-bottom:0">
@@ -200,7 +200,7 @@
   <div class="fl">
     <div class="phone">
       <div class="row">
-        <div class="hint">第5行只能是1号，别家划掉</div>
+        <div class="hint">第5行只能是1号，其他色块划掉</div>
         <div class="chip">难度 6×6</div>
       </div>
       <div class="bar"></div>
@@ -239,7 +239,7 @@
     <tr><th>规则</th><th>一行版（个位数行号）</th><th>一行版（两位数行号）</th></tr>
     <tr><td>L2 k=3</td><td><code>第6、7、8行只能是2、4、7号</code> <span class="note">16 字</span></td><td><code>第10、11、12行被3个色块占满</code> <span class="note">17 字</span></td></tr>
     <tr><td>L3 k=3</td><td><code>第6、7、8列只剩3、4、8号</code> <span class="note">15 字</span></td><td><code>第10、11、12行只剩3个色块</code> <span class="note">16 字</span></td></tr>
-    <tr><td>L2/L3 k=2</td><td><code>第1、5行只剩5、6号，它俩别处划掉</code> <span class="note">18 字</span></td><td><code>第10、11行只能是9、14号，别家划掉</code> <span class="note">20 字，刚好到顶</span></td></tr>
+    <tr><td>L2/L3 k=2</td><td><code>第1、5行只剩5、6号，它俩别处划掉</code> <span class="note">18 字</span></td><td><code>第10、11行只能是9、14号，其他色块划掉</code> <span class="note">20 字，刚好到顶</span></td></tr>
   </table>
 </div>
 
@@ -252,7 +252,7 @@
     <div class="panel">
       <div class="ttl">为什么？（可关闭的小卡片）</div>
       <div class="body">
-        第 2、3 行现在还活着的格子，只落在 <b>2 号</b>和 <b>7 号</b>两个色块里。
+        第 2、3 行现在没被划掉的格子，只落在 <b>2 号</b>和 <b>7 号</b>两个色块里。
         这两个色块各要放一只皇后，正好两只，而它们只能待在这两行里；
         一行又只放得下一只——所以这两行的皇后就是它们俩的。
       </div>
@@ -273,7 +273,7 @@
 
 <div class="callout">
   <b>落子类（L1）只有一个格子，把坐标念出来</b>：「第5行只能是1号」→ 用户需要知道点哪。<br>
-  <b>划叉类（L2/L3）一次少则 1 格、多则十几格，别念坐标</b>，只报数量 + 靠棋盘高亮：「这 2 行里别家的 9 格都可以划掉」。
+  <b>划叉类（L2/L3）一次少则 1 格、多则十几格，别念坐标</b>，只报数量 + 靠棋盘高亮：「这 2 行里其他色块的 9 格都可以划掉」。
   念 9 个坐标既超字数也没人记得住。
 </div>
 
@@ -366,7 +366,7 @@
 <div class="card tight">
   <p style="margin-top:0"><b>为什么成立（讲解版，可用于首次教学）</b></p>
   <p style="margin-bottom:0">
-    <i class="tk">{G1}</i>、<i class="tk">{G2}</i> 这两个色块，还活着的格子全在第 <i class="tk">{R1}</i>、<i class="tk">{R2}</i> 这两行里。两个色块各要放一只皇后，
+    <i class="tk">{G1}</i>、<i class="tk">{G2}</i> 这两个色块，没被划掉的格子全在第 <i class="tk">{R1}</i>、<i class="tk">{R2}</i> 这两行里。两个色块各要放一只皇后，
     一共两只；而它们只能待在这两行——<b>一行又只放得下一只</b>。两只皇后、两行、每行一只，正好塞满。
     既然这两行的位置已经被它们俩用掉了，别的色块就别想在这两行放皇后了。
   </p>
@@ -380,12 +380,12 @@
 
 <section class="rule" id="h4">
   <div class="rule-h"><span class="hid">H4</span><span class="lv l2">L2 · k=1</span><span class="rule-t">一个色块挤进一行</span></div>
-  <p class="pre"><b>什么时候能用</b><i class="tk">{G}</i> 号色块还活着的 <i class="tk">{a}</i> 格，全都在第 <i class="tk">{R}</i> 行里。</p>
-  <div class="say"><span class="lab">一行版</span><span class="txt">第<i class="ph">{R}</i>行只能是<i class="ph">{G}</i>号，别家划掉</span></div>
-  <div class="say long"><span class="lab">展开版</span><span class="txt"><i class="ph">{G}</i> 号色块还活着的 <i class="ph">{a}</i> 格全都在第 <i class="ph">{R}</i> 行。它必须放一只皇后，而这只皇后只能落在第 <i class="ph">{R}</i> 行——所以第 <i class="ph">{R}</i> 行的皇后就是 <i class="ph">{G}</i> 号色块的，这一行里其它色块的 <i class="ph">{c}</i> 格都可以划掉。</span></div>
+  <p class="pre"><b>什么时候能用</b><i class="tk">{G}</i> 号色块没被划掉的 <i class="tk">{a}</i> 格，全都在第 <i class="tk">{R}</i> 行里。</p>
+  <div class="say"><span class="lab">一行版</span><span class="txt">第<i class="ph">{R}</i>行只能是<i class="ph">{G}</i>号，其他色块划掉</span></div>
+  <div class="say long"><span class="lab">展开版</span><span class="txt"><i class="ph">{G}</i> 号色块没被划掉的 <i class="ph">{a}</i> 格全都在第 <i class="ph">{R}</i> 行。它必须放一只皇后，而这只皇后只能落在第 <i class="ph">{R}</i> 行——所以第 <i class="ph">{R}</i> 行的皇后就是 <i class="ph">{G}</i> 号色块的，这一行里其它色块的 <i class="ph">{c}</i> 格都可以划掉。</span></div>
   <div class="eg">
     <span class="who">8×8 · seed 988523829 · 开局</span><br>
-    1 号色块活着的 3 格全在第 5 行 → <b>「第5行只能是1号，别家划掉」</b><span class="hl">13 字</span><br>
+    1 号色块没被划掉的 3 格全在第 5 行 → <b>「第5行只能是1号，其他色块划掉」</b><span class="hl">15 字</span><br>
     <span class="who">划掉 4 格：(5,1) (5,5) (5,6) (5,7) —— 其中 4 号色块 3 格、6 号色块 1 格</span>
   </div>
   <div class="act"><b>UI</b>把第 5 行高亮，把那 4 格画成虚线 ×。</div>
@@ -393,12 +393,12 @@
 
 <section class="rule" id="h5">
   <div class="rule-h"><span class="hid">H5</span><span class="lv l2">L2 · k=2</span><span class="rule-t">两个色块挤进两行</span></div>
-  <p class="pre"><b>什么时候能用</b><i class="tk">{G1}</i>、<i class="tk">{G2}</i> 两个色块活着的格子，合起来只落在第 <i class="tk">{R1}</i>、<i class="tk">{R2}</i> 两行里（共 <i class="tk">{a1}</i>+<i class="tk">{a2}</i> 格）。</p>
-  <div class="say"><span class="lab">一行版</span><span class="txt">第<i class="ph">{R1}</i>、<i class="ph">{R2}</i>行只能是<i class="ph">{G1}</i>、<i class="ph">{G2}</i>号，别家划掉</span></div>
-  <div class="say long"><span class="lab">展开版</span><span class="txt"><i class="ph">{G1}</i>、<i class="ph">{G2}</i> 号色块还活着的格子，全都落在第 <i class="ph">{R1}</i>、<i class="ph">{R2}</i> 这两行里。两个色块各要放一只皇后，一共两只，而它们只能待在这两行；一行又只放得下一只——所以这两行的皇后正好被它们俩占满，第 <i class="ph">{R1}</i>、<i class="ph">{R2}</i> 行里其它色块的 <i class="ph">{c}</i> 格都可以划掉。</span></div>
+  <p class="pre"><b>什么时候能用</b><i class="tk">{G1}</i>、<i class="tk">{G2}</i> 两个色块没被划掉的格子，合起来只落在第 <i class="tk">{R1}</i>、<i class="tk">{R2}</i> 两行里（共 <i class="tk">{a1}</i>+<i class="tk">{a2}</i> 格）。</p>
+  <div class="say"><span class="lab">一行版</span><span class="txt">第<i class="ph">{R1}</i>、<i class="ph">{R2}</i>行只能是<i class="ph">{G1}</i>、<i class="ph">{G2}</i>号，其他色块划掉</span></div>
+  <div class="say long"><span class="lab">展开版</span><span class="txt"><i class="ph">{G1}</i>、<i class="ph">{G2}</i> 号色块没被划掉的格子，全都落在第 <i class="ph">{R1}</i>、<i class="ph">{R2}</i> 这两行里。两个色块各要放一只皇后，一共两只，而它们只能待在这两行；一行又只放得下一只——所以这两行的皇后正好被它们俩占满，第 <i class="ph">{R1}</i>、<i class="ph">{R2}</i> 行里其它色块的 <i class="ph">{c}</i> 格都可以划掉。</span></div>
   <div class="eg">
     <span class="who">8×8 · seed 988492153 · 已放 1 只：(1,8)</span><br>
-    2、7 号色块（5 格 + 4 格）全在第 2、3 行 → <b>「第2、3行只能是2、7号，别家划掉」</b><span class="hl">17 字</span><br>
+    2、7 号色块（5 格 + 4 格）全在第 2、3 行 → <b>「第2、3行只能是2、7号，其他色块划掉」</b><span class="hl">19 字</span><br>
     <span class="who">只划掉 1 格：(3,3)，属于 1 号色块</span>
   </div>
   <div class="act"><b>UI</b>只划那 1 格时，务必<b>同时闪一下那两行</b>，否则用户看不出"为什么这格作废"。</div>
@@ -406,25 +406,25 @@
 
 <section class="rule" id="h6">
   <div class="rule-h"><span class="hid">H6</span><span class="lv l2">L2 · k=3</span><span class="rule-t">三个色块挤进三行</span></div>
-  <p class="pre"><b>什么时候能用</b>三个色块活着的格子，合起来只落在三行里。</p>
+  <p class="pre"><b>什么时候能用</b>三个色块没被划掉的格子，合起来只落在三行里。</p>
   <div class="say"><span class="lab">一行版</span><span class="txt">第<i class="ph">{R1}</i>、<i class="ph">{R2}</i>、<i class="ph">{R3}</i>行只能是<i class="ph">{G1}</i>、<i class="ph">{G2}</i>、<i class="ph">{G3}</i>号</span></div>
-  <div class="say long"><span class="lab">展开版</span><span class="txt">这三个色块还活着的格子，全都落在第 <i class="ph">{R1}</i>、<i class="ph">{R2}</i>、<i class="ph">{R3}</i> 这三行里。三个色块一共要放三只皇后，只能待在这三行，一行一只——正好占满。所以这三行里其它色块的 <i class="ph">{c}</i> 格都可以划掉。</span></div>
+  <div class="say long"><span class="lab">展开版</span><span class="txt">这三个色块没被划掉的格子，全都落在第 <i class="ph">{R1}</i>、<i class="ph">{R2}</i>、<i class="ph">{R3}</i> 这三行里。三个色块一共要放三只皇后，只能待在这三行，一行一只——正好占满。所以这三行里其它色块的 <i class="ph">{c}</i> 格都可以划掉。</span></div>
   <div class="eg">
     <span class="who">8×8 · seed 988515910 · 开局</span><br>
     2、4、7 号色块（6+4+8 格）全在第 6、7、8 行 → <b>「第6、7、8行只能是2、4、7号」</b><span class="hl">16 字</span><br>
     <span class="who">划掉 3 格：(6,1) (6,6) (6,7)</span>
   </div>
-  <div class="act"><b>UI</b>三行一起高亮。k=3 时一行版省掉"别家划掉"也读得通，省 5 个字。</div>
+  <div class="act"><b>UI</b>三行一起高亮。k=3 时一行版省掉"其他色块划掉"也读得通，省 5 个字。</div>
 </section>
 
 <section class="rule" id="h7">
   <div class="rule-h"><span class="hid">H7</span><span class="lv l2">L2 · k=1</span><span class="rule-t">一个色块挤进一列</span></div>
   <p class="pre"><b>什么时候能用</b>同 H4，把"行"换成"列"。</p>
-  <div class="say"><span class="lab">一行版</span><span class="txt">第<i class="ph">{C}</i>列只能是<i class="ph">{G}</i>号，别家划掉</span></div>
-  <div class="say long"><span class="lab">展开版</span><span class="txt"><i class="ph">{G}</i> 号色块还活着的 <i class="ph">{a}</i> 格全都在第 <i class="ph">{C}</i> 列。它必须放一只皇后，而这只皇后只能落在第 <i class="ph">{C}</i> 列——所以第 <i class="ph">{C}</i> 列的皇后就是 <i class="ph">{G}</i> 号色块的，这一列里其它色块的 <i class="ph">{c}</i> 格都可以划掉。</span></div>
+  <div class="say"><span class="lab">一行版</span><span class="txt">第<i class="ph">{C}</i>列只能是<i class="ph">{G}</i>号，其他色块划掉</span></div>
+  <div class="say long"><span class="lab">展开版</span><span class="txt"><i class="ph">{G}</i> 号色块没被划掉的 <i class="ph">{a}</i> 格全都在第 <i class="ph">{C}</i> 列。它必须放一只皇后，而这只皇后只能落在第 <i class="ph">{C}</i> 列——所以第 <i class="ph">{C}</i> 列的皇后就是 <i class="ph">{G}</i> 号色块的，这一列里其它色块的 <i class="ph">{c}</i> 格都可以划掉。</span></div>
   <div class="eg">
     <span class="who">8×8 · seed 988515910 · 开局</span><br>
-    3 号色块活着的 2 格全在第 8 列 → <b>「第8列只能是3号，别家划掉」</b><span class="hl">13 字</span><br>
+    3 号色块没被划掉的 2 格全在第 8 列 → <b>「第8列只能是3号，其他色块划掉」</b><span class="hl">15 字</span><br>
     <span class="who">划掉 5 格：(1,8) (2,8) (6,8) (7,8) (8,8)</span>
   </div>
   <div class="act"><b>UI</b>第 8 列纵向高亮。</div>
@@ -432,12 +432,12 @@
 
 <section class="rule" id="h8">
   <div class="rule-h"><span class="hid">H8</span><span class="lv l2">L2 · k=2</span><span class="rule-t">两个色块挤进两列</span></div>
-  <p class="pre"><b>什么时候能用</b>两个色块活着的格子，合起来只落在两列里。</p>
-  <div class="say"><span class="lab">一行版</span><span class="txt">第<i class="ph">{C1}</i>、<i class="ph">{C2}</i>列只能是<i class="ph">{G1}</i>、<i class="ph">{G2}</i>号，别家划掉</span></div>
-  <div class="say long"><span class="lab">展开版</span><span class="txt"><i class="ph">{G1}</i>、<i class="ph">{G2}</i> 号色块还活着的格子，全都落在第 <i class="ph">{C1}</i>、<i class="ph">{C2}</i> 这两列里。两只皇后只能待在这两列，而一列只放得下一只——这两列被它们占满了，其它色块在这两列的 <i class="ph">{c}</i> 格都可以划掉。</span></div>
+  <p class="pre"><b>什么时候能用</b>两个色块没被划掉的格子，合起来只落在两列里。</p>
+  <div class="say"><span class="lab">一行版</span><span class="txt">第<i class="ph">{C1}</i>、<i class="ph">{C2}</i>列只能是<i class="ph">{G1}</i>、<i class="ph">{G2}</i>号，其他色块划掉</span></div>
+  <div class="say long"><span class="lab">展开版</span><span class="txt"><i class="ph">{G1}</i>、<i class="ph">{G2}</i> 号色块没被划掉的格子，全都落在第 <i class="ph">{C1}</i>、<i class="ph">{C2}</i> 这两列里。两只皇后只能待在这两列，而一列只放得下一只——这两列被它们占满了，其它色块在这两列的 <i class="ph">{c}</i> 格都可以划掉。</span></div>
   <div class="eg">
     <span class="who">8×8 · seed 988523829 · 开局</span><br>
-    4、8 号色块（3 格 + 3 格）全在第 6、7 列 → <b>「第6、7列只能是4、8号，别家划掉」</b><span class="hl">17 字</span><br>
+    4、8 号色块（3 格 + 3 格）全在第 6、7 列 → <b>「第6、7列只能是4、8号，其他色块划掉」</b><span class="hl">19 字</span><br>
     <span class="who">划掉 2 格：(1,6) (1,7)</span>
   </div>
   <div class="act"><b>UI</b>同 H5。</div>
@@ -445,9 +445,9 @@
 
 <section class="rule" id="h9">
   <div class="rule-h"><span class="hid">H9</span><span class="lv l2">L2 · k=3</span><span class="rule-t">三个色块挤进三列</span></div>
-  <p class="pre"><b>什么时候能用</b>三个色块活着的格子，合起来只落在三列里。</p>
+  <p class="pre"><b>什么时候能用</b>三个色块没被划掉的格子，合起来只落在三列里。</p>
   <div class="say"><span class="lab">一行版</span><span class="txt">第<i class="ph">{C1}</i>、<i class="ph">{C2}</i>、<i class="ph">{C3}</i>列只能是<i class="ph">{G1}</i>、<i class="ph">{G2}</i>、<i class="ph">{G3}</i>号</span></div>
-  <div class="say long"><span class="lab">展开版</span><span class="txt">这三个色块还活着的格子，全都落在第 <i class="ph">{C1}</i>、<i class="ph">{C2}</i>、<i class="ph">{C3}</i> 这三列里。三只皇后只能待在这三列，一列一只——正好占满，其它色块在这三列的 <i class="ph">{c}</i> 格都可以划掉。</span></div>
+  <div class="say long"><span class="lab">展开版</span><span class="txt">这三个色块没被划掉的格子，全都落在第 <i class="ph">{C1}</i>、<i class="ph">{C2}</i>、<i class="ph">{C3}</i> 这三列里。三只皇后只能待在这三列，一列一只——正好占满，其它色块在这三列的 <i class="ph">{c}</i> 格都可以划掉。</span></div>
   <div class="eg">
     <span class="who">8×8 · seed 988507991 · 开局</span><br>
     6、7、8 号色块（3+2+4 格）全在第 2、7、8 列 → <b>「第2、7、8列只能是6、7、8号」</b><span class="hl">16 字</span><br>
@@ -471,7 +471,7 @@
 <div class="card tight">
   <p style="margin-top:0"><b>为什么成立（讲解版）</b></p>
   <p style="margin-bottom:0">
-    第 <i class="tk">{R1}</i>、<i class="tk">{R2}</i> 这两行，现在还活着的格子<b>只属于</b> <i class="tk">{G1}</i>、<i class="tk">{G2}</i> 两个色块。这两行各要一只皇后，一共两只，
+    第 <i class="tk">{R1}</i>、<i class="tk">{R2}</i> 这两行，现在没被划掉的格子<b>只属于</b> <i class="tk">{G1}</i>、<i class="tk">{G2}</i> 两个色块。这两行各要一只皇后，一共两只，
     而能在这里放皇后的只有这两个色块——所以这两只皇后必定是它们俩的。
     <b>色块只有一个皇后</b>，既然它们俩的皇后都在这两行里了，那它们在这两行以外的格子自然全部作废。
   </p>
@@ -485,9 +485,9 @@
 
 <section class="rule" id="h10">
   <div class="rule-h"><span class="hid">H10</span><span class="lv l3">L3 · k=1</span><span class="rule-t">一行里只剩一个色块</span></div>
-  <p class="pre"><b>什么时候能用</b>第 <i class="tk">{R}</i> 行还活着的 <i class="tk">{a}</i> 格，全都属于 <i class="tk">{G}</i> 号色块。</p>
+  <p class="pre"><b>什么时候能用</b>第 <i class="tk">{R}</i> 行没被划掉的 <i class="tk">{a}</i> 格，全都属于 <i class="tk">{G}</i> 号色块。</p>
   <div class="say"><span class="lab">一行版</span><span class="txt">第<i class="ph">{R}</i>行只剩<i class="ph">{G}</i>号，<i class="ph">{G}</i>号别处全划掉</span></div>
-  <div class="say long"><span class="lab">展开版</span><span class="txt">第 <i class="ph">{R}</i> 行现在只剩 <i class="ph">{a}</i> 格还活着，它们全都属于 <i class="ph">{G}</i> 号色块。这一行必须放一只皇后，那只能是 <i class="ph">{G}</i> 号色块的——所以 <i class="ph">{G}</i> 号色块在第 <i class="ph">{R}</i> 行以外的 <i class="ph">{c}</i> 格都可以划掉。</span></div>
+  <div class="say long"><span class="lab">展开版</span><span class="txt">第 <i class="ph">{R}</i> 行现在只剩 <i class="ph">{a}</i> 格没被划掉，它们全都属于 <i class="ph">{G}</i> 号色块。这一行必须放一只皇后，那只能是 <i class="ph">{G}</i> 号色块的——所以 <i class="ph">{G}</i> 号色块在第 <i class="ph">{R}</i> 行以外的 <i class="ph">{c}</i> 格都可以划掉。</span></div>
   <div class="eg">
     <span class="who">8×8 · seed 988523829 · 开局</span><br>
     第 1 行只剩 3 格，全属 2 号色块 → <b>「第1行只剩2号，2号别处全划掉」</b><span class="hl">15 字</span><br>
@@ -498,9 +498,9 @@
 
 <section class="rule" id="h11">
   <div class="rule-h"><span class="hid">H11</span><span class="lv l3">L3 · k=2</span><span class="rule-t">两行里只剩两个色块</span></div>
-  <p class="pre"><b>什么时候能用</b>第 <i class="tk">{R1}</i>、<i class="tk">{R2}</i> 两行活着的格子，只属于 <i class="tk">{G1}</i>、<i class="tk">{G2}</i> 两个色块。</p>
+  <p class="pre"><b>什么时候能用</b>第 <i class="tk">{R1}</i>、<i class="tk">{R2}</i> 两行没被划掉的格子，只属于 <i class="tk">{G1}</i>、<i class="tk">{G2}</i> 两个色块。</p>
   <div class="say"><span class="lab">一行版</span><span class="txt">第<i class="ph">{R1}</i>、<i class="ph">{R2}</i>行只剩<i class="ph">{G1}</i>、<i class="ph">{G2}</i>号，它俩别处划掉</span></div>
-  <div class="say long"><span class="lab">展开版</span><span class="txt">第 <i class="ph">{R1}</i>、<i class="ph">{R2}</i> 两行还活着的格子，只属于 <i class="ph">{G1}</i>、<i class="ph">{G2}</i> 两个色块。这两行各要一只皇后，一共两只，只能由这两个色块出——所以它们俩的皇后都在这两行里，它们在这两行以外的 <i class="ph">{c}</i> 格都可以划掉。</span></div>
+  <div class="say long"><span class="lab">展开版</span><span class="txt">第 <i class="ph">{R1}</i>、<i class="ph">{R2}</i> 两行没被划掉的格子，只属于 <i class="ph">{G1}</i>、<i class="ph">{G2}</i> 两个色块。这两行各要一只皇后，一共两只，只能来自这两个色块——所以它们俩的皇后都在这两行里，它们在这两行以外的 <i class="ph">{c}</i> 格都可以划掉。</span></div>
   <div class="eg">
     <span class="who">8×8 · seed 988515910 · 开局</span><br>
     第 1、5 行只剩 5、6 号色块（这 2 行也不相邻） → <b>「第1、5行只剩5、6号，它俩别处划掉」</b><span class="hl">18 字</span><br>
@@ -511,9 +511,9 @@
 
 <section class="rule" id="h12">
   <div class="rule-h"><span class="hid">H12</span><span class="lv l3">L3 · k=3</span><span class="rule-t">三行里只剩三个色块</span></div>
-  <p class="pre"><b>什么时候能用</b>三行活着的格子，只属于三个色块。</p>
+  <p class="pre"><b>什么时候能用</b>三行没被划掉的格子，只属于三个色块。</p>
   <div class="say"><span class="lab">一行版</span><span class="txt">第<i class="ph">{R1}</i>、<i class="ph">{R2}</i>、<i class="ph">{R3}</i>行只剩<i class="ph">{G1}</i>、<i class="ph">{G2}</i>、<i class="ph">{G3}</i>号，别处划掉</span></div>
-  <div class="say long"><span class="lab">展开版</span><span class="txt">第 <i class="ph">{R1}</i>、<i class="ph">{R2}</i>、<i class="ph">{R3}</i> 三行还活着的格子，只属于 <i class="ph">{G1}</i>、<i class="ph">{G2}</i>、<i class="ph">{G3}</i> 三个色块。三行各要一只皇后，正好三只，只能由它们出——所以这三个色块的皇后都在这三行里，它们在三行以外的 <i class="ph">{c}</i> 格都可以划掉。</span></div>
+  <div class="say long"><span class="lab">展开版</span><span class="txt">第 <i class="ph">{R1}</i>、<i class="ph">{R2}</i>、<i class="ph">{R3}</i> 三行没被划掉的格子，只属于 <i class="ph">{G1}</i>、<i class="ph">{G2}</i>、<i class="ph">{G3}</i> 三个色块。三行各要一只皇后，正好三只，只能来自它们——所以这三个色块的皇后都在这三行里，它们在三行以外的 <i class="ph">{c}</i> 格都可以划掉。</span></div>
   <div class="eg">
     <span class="who">8×8 · seed 988523829 · 开局</span><br>
     第 1、7、8 行只剩 2、3、7 号 → <b>「第1、7、8行只剩2、3、7号，别处划掉」</b><span class="hl">20 字</span><br>
@@ -524,22 +524,22 @@
 
 <section class="rule" id="h13">
   <div class="rule-h"><span class="hid">H13</span><span class="lv l3">L3 · k=1</span><span class="rule-t">一列里只剩一个色块</span></div>
-  <p class="pre"><b>什么时候能用</b>第 <i class="tk">{C}</i> 列活着的格子，全都属于同一个色块。</p>
+  <p class="pre"><b>什么时候能用</b>第 <i class="tk">{C}</i> 列没被划掉的格子，全都属于同一个色块。</p>
   <div class="say"><span class="lab">一行版</span><span class="txt">第<i class="ph">{C}</i>列只剩<i class="ph">{G}</i>号，<i class="ph">{G}</i>号别处全划掉</span></div>
-  <div class="say long"><span class="lab">展开版</span><span class="txt">第 <i class="ph">{C}</i> 列现在只剩 <i class="ph">{a}</i> 格还活着，它们全都属于 <i class="ph">{G}</i> 号色块。这一列必须放一只皇后，那只能是 <i class="ph">{G}</i> 号色块的——所以 <i class="ph">{G}</i> 号色块在第 <i class="ph">{C}</i> 列以外的 <i class="ph">{c}</i> 格都可以划掉。</span></div>
+  <div class="say long"><span class="lab">展开版</span><span class="txt">第 <i class="ph">{C}</i> 列现在只剩 <i class="ph">{a}</i> 格没被划掉，它们全都属于 <i class="ph">{G}</i> 号色块。这一列必须放一只皇后，那只能是 <i class="ph">{G}</i> 号色块的——所以 <i class="ph">{G}</i> 号色块在第 <i class="ph">{C}</i> 列以外的 <i class="ph">{c}</i> 格都可以划掉。</span></div>
   <div class="eg">
     <span class="who">8×8 · seed 988523829 · 已放 1 只：(1,5)</span><br>
     第 6 列只剩 2 格，全属 4 号色块 → <b>「第6列只剩4号，4号别处全划掉」</b><span class="hl">15 字</span><br>
     <span class="who">只划掉 1 格：(4,7)</span>
   </div>
-  <div class="act"><b>UI</b>只划 1 格时，这句和 H4 的"别家划掉"看起来很像，注意用色块编号区分，不要两处都用"别家"。</div>
+  <div class="act"><b>UI</b>只划 1 格时，这句和 H4 的"其他色块划掉"看起来很像，注意用色块编号区分，不要两处都用"其他色块"。</div>
 </section>
 
 <section class="rule" id="h14">
   <div class="rule-h"><span class="hid">H14</span><span class="lv l3">L3 · k=2</span><span class="rule-t">两列里只剩两个色块</span></div>
-  <p class="pre"><b>什么时候能用</b>两列活着的格子，只属于两个色块。</p>
+  <p class="pre"><b>什么时候能用</b>两列没被划掉的格子，只属于两个色块。</p>
   <div class="say"><span class="lab">一行版</span><span class="txt">第<i class="ph">{C1}</i>、<i class="ph">{C2}</i>列只剩<i class="ph">{G1}</i>、<i class="ph">{G2}</i>号，它俩别处划掉</span></div>
-  <div class="say long"><span class="lab">展开版</span><span class="txt">第 <i class="ph">{C1}</i>、<i class="ph">{C2}</i> 两列还活着的格子，只属于 <i class="ph">{G1}</i>、<i class="ph">{G2}</i> 两个色块。这两列各要一只皇后，一共两只，只能由这两个色块出——所以它们俩的皇后都在这两列里，它们在这两列以外的 <i class="ph">{c}</i> 格都可以划掉。</span></div>
+  <div class="say long"><span class="lab">展开版</span><span class="txt">第 <i class="ph">{C1}</i>、<i class="ph">{C2}</i> 两列没被划掉的格子，只属于 <i class="ph">{G1}</i>、<i class="ph">{G2}</i> 两个色块。这两列各要一只皇后，一共两只，只能来自这两个色块——所以它们俩的皇后都在这两列里，它们在这两列以外的 <i class="ph">{c}</i> 格都可以划掉。</span></div>
   <div class="eg">
     <span class="who">8×8 · seed 988523829 · 开局</span><br>
     第 5、8 列只剩 2、3 号（这 2 列并不相邻） → <b>「第5、8列只剩2、3号，它俩别处划掉」</b><span class="hl">18 字</span><br>
@@ -550,9 +550,9 @@
 
 <section class="rule" id="h15">
   <div class="rule-h"><span class="hid">H15</span><span class="lv l3">L3 · k=3</span><span class="rule-t">三列里只剩三个色块</span></div>
-  <p class="pre"><b>什么时候能用</b>三列活着的格子，只属于三个色块。</p>
+  <p class="pre"><b>什么时候能用</b>三列没被划掉的格子，只属于三个色块。</p>
   <div class="say"><span class="lab">一行版</span><span class="txt">第<i class="ph">{C1}</i>、<i class="ph">{C2}</i>、<i class="ph">{C3}</i>列只剩<i class="ph">{G1}</i>、<i class="ph">{G2}</i>、<i class="ph">{G3}</i>号</span></div>
-  <div class="say long"><span class="lab">展开版</span><span class="txt">第 <i class="ph">{C1}</i>、<i class="ph">{C2}</i>、<i class="ph">{C3}</i> 三列还活着的格子，只属于 <i class="ph">{G1}</i>、<i class="ph">{G2}</i>、<i class="ph">{G3}</i> 三个色块。三列各要一只皇后，正好三只，只能由它们出——这三个色块的皇后都在这三列里，它们在三列以外的 <i class="ph">{c}</i> 格都可以划掉。</span></div>
+  <div class="say long"><span class="lab">展开版</span><span class="txt">第 <i class="ph">{C1}</i>、<i class="ph">{C2}</i>、<i class="ph">{C3}</i> 三列没被划掉的格子，只属于 <i class="ph">{G1}</i>、<i class="ph">{G2}</i>、<i class="ph">{G3}</i> 三个色块。三列各要一只皇后，正好三只，只能来自它们——这三个色块的皇后都在这三列里，它们在三列以外的 <i class="ph">{c}</i> 格都可以划掉。</span></div>
   <div class="eg">
     <span class="who">8×8 · seed 988500072 · 开局</span><br>
     第 6、7、8 列只剩 3、4、8 号 → <b>「第6、7、8列只剩3、4、8号」</b><span class="hl">15 字</span><br>
@@ -597,7 +597,7 @@
 <table>
   <tr><th style="width:150px">场合</th><th>套法</th><th>例子（以 H4 为例）</th></tr>
   <tr><td><b>首次教学</b><br><span class="note">该规则第一次出现</span></td><td>前面加"看第 R 行：" + 一句原理</td><td>「看第5行：1号的格子全在这一行，这行只能放它」</td></tr>
-  <tr class="hi"><td><b>常规</b></td><td>直接用一行版</td><td>「第5行只能是1号，别家划掉」</td></tr>
+  <tr class="hi"><td><b>常规</b></td><td>直接用一行版</td><td>「第5行只能是1号，其他色块划掉」</td></tr>
   <tr><td><b>连续提示</b><br><span class="note">连点第二次</span></td><td>前面加"还有一处："</td><td>「还有一处：第8列只能是3号」</td></tr>
   <tr><td><b>确认</b><br><span class="note">玩家已划对</span></td><td>改成"你划对了"+ 理由</td><td>「划得对：第5行只能是1号」</td></tr>
   <tr><td><b>纠错</b><br><span class="note">× 划在皇后格上</span></td><td>红色，先说要撤什么</td><td>「这一格必须是皇后，你划掉的 × 要撤回来」</td></tr>
@@ -644,42 +644,42 @@
             long: <span class="s">"第 {R} 行只剩这一格，第 {C} 列只剩这一格，{G} 号色块也只剩这一格——三种数法都指向同一个地方。放皇后。"</span> },
 
   <span class="s">"H4"</span>:  { tier:<span class="s">"L2"</span>, act:<span class="s">"cross"</span>, k:1, dir:<span class="s">"row"</span>,
-            short:<span class="s">"第{R}行只能是{G}号，别家划掉"</span>,
-            long: <span class="s">"{G} 号色块还活着的 {a} 格全都在第 {R} 行。它必须放一只皇后，而这只皇后只能落在第 {R} 行——所以第 {R} 行的皇后就是 {G} 号色块的，这一行里其它色块的 {c} 格都可以划掉。"</span> },
+            short:<span class="s">"第{R}行只能是{G}号，其他色块划掉"</span>,
+            long: <span class="s">"{G} 号色块没被划掉的 {a} 格全都在第 {R} 行。它必须放一只皇后，而这只皇后只能落在第 {R} 行——所以第 {R} 行的皇后就是 {G} 号色块的，这一行里其它色块的 {c} 格都可以划掉。"</span> },
   <span class="s">"H5"</span>:  { tier:<span class="s">"L2"</span>, act:<span class="s">"cross"</span>, k:2, dir:<span class="s">"row"</span>,
-            short:<span class="s">"第{R1}、{R2}行只能是{G1}、{G2}号，别家划掉"</span>,
-            long: <span class="s">"{G1}、{G2} 号色块还活着的格子，全都落在第 {R1}、{R2} 这两行里。两个色块各要放一只皇后，一共两只，而它们只能待在这两行；一行又只放得下一只——所以这两行的皇后正好被它们俩占满，第 {R1}、{R2} 行里其它色块的 {c} 格都可以划掉。"</span> },
+            short:<span class="s">"第{R1}、{R2}行只能是{G1}、{G2}号，其他色块划掉"</span>,
+            long: <span class="s">"{G1}、{G2} 号色块没被划掉的格子，全都落在第 {R1}、{R2} 这两行里。两个色块各要放一只皇后，一共两只，而它们只能待在这两行；一行又只放得下一只——所以这两行的皇后正好被它们俩占满，第 {R1}、{R2} 行里其它色块的 {c} 格都可以划掉。"</span> },
   <span class="s">"H6"</span>:  { tier:<span class="s">"L2"</span>, act:<span class="s">"cross"</span>, k:3, dir:<span class="s">"row"</span>,
             short:<span class="s">"第{R1}、{R2}、{R3}行只能是{G1}、{G2}、{G3}号"</span>,
-            long: <span class="s">"这三个色块还活着的格子，全都落在第 {R1}、{R2}、{R3} 这三行里。三个色块一共要放三只皇后，只能待在这三行，一行一只——正好占满。所以这三行里其它色块的 {c} 格都可以划掉。"</span> },
+            long: <span class="s">"这三个色块没被划掉的格子，全都落在第 {R1}、{R2}、{R3} 这三行里。三个色块一共要放三只皇后，只能待在这三行，一行一只——正好占满。所以这三行里其它色块的 {c} 格都可以划掉。"</span> },
   <span class="s">"H7"</span>:  { tier:<span class="s">"L2"</span>, act:<span class="s">"cross"</span>, k:1, dir:<span class="s">"col"</span>,
-            short:<span class="s">"第{C}列只能是{G}号，别家划掉"</span>,
-            long: <span class="s">"{G} 号色块还活着的 {a} 格全都在第 {C} 列。它必须放一只皇后，而这只皇后只能落在第 {C} 列——所以第 {C} 列的皇后就是 {G} 号色块的，这一列里其它色块的 {c} 格都可以划掉。"</span> },
+            short:<span class="s">"第{C}列只能是{G}号，其他色块划掉"</span>,
+            long: <span class="s">"{G} 号色块没被划掉的 {a} 格全都在第 {C} 列。它必须放一只皇后，而这只皇后只能落在第 {C} 列——所以第 {C} 列的皇后就是 {G} 号色块的，这一列里其它色块的 {c} 格都可以划掉。"</span> },
   <span class="s">"H8"</span>:  { tier:<span class="s">"L2"</span>, act:<span class="s">"cross"</span>, k:2, dir:<span class="s">"col"</span>,
-            short:<span class="s">"第{C1}、{C2}列只能是{G1}、{G2}号，别家划掉"</span>,
-            long: <span class="s">"{G1}、{G2} 号色块还活着的格子，全都落在第 {C1}、{C2} 这两列里。两只皇后只能待在这两列，而一列只放得下一只——这两列被它们占满了，其它色块在这两列的 {c} 格都可以划掉。"</span> },
+            short:<span class="s">"第{C1}、{C2}列只能是{G1}、{G2}号，其他色块划掉"</span>,
+            long: <span class="s">"{G1}、{G2} 号色块没被划掉的格子，全都落在第 {C1}、{C2} 这两列里。两只皇后只能待在这两列，而一列只放得下一只——这两列被它们占满了，其它色块在这两列的 {c} 格都可以划掉。"</span> },
   <span class="s">"H9"</span>:  { tier:<span class="s">"L2"</span>, act:<span class="s">"cross"</span>, k:3, dir:<span class="s">"col"</span>,
             short:<span class="s">"第{C1}、{C2}、{C3}列只能是{G1}、{G2}、{G3}号"</span>,
-            long: <span class="s">"这三个色块还活着的格子，全都落在第 {C1}、{C2}、{C3} 这三列里。三只皇后只能待在这三列，一列一只——正好占满，其它色块在这三列的 {c} 格都可以划掉。"</span> },
+            long: <span class="s">"这三个色块没被划掉的格子，全都落在第 {C1}、{C2}、{C3} 这三列里。三只皇后只能待在这三列，一列一只——正好占满，其它色块在这三列的 {c} 格都可以划掉。"</span> },
 
   <span class="s">"H10"</span>: { tier:<span class="s">"L3"</span>, act:<span class="s">"cross"</span>, k:1, dir:<span class="s">"row"</span>,
             short:<span class="s">"第{R}行只剩{G}号，{G}号别处全划掉"</span>,
-            long: <span class="s">"第 {R} 行现在只剩 {a} 格还活着，它们全都属于 {G} 号色块。这一行必须放一只皇后，那只能是 {G} 号色块的——所以 {G} 号色块在第 {R} 行以外的 {c} 格都可以划掉。"</span> },
+            long: <span class="s">"第 {R} 行现在只剩 {a} 格没被划掉，它们全都属于 {G} 号色块。这一行必须放一只皇后，那只能是 {G} 号色块的——所以 {G} 号色块在第 {R} 行以外的 {c} 格都可以划掉。"</span> },
   <span class="s">"H11"</span>: { tier:<span class="s">"L3"</span>, act:<span class="s">"cross"</span>, k:2, dir:<span class="s">"row"</span>,
             short:<span class="s">"第{R1}、{R2}行只剩{G1}、{G2}号，它俩别处划掉"</span>,
-            long: <span class="s">"第 {R1}、{R2} 两行还活着的格子，只属于 {G1}、{G2} 两个色块。这两行各要一只皇后，一共两只，只能由这两个色块出——所以它们俩的皇后都在这两行里，它们在这两行以外的 {c} 格都可以划掉。"</span> },
+            long: <span class="s">"第 {R1}、{R2} 两行没被划掉的格子，只属于 {G1}、{G2} 两个色块。这两行各要一只皇后，一共两只，只能来自这两个色块——所以它们俩的皇后都在这两行里，它们在这两行以外的 {c} 格都可以划掉。"</span> },
   <span class="s">"H12"</span>: { tier:<span class="s">"L3"</span>, act:<span class="s">"cross"</span>, k:3, dir:<span class="s">"row"</span>,
             short:<span class="s">"第{R1}、{R2}、{R3}行只剩{G1}、{G2}、{G3}号，别处划掉"</span>,
-            long: <span class="s">"第 {R1}、{R2}、{R3} 三行还活着的格子，只属于 {G1}、{G2}、{G3} 三个色块。三行各要一只皇后，正好三只，只能由它们出——所以这三个色块的皇后都在这三行里，它们在三行以外的 {c} 格都可以划掉。"</span> },
+            long: <span class="s">"第 {R1}、{R2}、{R3} 三行没被划掉的格子，只属于 {G1}、{G2}、{G3} 三个色块。三行各要一只皇后，正好三只，只能来自它们——所以这三个色块的皇后都在这三行里，它们在三行以外的 {c} 格都可以划掉。"</span> },
   <span class="s">"H13"</span>: { tier:<span class="s">"L3"</span>, act:<span class="s">"cross"</span>, k:1, dir:<span class="s">"col"</span>,
             short:<span class="s">"第{C}列只剩{G}号，{G}号别处全划掉"</span>,
-            long: <span class="s">"第 {C} 列现在只剩 {a} 格还活着，它们全都属于 {G} 号色块。这一列必须放一只皇后，那只能是 {G} 号色块的——所以 {G} 号色块在第 {C} 列以外的 {c} 格都可以划掉。"</span> },
+            long: <span class="s">"第 {C} 列现在只剩 {a} 格没被划掉，它们全都属于 {G} 号色块。这一列必须放一只皇后，那只能是 {G} 号色块的——所以 {G} 号色块在第 {C} 列以外的 {c} 格都可以划掉。"</span> },
   <span class="s">"H14"</span>: { tier:<span class="s">"L3"</span>, act:<span class="s">"cross"</span>, k:2, dir:<span class="s">"col"</span>,
             short:<span class="s">"第{C1}、{C2}列只剩{G1}、{G2}号，它俩别处划掉"</span>,
-            long: <span class="s">"第 {C1}、{C2} 两列还活着的格子，只属于 {G1}、{G2} 两个色块。这两列各要一只皇后，一共两只，只能由这两个色块出——所以它们俩的皇后都在这两列里，它们在这两列以外的 {c} 格都可以划掉。"</span> },
+            long: <span class="s">"第 {C1}、{C2} 两列没被划掉的格子，只属于 {G1}、{G2} 两个色块。这两列各要一只皇后，一共两只，只能来自这两个色块——所以它们俩的皇后都在这两列里，它们在这两列以外的 {c} 格都可以划掉。"</span> },
   <span class="s">"H15"</span>: { tier:<span class="s">"L3"</span>, act:<span class="s">"cross"</span>, k:3, dir:<span class="s">"col"</span>,
             short:<span class="s">"第{C1}、{C2}、{C3}列只剩{G1}、{G2}、{G3}号"</span>,
-            long: <span class="s">"第 {C1}、{C2}、{C3} 三列还活着的格子，只属于 {G1}、{G2}、{G3} 三个色块。三列各要一只皇后，正好三只，只能由它们出——这三个色块的皇后都在这三列里，它们在三列以外的 {c} 格都可以划掉。"</span> }
+            long: <span class="s">"第 {C1}、{C2}、{C3} 三列没被划掉的格子，只属于 {G1}、{G2}、{G3} 三个色块。三列各要一只皇后，正好三只，只能来自它们——这三个色块的皇后都在这三列里，它们在三列以外的 {c} 格都可以划掉。"</span> }
 }</pre>
 
 <p class="note">
@@ -695,11 +695,11 @@
   <tr class="hi"><td><b>H2</b></td><td class="c">L1</td><td>某一行只剩 1 格</td><td class="c">落子</td><td><code>第{R}行只剩一格：第{C}列</code></td></tr>
   <tr><td><b>H3</b></td><td class="c">L1</td><td>某一列只剩 1 格</td><td class="c">落子</td><td><code>第{C}列只剩一格：第{R}行</code></td></tr>
   <tr class="hi"><td><b>H0</b></td><td class="c">L1</td><td>H1/H2/H3 指向同一格</td><td class="c">落子</td><td><code>第{R}行第{C}列：行、列、色块都只剩它</code></td></tr>
-  <tr><td><b>H4</b></td><td class="c">L2</td><td>1 个色块只在 1 行里</td><td class="c">划叉</td><td><code>第{R}行只能是{G}号，别家划掉</code></td></tr>
-  <tr><td><b>H5</b></td><td class="c">L2</td><td>2 个色块只在 2 行里</td><td class="c">划叉</td><td><code>第{R1}、{R2}行只能是{G1}、{G2}号，别家划掉</code></td></tr>
+  <tr><td><b>H4</b></td><td class="c">L2</td><td>1 个色块只在 1 行里</td><td class="c">划叉</td><td><code>第{R}行只能是{G}号，其他色块划掉</code></td></tr>
+  <tr><td><b>H5</b></td><td class="c">L2</td><td>2 个色块只在 2 行里</td><td class="c">划叉</td><td><code>第{R1}、{R2}行只能是{G1}、{G2}号，其他色块划掉</code></td></tr>
   <tr><td><b>H6</b></td><td class="c">L2</td><td>3 个色块只在 3 行里</td><td class="c">划叉</td><td><code>第{R1}、{R2}、{R3}行只能是{G1}、{G2}、{G3}号</code></td></tr>
-  <tr><td><b>H7</b></td><td class="c">L2</td><td>1 个色块只在 1 列里</td><td class="c">划叉</td><td><code>第{C}列只能是{G}号，别家划掉</code></td></tr>
-  <tr><td><b>H8</b></td><td class="c">L2</td><td>2 个色块只在 2 列里</td><td class="c">划叉</td><td><code>第{C1}、{C2}列只能是{G1}、{G2}号，别家划掉</code></td></tr>
+  <tr><td><b>H7</b></td><td class="c">L2</td><td>1 个色块只在 1 列里</td><td class="c">划叉</td><td><code>第{C}列只能是{G}号，其他色块划掉</code></td></tr>
+  <tr><td><b>H8</b></td><td class="c">L2</td><td>2 个色块只在 2 列里</td><td class="c">划叉</td><td><code>第{C1}、{C2}列只能是{G1}、{G2}号，其他色块划掉</code></td></tr>
   <tr><td><b>H9</b></td><td class="c">L2</td><td>3 个色块只在 3 列里</td><td class="c">划叉</td><td><code>第{C1}、{C2}、{C3}列只能是{G1}、{G2}、{G3}号</code></td></tr>
   <tr class="hi"><td><b>H10</b></td><td class="c">L3</td><td>某行里只剩 1 个色块</td><td class="c">划叉</td><td><code>第{R}行只剩{G}号，{G}号别处全划掉</code></td></tr>
   <tr class="hi"><td><b>H11</b></td><td class="c">L3</td><td>某 2 行里只剩 2 个色块</td><td class="c">划叉</td><td><code>第{R1}、{R2}行只剩{G1}、{G2}号，它俩别处划掉</code></td></tr>
@@ -720,7 +720,7 @@
     <li><b>"行"和"列"第一次出现要解释方位。</b>「第 5 行（从上往下数）」。用一次就够，别每次都写。</li>
     <li><b>不把行/列号码合并成区间。</b>「第 6、7、8 行」不要写成「第 6–8 行」——轮到你讲的时候正好缺一行，用户会以为你说错了。</li>
     <li><b>划叉类不念坐标。</b>报数量 + 靠高亮；只有落子类（就 1 格）才念"第几行第几列"。</li>
-    <li><b>"别家""它俩"这种口语只在短句里用。</b>展开版里出现"别家"，读起来像没写完。</li>
+    <li><b>"其他色块""它俩"这种口语只在短句里用。</b>展开版里出现"其他色块"，读起来像没写完。</li>
   </ol>
 </div>
 
@@ -746,7 +746,7 @@
 
 <div class="card verdict">
   <p style="margin:0">
-    <strong>L1 说"只剩一格，就在这"；L2 说"这几行归这几个色块，别家划掉"；L3 说"这几行只剩这几个色块，它们别处划掉"。</strong>
+    <strong>L1 说"只剩一格，就在这"；L2 说"这几行归这几个色块，其他色块划掉"；L3 说"这几行只剩这几个色块，它们别处划掉"。</strong>
     三种句式各管 3 / 6 / 6 条，k 只到 3，一共 15 条 + 1 条合并（H0）+ 1 条特例（H1a）。
   </p>
 </div>

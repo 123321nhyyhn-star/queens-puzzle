@@ -636,6 +636,7 @@ button {
 }
 
 .chip {
+  position: relative;
   width: var(--chip, 16px);
   height: var(--chip, 16px);
   display: grid;
@@ -662,6 +663,15 @@ button {
 .chip.is-over::after { content: "!"; }
 
 .chip.flash { transform: scale(1.45); }
+
+/* 引导讲到某个色块时：这颗色卡一直亮着（不是闪一下），面板翻到下一步之前
+   它都不会消失，慢慢对颜色也来得及。 */
+.chip.is-hint {
+  transform: translateY(-1px) scale(1.2);
+  border-color: var(--ink);
+  box-shadow: 0 0 0 2px var(--bg-card), 0 0 0 3.4px var(--ink);
+  z-index: 2;
+}
 
 /* ============================================================
    07. 工具栏
@@ -1436,6 +1446,19 @@ button {
   line-height: 17px;
   color: var(--ink);
 }
+/* 文案里提到色块时，直接画一块和棋盘同色的小色卡，不写编号 */
+.coach-in { display: block; }
+.sw {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  margin: 0 3px 0 1px;
+  vertical-align: -3px;
+  border: 1.5px solid rgba(58, 51, 53, .72);
+  border-radius: 4px;
+  background: var(--c, #FFF);
+  box-shadow: 0 1px 0 rgba(58, 51, 53, .16);
+}
 
 .coach-ctl { display: flex; align-items: center; gap: 6px; }
 
@@ -1591,7 +1614,7 @@ button {
 }
 /* 行 / 列序号：贴在色带端点的 15px 小圆牌。只写数字，位置本身就是语义
    （行号压在左边、列号压在上边），完整说法由面板文案负责。
-   色块不挂牌子——外轮廓 + 下方色卡闪烁已经够认。 */
+   色块不挂牌子——面板文案里直接画同色小色卡，下方色卡同时常亮，认颜色就够。 */
 .gl-tag.is-num {
   width: 15px;
   height: 15px;
@@ -3113,6 +3136,36 @@ button {
     buzz(8);
   }
 
+  /* 文案里的色块占位符（hint.js 的 segs）直接渲染成小色卡：
+     玩家对颜色比记编号快得多，也不用盯着下面色盘找「几号」。 */
+  function renderCoachText(s) {
+    coachText.textContent = '';
+    var box = document.createElement('span');
+    box.className = 'coach-in';
+    var segs = s && s.segs;
+    if (!segs || !segs.length) {
+      box.textContent = (s && s.text) || '';
+      coachText.appendChild(box);
+      return;
+    }
+    var colors = state.regionColors || REGION_COLORS;
+    for (var i = 0; i < segs.length; i++) {
+      var seg = segs[i];
+      if (seg.g == null) { box.appendChild(document.createTextNode(seg.t || '')); continue; }
+      var g = seg.g | 0;
+      var sw = document.createElement('i');
+      sw.className = 'sw';
+      sw.style.setProperty('--c', colors[g] || '#FFF');
+      // 读屏仍然念「3 号」；眼睛只看见颜色
+      var sr = document.createElement('span');
+      sr.className = 'sr-only';
+      sr.textContent = (g + 1) + ' 号';
+      sw.appendChild(sr);
+      box.appendChild(sw);
+    }
+    coachText.appendChild(box);
+  }
+
   function showStep(i) {
     var p = guide.plan;
     if (!p) return;
@@ -3121,7 +3174,7 @@ button {
     var s = p.steps[i] || {};
     var lv = p.level || 0;
 
-    coachText.textContent = s.text || '';
+    renderCoachText(s);
     coachTier.textContent = (p.kind === 'fixQueen' || p.kind === 'fixCross') ? '检查' : ('L' + lv);
     coachEl.dataset.lv = String(lv);
 
@@ -3253,11 +3306,14 @@ button {
     tag.style.top = top + 'px';
   }
 
-  function pulseChip(g) {
-    var chip = chipEls[g];
-    if (!chip) return;
-    chip.classList.add('flash');
-    window.setTimeout(function () { chip.classList.remove('flash'); }, 420);
+  /* 引导讲到哪几个色块，就把那几颗色卡一直亮着；换步时先全部熄掉再点亮。
+     （老实现是 420ms 的 scale 脉冲，玩家根本来不及看清是哪颗） */
+  function setChipHints(list) {
+    for (var i = 0; i < chipEls.length; i++) chipEls[i].classList.remove('is-hint');
+    for (var j = 0; j < list.length; j++) {
+      var chip = chipEls[list[j]];
+      if (chip) chip.classList.add('is-hint');
+    }
   }
 
   function paintGl(hl) {
@@ -3265,7 +3321,7 @@ button {
     var cell = parseFloat(getComputedStyle(boardEl).getPropertyValue('--cell')) || 0;
     glEl.innerHTML = '';
     glTags.innerHTML = '';
-    if (!hl || !cell) return;
+    if (!hl || !cell) { setChipHints([]); return; }
 
     var size = n * cell;
     glEl.setAttribute('viewBox', '0 0 ' + size + ' ' + size);
@@ -3307,8 +3363,8 @@ button {
         line.style.strokeDasharray = String(len);
         line.style.setProperty('--len', String(len));
       } catch (e) { /* 老浏览器不画描边动画 */ }
-      pulseChip(g);
     }
+    setChipHints(regions);
 
     var kill = !!hl.kill;
     for (i = 0; i < cells.length; i++) {
