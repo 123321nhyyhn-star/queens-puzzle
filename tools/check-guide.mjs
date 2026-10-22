@@ -1,5 +1,5 @@
 /* 提示引导的界面检查：
- *   1. 面板不压棋盘（面板底 ≤ 棋盘顶）、不横向溢出
+ *   1. 面板是浮层，**开关都不许动棋盘**（棋盘 top/left/大小前后一致），面板不压棋盘、不横向溢出
  *   2. 分步文案都非空，点点数 = 步数，上一步/下一步/结束 行为正确
  *   3. 「照做」落子的位置与 plan.action 一致
  *   4. 放错皇后时报「检查」而不是继续讲逻辑
@@ -10,6 +10,7 @@ import { mkdirSync } from 'node:fs';
 const require = createRequire('C:/Users/CJL/.workbuddy/binaries/node/workspace/');
 const puppeteer = require('puppeteer-core');
 
+const QURL = process.env.QURL || 'http://127.0.0.1:8080/';
 const OUT = 'E:/Projects/Games/queens-puzzle/tools/shots';
 mkdirSync(OUT, { recursive: true });
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
@@ -30,7 +31,7 @@ function expect(cond, msg) { if (!cond) fails.push(msg); }
 async function boot(w, h) {
   await page.setViewport({ width: w, height: h, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   if (!page.url().startsWith('http')) {
-    await page.goto('http://127.0.0.1:8080/', { waitUntil: 'networkidle0' });
+    await page.goto(QURL, { waitUntil: 'networkidle0' });
     await page.waitForFunction('window.__QUEENS_DEBUG__ && __QUEENS_DEBUG__.state.vibe', { timeout: 20000 });
   }
   await sleep(250);
@@ -81,13 +82,20 @@ await boot(390, 844);
 for (const n of [6, 8, 10, 12, 16]) {
   for (let trial = 0; trial < 3; trial++) {
     await newBoard(n);
+    const boardBefore = await snapshot();
     await page.click('#btnHint');
     await sleep(320);
     let s = await snapshot();
 
+    // 面板是浮层：开提示不许让棋盘挪位置、也不许改尺寸
+    expect(s.board.top === boardBefore.board.top && s.board.left === boardBefore.board.left &&
+      s.board.w === boardBefore.board.w,
+      `${n}×${n}#${trial}: 开提示后棋盘动了 (${boardBefore.board.top},${boardBefore.board.left},${boardBefore.board.w}) → (${s.board.top},${s.board.left},${s.board.w})`);
+
     expect(s.open, `${n}×${n}#${trial}: 点了提示但面板没开`);
     expect(!s.coachHidden, `${n}×${n}#${trial}: 面板 hidden 没去掉`);
-    expect(s.coach.bottom <= s.board.top + 1, `${n}×${n}#${trial}: 面板压到了棋盘 (${s.coach.bottom} > ${s.board.top})`);
+    // 面板钉在舞台底部，必须在棋盘下边缘以下
+    expect(s.coach.top >= s.board.bottom - 1, `${n}×${n}#${trial}: 面板压到了棋盘 (面板顶 ${s.coach.top} < 棋盘底 ${s.board.bottom})`);
     expect(s.steps.length === s.dots.length, `${n}×${n}#${trial}: 点点数 ${s.dots.length} ≠ 步数 ${s.steps.length}`);
     expect(s.steps.every(t => t && t.length >= 4), `${n}×${n}#${trial}: 有空文案`);
     expect(s.glShapes > 0, `${n}×${n}#${trial}: 圈画层是空的`);
@@ -103,8 +111,9 @@ for (const n of [6, 8, 10, 12, 16]) {
       const t = await snapshot();
       seen.push(t.steps[t.at]);
       expect(t.at === i, `${n}×${n}#${trial}: 第 ${i} 步没对上 at=${t.at}`);
+      expect(t.board.top === boardBefore.board.top, `${n}×${n}#${trial}#${i}: 翻页时棋盘动了`);
       expect(t.dots[i] === 'on', `${n}×${n}#${trial}: 第 ${i} 个点没点亮`);
-      expect(t.coach.bottom <= t.board.top + 1, `${n}×${n}#${trial}#${i}: 第 ${i} 步面板压棋盘`);
+      expect(t.coach.top >= t.board.bottom - 1, `${n}×${n}#${trial}#${i}: 第 ${i} 步面板压棋盘`);
     }
     // 回退一步
     if (s.steps.length > 1) {
@@ -210,7 +219,8 @@ for (const [w, h, tag] of [[320, 568, '320'], [360, 740, '360'], [390, 844, '390
   console.log(`${tag}: 面板高 ${tall} 棋盘 ${m.board.w}×${m.board.h} 顶 ${m.board.top} 面板底 ${m.coach.bottom} ` +
     `溢出 ${m.overflowX} 圈画 ${m.glShapes} 标签 ${JSON.stringify(m.tagTexts)}`);
   expect(!m.overflowX, `${tag}px: 横向溢出 (${m.scrollW} > ${m.innerW})`);
-  expect(m.coach.bottom <= m.board.top + 1, `${tag}px: 面板压棋盘`);
+  expect(m.coach.top >= m.board.bottom - 1, `${tag}px: 面板压棋盘 (面板顶 ${m.coach.top} / 棋盘底 ${m.board.bottom})`);
+  expect(m.coach.bottom <= m.stage.bottom && m.coach.top >= m.stage.top, `${tag}px: 面板超出舞台`);
   expect(tall <= 110, `${tag}px: 面板高 ${tall}px，超过 110（320 屏 2 行文案）`);
   expect(m.board.h >= 220, `${tag}px: 棋盘被挤到 ${m.board.h}px`);
   // 把每一步都过一遍，确认标签位置不跑到棋盘外

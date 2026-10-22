@@ -51,7 +51,8 @@ const boot = await page.evaluate(() => {
     sizePill: document.getElementById('btnSize').textContent.trim(),
     queenPill: document.getElementById('queenPill').textContent.trim(),
     chips: document.querySelectorAll('#regions .chip').length,
-    borders: document.querySelectorAll('.cell.b-t, .cell.b-l').length,
+    // 色块粗边现在画在一张统一的 SVG 图层上（#rb），不再是逐格的 border
+    borders: (() => { const p = document.querySelector('#rb path'); return p ? p.getTotalLength() : 0; })(),
     overflow: document.documentElement.scrollHeight - window.innerHeight
   };
 });
@@ -60,7 +61,7 @@ check('色块数 = 边长', boot.unique === 8, `regions=${boot.unique}`);
 check('engine.js 已加载', boot.engineLoaded);
 check('顶栏尺寸胶囊', boot.sizePill === '8×8', boot.sizePill);
 check('皇后计数胶囊', boot.queenPill === '♛ 0/8', boot.queenPill);
-check('色块条与描边', boot.chips === 8 && boot.borders > 0, `chips=${boot.chips} borders=${boot.borders}`);
+check('色块条与描边', boot.chips === 8 && boot.borders > 100, `chips=${boot.chips} 描边长度=${Math.round(boot.borders)}px`);
 check('无页面溢出', boot.overflow <= 0, `overflow=${boot.overflow}`);
 await page.screenshot({ path: `${OUT}/01-boot.png` });
 

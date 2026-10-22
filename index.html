@@ -107,7 +107,10 @@ button {
   margin: 0 auto;
   display: flex;
   flex-direction: column;
+  /* clip 而不是 hidden：hidden 仍然是滚动容器，focus() / scrollIntoView
+     能把它整体滚上去（面板钉在底部时就会发生），clip 直接不给滚的机会 */
   overflow: hidden;
+  overflow: clip;
 }
 
 /* ============================================================
@@ -252,23 +255,34 @@ button {
 .stage .toolbar { order: 2; }
 
 .hint {
-  min-height: 18px;
   margin: 0;
   text-align: center;
   font-size: 12.5px;
   font-weight: 700;
-  line-height: 18px;
+  line-height: 17px;
   color: var(--ink-faint);
   transition: color var(--t-fast);
+  /* 最多两行：行高锁死，换行也不会把棋盘往下推 */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
 }
 
 .hint.is-alert { color: var(--ink); font-weight: 800; }
 .hint.is-ok { color: var(--ok); font-weight: 800; }
 
-/* ---- 提示行 + 难度标签（同一行：提示居中，难度靠右） ---- */
+/* ---- 提示行 + 难度标签（同一行：提示居中，难度靠右） ----
+   整行宽度跟着棋盘走（--board-w 由 relayout 写入），
+   这样小尺寸棋盘上「难度」也不会飘到屏幕最右边去。
+   高度写死 36px：文案换行、难度标签出现/消失都不会改变舞台里其它块的位置。
+   文案在「标签左边剩下的宽度」里居中 —— 不再额外镜像标签的宽度，
+   否则 4×4 这种窄棋盘上文案会被挤成两行（一行放得下的字才是好文案）。 */
 .hint-row {
   flex: 0 0 auto;
-  width: 100%;
+  width: min(100%, var(--board-w, 100%));
+  height: 36px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -373,8 +387,28 @@ button {
 .cell.edge-b { box-shadow: inset -1px 0 0 0 var(--hair); }
 .cell.edge-r.edge-b { box-shadow: none; }
 
-.cell.b-t { border-top: var(--bw, 2px) solid var(--ink); }
-.cell.b-l { border-left: var(--bw, 2px) solid var(--ink); }
+/* ---- 色块描边层 ----
+   以前粗边是画在各自格子上的（border-top / border-left），两格的边在高分屏上
+   各画各的、各自抗锯齿，拐角处就漏出一像素的缝，看着像断线。
+   现在改成一整张 SVG：同一条色块边界合并成一笔（M…L…），
+   stroke-linecap: square 让每笔两端多伸出半个线宽，横竖交汇处自然叠实，
+   外圈那半个线宽被棋盘外框裁掉，正好接上。 */
+.rb {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.rb path {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: var(--bw, 2px);
+  stroke-linecap: square;
+}
 
 @media (hover: hover) {
   .cell:hover::after {
@@ -1339,12 +1373,19 @@ button {
 /* ============================================================
    12.5 提示引导（向导面板 + 圈画层）
    ------------------------------------------------------------
-   面板排在提示行和棋盘之间，占的是上面那块弹性空白，不覆盖棋盘。
-   引导进行中把提示行收起（它的位置正好让给面板）。
+   面板是**浮层**，钉在舞台底部（盖住工具栏那一条），不参与排版。
+   棋盘的位置/尺寸只由「舞台高度 + 棋盘边长」决定，和面板开不开完全无关，
+   所以来回点提示、翻上下一步，棋盘都不会挪位置。
    ============================================================ */
 .coach {
-  flex: 0 0 auto;
-  width: min(100%, 460px);
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  z-index: 30;
+  width: calc(100% - 24px);
+  max-width: 460px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1440,8 +1481,15 @@ button {
 }
 .coach-dots i.on { background: var(--ink); transform: scale(1.4); }
 
-/* 引导中把提示行让出来 */
-.stage.is-guiding .hint-row { display: none; }
+/* 引导中：提示行只是「隐身」不撤销它的位置，工具栏让位给浮动面板。
+   两者都还在原位 —— 棋盘不动才是第一优先。 */
+.stage.is-guiding .hint-row { visibility: hidden; }
+.stage.is-guiding .toolbar {
+  opacity: 0;
+  visibility: hidden;          /* 连 Tab 焦点也一起让开，别停在看不见的按钮上 */
+  pointer-events: none;
+  transition: opacity .16s ease, visibility 0s linear .16s;
+}
 
 /* ---- 圈画层：画在棋盘上方，不吃点击 ---- */
 .gl {
@@ -1664,7 +1712,7 @@ button {
   </header>
 
   <main class="stage" id="stage">
-    <div class="hint-row">
+    <div class="hint-row" id="hintRow">
       <p class="hint" id="hint">轻点标 ×，按住可整行整列连涂</p>
       <button class="diff-chip" id="btnDiff" type="button" aria-haspopup="dialog" aria-expanded="false" hidden>
         <i class="diff-dot" aria-hidden="true"></i><b id="diffLevel">中等</b><span id="diffScore">5.0</span>
@@ -1686,6 +1734,7 @@ button {
 
     <div class="board" id="board">
       <div class="grid" id="grid" role="grid" aria-label="皇后棋盘"></div>
+      <svg class="rb" id="rb" aria-hidden="true"></svg>
       <svg class="links" id="links" aria-hidden="true"></svg>
       <svg class="gl" id="gl" aria-hidden="true"></svg>
       <div class="gl-tags" id="glTags" aria-hidden="true"></div>
@@ -1862,12 +1911,122 @@ button {
   /* ==========================================================
      常量
      ========================================================== */
+  /* 色块底色池：18 个淡彩色，**任意两色**的 ΔE 都 ≥ 13（最远点采样 + 色差下限
+   * 硬过滤挑出来的，见 tools/gen-palette.mjs）。棋盘最多 16 块，用不满所有颜色；
+   * 具体哪块用哪个由 assignRegionColors() 现场分配，保证相邻两块拉得最开。 */
   var REGION_COLORS = [
-    '#FFD9DE', '#FFE4CC', '#FFF0BF', '#E7F3C4',
-    '#CDEFD8', '#C9EDEA', '#CFE4FF', '#D9D9FF',
-    '#E9D9FF', '#FFD9F0', '#EADFCB', '#D8E6DC',
-    '#E6E1F2', '#FFE7DA', '#DCEBF2', '#F0E7C8'
+    '#EDC5C5', '#FAB6A5', '#F9C494', '#E4D1AA', '#EAEAA4', '#E0F4CF',
+    '#B2E4AA', '#94F9DE', '#AAE4D5', '#94F3F9', '#CFF1F4', '#9FDAEF',
+    '#94CAF9', '#B9C2F8', '#E1DAFB', '#DFB9F8', '#F7CDF7', '#FBB6D6'
   ];
+
+  /* ---- 配色：Lab 距离 + 贪心分配 ----
+   * 淡彩色块单看都差不多，真正决定「分不分得清」的是相邻两块差多少。
+   * 所以不做「第 g 块取第 g 个色」的轮转，而是按邻接图现场分配。 */
+  function srgbToLab(hex) {
+    function lin(v) { return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
+    function f(t) { return t > 0.008856 ? Math.pow(t, 1 / 3) : 7.787 * t + 16 / 116; }
+    var r = lin(parseInt(hex.substr(1, 2), 16) / 255);
+    var g = lin(parseInt(hex.substr(3, 2), 16) / 255);
+    var b = lin(parseInt(hex.substr(5, 2), 16) / 255);
+    var x = f((r * 0.4124 + g * 0.3576 + b * 0.1805) / 0.95047);
+    var y = f(r * 0.2126 + g * 0.7152 + b * 0.0722);
+    var z = f((r * 0.0193 + g * 0.1192 + b * 0.9505) / 1.08883);
+    return [116 * y - 16, 500 * (x - y), 200 * (y - z)];
+  }
+
+  var PALETTE_LAB = REGION_COLORS.map(srgbToLab);
+
+  function labDist(a, b) {
+    var d0 = a[0] - b[0], d1 = a[1] - b[1], d2 = a[2] - b[2];
+    return Math.sqrt(d0 * d0 + d1 * d1 + d2 * d2);
+  }
+
+  /* 给 n 个色块挑底色：
+   *  1. 先算出色块之间的邻接图（上下左右相邻且不同块）
+   *  2. 邻居多的先着色（约束最大的先挑，后面才有得选）
+   *  3. 每块在色池里挑一个还没用过的，让「离它最近的已着色邻居」尽量远；
+   *     并列时用「到全场已用色的最近距离」再比一次，让整盘的颜色也散开
+   * 全程无随机：刷新、续玩、分享回来的同一盘，配色都一样。 */
+  function assignRegionColors(n, regions) {
+    var out = [], g, i;
+    if (!n || !regions || regions.length < n * n) {
+      for (g = 0; g < (n || 0); g++) out.push(REGION_COLORS[g % REGION_COLORS.length]);
+      return out;
+    }
+
+    var adj = [], deg = [];
+    for (g = 0; g < n; g++) { adj.push({}); deg.push(0); }
+    for (var r = 0; r < n; r++) {
+      for (var c = 0; c < n; c++) {
+        i = r * n + c;
+        var a = regions[i], b;
+        if (c + 1 < n) {
+          b = regions[i + 1];
+          if (a !== b && !adj[a][b]) { adj[a][b] = 1; adj[b][a] = 1; deg[a]++; deg[b]++; }
+        }
+        if (r + 1 < n) {
+          b = regions[i + n];
+          if (a !== b && !adj[a][b]) { adj[a][b] = 1; adj[b][a] = 1; deg[a]++; deg[b]++; }
+        }
+      }
+    }
+
+    var order = [];
+    for (g = 0; g < n; g++) order.push(g);
+    order.sort(function (p, q) { return deg[q] - deg[p] || p - q; });
+
+    // 全盘两色的最小色差下限：优先只用「跟已用色都差这么远」的颜色，
+    // 实在挑不出来（棋盘很大时）再放开 —— 这样色卡横排看着也不会有两块糊在一起。
+    var FLOOR = 13.5;
+
+    var pick = new Array(n), used = [];
+    for (var o = 0; o < order.length; o++) {
+      var gr = order[o], best = -1, bestNear = -1, bestFar = -1;
+      for (var pass = 0; pass < 2 && best < 0; pass++) {
+        for (var k = 0; k < REGION_COLORS.length; k++) {
+          if (used[k]) continue;
+          var lab = PALETTE_LAB[k];
+          var near = Infinity, far = Infinity, hasColored = false;
+          for (var nb in adj[gr]) {
+            if (!adj[gr].hasOwnProperty(nb)) continue;
+            var pk = pick[+nb];
+            if (pk === undefined) continue;
+            hasColored = true;
+            var d = labDist(lab, PALETTE_LAB[pk]);
+            if (d < near) near = d;
+          }
+          if (!hasColored) near = 1e6;   // 邻居都还没上色：交给 far 决定，尽量铺开
+          for (var u = 0; u < REGION_COLORS.length; u++) {
+            if (!used[u]) continue;
+            var du = labDist(lab, PALETTE_LAB[u]);
+            if (du < far) far = du;
+          }
+          if (!isFinite(far)) far = 1e6;
+          if (pass === 0 && far < FLOOR) continue;
+          if (near > bestNear + 1e-9 ||
+              (Math.abs(near - bestNear) <= 1e-9 && far > bestFar + 1e-9)) {
+            best = k; bestNear = near; bestFar = far;
+          }
+        }
+      }
+      if (best < 0) {
+        // 色池真用完了（理论上 n ≤ 16 < 18 不会发生），退回到按序取
+        for (var k2 = 0; k2 < REGION_COLORS.length; k2++) {
+          if (!used[k2]) { best = k2; break; }
+        }
+        if (best < 0) best = 0;
+      }
+      pick[gr] = best;
+      used[best] = true;
+    }
+
+    for (g = 0; g < n; g++) {
+      var idx = pick[g] === undefined ? g % REGION_COLORS.length : pick[g];
+      out.push(REGION_COLORS[idx]);
+    }
+    return out;
+  }
 
   var SIZE_MIN = 4;
   var SIZE_MAX = 16;
@@ -1915,8 +2074,10 @@ button {
   var stage = $('stage');
   var boardEl = $('board');
   var gridEl = $('grid');
+  var rbEl = $('rb');
   var linksEl = $('links');
   var hintEl = $('hint');
+  var hintRowEl = $('hintRow');
   var regionsEl = $('regions');
   var toolbarEl = $('toolbar');
 
@@ -2385,6 +2546,9 @@ button {
     lastStates = new Array(n * n).fill('');
     gridEl.style.setProperty('--n', String(n));
 
+    // 每盘按邻接关系重新分配底色（老实现是第 g 块取第 g 个色，相邻两块常常撞色）
+    state.regionColors = assignRegionColors(n, state.regions);
+
     for (var r = 0; r < n; r++) {
       for (var c = 0; c < n; c++) {
         var i = r * n + c;
@@ -2393,13 +2557,12 @@ button {
         cell.type = 'button';
         cell.className = 'cell';
         cell.dataset.i = String(i);
-        cell.style.setProperty('--rc', REGION_COLORS[g % REGION_COLORS.length]);
+        cell.style.setProperty('--rc', state.regionColors[g]);
         cell.setAttribute('role', 'gridcell');
         // 漫游 tabindex：整个棋盘只占一个 Tab 位，格内用方向键移动
         cell.tabIndex = i === 0 ? 0 : -1;
 
-        if (r > 0 && state.regions[(r - 1) * n + c] !== g) cell.classList.add('b-t');
-        if (c > 0 && state.regions[r * n + c - 1] !== g) cell.classList.add('b-l');
+        // 色块粗边不再画在格子上（会在拐角漏缝），交给 #rb 图层统一描边
         if (c === n - 1) cell.classList.add('edge-r');
         if (r === n - 1) cell.classList.add('edge-b');
 
@@ -2433,7 +2596,7 @@ button {
     for (var g = 0; g < n; g++) {
       var chip = document.createElement('span');
       chip.className = 'chip';
-      chip.style.setProperty('--c', REGION_COLORS[g % REGION_COLORS.length]);
+      chip.style.setProperty('--c', (state.regionColors || REGION_COLORS)[g]);
       chip.dataset.g = String(g);
       chip.title = '色块 ' + (g + 1);
       chip.addEventListener('click', (function (gg) {
@@ -2539,6 +2702,53 @@ button {
     lastConflictCount = cf.count;
   }
 
+  /* ---- 色块描边 ----
+   * 把「上下 / 左右不是同块」的边全都找出来，同一条直线上的连续边合并成一笔
+   * （M x1 y L x2 y），整盘只用一条 path。
+   * 合并的意义：拐角处不再由两个格子各画半截，而是同一笔连续画过去；
+   * 竖横交汇的两个端点靠 stroke-linecap:square 各伸出半线宽叠在一起，缝就没了。 */
+  function drawRegionBorders() {
+    if (!rbEl) return;
+    var n = state.size, regions = state.regions;
+    var cell = parseFloat(getComputedStyle(boardEl).getPropertyValue('--cell')) || 0;
+    rbEl.innerHTML = '';
+    if (!regions || !cell || regions.length < n * n) return;
+
+    var size = n * cell;
+    rbEl.setAttribute('viewBox', '0 0 ' + size + ' ' + size);
+    rbEl.setAttribute('width', String(size));
+    rbEl.setAttribute('height', String(size));
+
+    var d = '', r, c, start, on;
+    // 横边：第 r 行与第 r-1 行之间
+    for (r = 1; r < n; r++) {
+      start = -1;
+      for (c = 0; c <= n; c++) {
+        on = c < n && regions[r * n + c] !== regions[(r - 1) * n + c];
+        if (on && start < 0) start = c;
+        else if (!on && start >= 0) {
+          d += 'M' + (start * cell) + ' ' + (r * cell) +
+            'L' + (c * cell) + ' ' + (r * cell);
+          start = -1;
+        }
+      }
+    }
+    // 竖边：第 c 列与第 c-1 列之间
+    for (c = 1; c < n; c++) {
+      start = -1;
+      for (r = 0; r <= n; r++) {
+        on = r < n && regions[r * n + c] !== regions[r * n + c - 1];
+        if (on && start < 0) start = r;
+        else if (!on && start >= 0) {
+          d += 'M' + (c * cell) + ' ' + (start * cell) +
+            'L' + (c * cell) + ' ' + (r * cell);
+          start = -1;
+        }
+      }
+    }
+    if (d) rbEl.appendChild(svgEl('path', { d: d }));
+  }
+
   function drawLinks(cf) {
     var n = state.size;
     var cell = parseFloat(getComputedStyle(boardEl).getPropertyValue('--cell')) || 0;
@@ -2604,27 +2814,35 @@ button {
 
   /* ==========================================================
      布局
+     ----------------------------------------------------------
+     唯一目标：**棋盘的位置和大小只由「舞台尺寸 + 棋盘边长」决定**。
+     所以这里的输入里没有引导面板、没有提示文案、没有难度标签 ——
+     面板是浮层，提示行定高，标签用绝对留白，谁开关都不许动棋盘。
      ========================================================== */
   function relayout() {
     var n = state.size;
-    var availW = stage.clientWidth - 18;
+    // 24 = 舞台左右各 12px 内边距；再减 6 是棋盘外框（3px × 2），
+    // 这样 n*cell + 6 永远塞得进内容区，不会溢出去（以前会多出 6px，提示行就对齐不上）
+    var availW = stage.clientWidth - 24;
+    var hintH = hintRowEl.offsetHeight;
     // 上下那两块弹性空白在棋盘吃满时会缩到 0，所以可用高度就是
-    // 「舞台高度 − 提示行 − 引导面板 − 调色板 − 工具栏 − 间距」
-    // 引导中提示行是 display:none，offsetHeight 自然是 0，不用特判。
-    var availH = stage.clientHeight - hintEl.offsetHeight - coachEl.offsetHeight -
+    // 「舞台高度 − 提示行 − 调色板 − 工具栏 − 间距」。30 是三道 gap 的余量。
+    var availH = stage.clientHeight - hintH -
       regionsEl.offsetHeight - toolbarEl.offsetHeight - 30;
 
     if (availW < 40 || availH < 40) return;
 
     var cell = Math.floor(Math.min((availW - 6) / n, (availH - 6) / n));
-    // 矮屏上引导面板再挤一下时，允许格子比平时小一点（16×16 横屏就是靠这个
-    // 才不至于把工具栏顶出屏幕）；不引导时仍是 13px 起步。
-    var minCell = (guide.open && stage.clientHeight < 480) ? 11 : 13;
-    cell = clamp(cell, minCell, 78);
+    // 下限只是「再小就没法点了」的兜底：正常算出来的 cell 本来就塞得进舞台，
+    // 一旦被下限抬上去，舞台内容就会溢出、浏览器还会为上滚焦点偷偷滚整个 app。
+    cell = clamp(cell, 10, 78);
 
     boardEl.style.setProperty('--cell', cell + 'px');
     boardEl.style.setProperty('--n', String(n));
     boardEl.style.setProperty('--bw', cell < 26 ? '1.5px' : '2px');
+
+    // 提示行整行的宽度跟着棋盘走（含左右各 3px 外框），难度标签才有地方对齐
+    stage.style.setProperty('--board-w', (n * cell + 6) + 'px');
 
     var chip = clamp(Math.floor((Math.min(availW, 460) - (n - 1) * 4) / n), 10, 20);
     regionsEl.style.setProperty('--chip', chip + 'px');
@@ -2632,6 +2850,7 @@ button {
     gridEl.style.setProperty('--cell', cell + 'px');
     gridEl.style.setProperty('--n', String(n));
 
+    drawRegionBorders();
     drawLinks(state.conflicts || { pairs: [], cells: new Set(), count: 0 });
     // 格子尺寸变了，圈画层里的坐标也得跟着重画（否则横屏一转就错位）
     if (guide.open && guide.plan && guide.plan.steps[guide.at]) {
@@ -2816,7 +3035,7 @@ button {
      不再直接给答案。先跑一遍人类能讲的规则（L1 直读 → L2 数色块 →
      L3 数线 → L4 试推），把结论拆成「看哪 → 为什么 → 所以哪几格」，
      每一步只高亮一样东西，玩家自己按「下一步」或「照做」。
-     文字放在棋盘上方的面板里，不压棋盘；圈画层 pointer-events:none。
+     面板是钉在舞台底部的浮层（开关都不动棋盘），圈画层 pointer-events:none。
      ========================================================== */
 
   function guidePlan() {
@@ -2882,7 +3101,7 @@ button {
       dots[d].className = d === i ? 'on' : '';
     }
 
-    relayout();          // 面板文字换行会改变高度，先重排再画
+    relayout();          // 面板是浮层，这里只为格子尺寸可能变过时重画描边/连线
     paintGl(s.hl);
     announce(s.text || '');
   }

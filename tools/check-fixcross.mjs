@@ -15,7 +15,7 @@ const errs = [];
 page.on('pageerror', e => errs.push('pageerror: ' + e.message));
 page.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text()); });
 await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
-await page.goto('http://127.0.0.1:8080/', { waitUntil: 'networkidle0' });
+await page.goto(process.env.QURL || 'http://127.0.0.1:8080/', { waitUntil: 'networkidle0' });
 await page.waitForFunction('window.__QUEENS_DEBUG__ && __QUEENS_DEBUG__.state.vibe', { timeout: 20000 });
 await page.evaluate(() => __QUEENS_DEBUG__.newGame(8));
 await page.waitForFunction('__QUEENS_DEBUG__.state.size === 8 && __QUEENS_DEBUG__.state.vibe', { timeout: 30000 });
