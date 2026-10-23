@@ -20,8 +20,11 @@
  *
  * 三类样式各自的字段：
  *
- *   色块 surface —— { id, name, tone, motifs, desc }
- *     tone    图案比底色暗多少（0–1）。0 = 没有图案（纯色）。
+ *   色块 surface —— { id, name, tone, motifs, desc, ink?, veil? }
+ *     tone    图形跟底色差多少（0–1）。0 = 没有图案（纯色）。
+ *     ink     'shade'（默认，压暗）/ 'tint'（朝纸白提亮，天空那套用）。
+ *     veil    整层图案的透明度（0–1，默认 1）。有的主题自己就亮（贴纸的白边），
+ *             全套淡一档才不跟 × 抢；是对这套图案的定义，不分打没打叉。
  *     motifs  按 core/palette.js 调色板下标排的图形，viewBox 一律 0 0 100 100，
  *             只给形状不给颜色（填色继承外面），画在 20–80 之间、四周留白当格距。
  *             长度不必等于 18：缺的下标就是「这格不画」。
@@ -40,6 +43,9 @@
 
 import classic from './classic.js';
 import geometry from './geometry.js';
+import nature from './nature.js';
+import sky from './sky.js';
+import sticker from './sticker.js';
 
 /* 三类外观。key 是它存在 settings 里的字段，attr 是落到 <html> 上的钩子。 */
 export var KIND = {
@@ -51,8 +57,10 @@ export var KIND = {
 /* 顺序就是面板里从上到下的顺序，也是每一类里第一项「默认」的意思。 */
 export var KINDS = ['surface', 'mark', 'piece'];
 
-/* ---- 插件清单 ---- */
-var PLUGINS = [geometry, classic];
+/* ---- 插件清单 ----
+ * 色块图案的几套主题排在前面（面板里是同一排），墨线那套垫底：
+ * 它提供的「纯色」就是没有图案的那一档。 */
+var PLUGINS = [geometry, nature, sky, sticker, classic];
 
 /* ==========================================================
    登记：把插件摊平成三张表

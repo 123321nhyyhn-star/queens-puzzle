@@ -66,6 +66,19 @@ html[data-piece="cat"] .piece svg { filter: none; }
   gap: 10px;
 }
 
+/* 色块那排是主题柜：一套主题一个展位，多的时候要排得下，
+   所以排三列、罩子矮一点（预览是 2×2 的一小块盘，用不着 92px 的罩子）。 */
+#surfaceRow {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+#surfaceRow .showcase { padding: 5px; border-radius: 14px; }
+#surfaceRow .sc-case { height: 78px; border-radius: 11px; }
+#surfaceRow .sc-item { width: 46px; height: 46px; margin-bottom: 6px; }
+#surfaceRow .sc-plate { padding: 3px 4px; border-radius: 9px; }
+#surfaceRow .sc-plate b { font-size: 12px; letter-spacing: .2px; }
+
 /* ---- 一个展位 ---- */
 .showcase {
   position: relative;

@@ -257,10 +257,12 @@
   opacity: 1;
 }
 
-/* 图案也跟着回来：格子既然亮着，它就该是一整块的样子 */
+/* 图案也跟着回来：格子既然亮着，它就该是一整块的样子。
+   回到的是「这套图案自己的那一档」（--sk-veil），不是硬写成 1 ——
+   否则贴纸那套一冲突就突然变亮，比其他格子跳出来。 */
 .cell.is-dim.is-conflict .sk,
 .cell.is-dim:focus-visible .sk {
-  opacity: 1;
+  opacity: var(--sk-veil, 1);
 }
 
 /* 解开那一刻把皇后那几格亮回来：这盘棋就是奖品，不该还空着 */
@@ -271,5 +273,5 @@
 .board.is-won .cell.is-dim.is-q .piece { opacity: 1; }
 
 /* 解开那一刻图案也亮回来：这几格是这一盘的主角，不该还淡着 */
-.board.is-won .cell.is-dim.is-q .sk { opacity: 1; }
+.board.is-won .cell.is-dim.is-q .sk { opacity: var(--sk-veil, 1); }
 

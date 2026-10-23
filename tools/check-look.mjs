@@ -133,15 +133,18 @@ const ui = await page.evaluate(() => {
 });
 ok('面板打开', ui.open);
 ok('打开后焦点在面板里', ui.focus === 'lookSheet', ui.focus);
-ok('色块的展位有两个：几何 / 纯色', ui.surfaceIds.join() === 'geo,plain', ui.surfaceIds);
+ok('色块的展位有五套：几何 / 自然 / 天空 / 贴纸 / 纯色',
+  ui.surfaceIds.join() === 'geo,nature,sky,sticker,plain', ui.surfaceIds);
 ok('叉的展位有两个：叉 / 点', ui.markIds.join() === 'x,dot', ui.markIds);
 ok('皇后的展位有两个：皇后 / 小猫', ui.pieceIds.join() === 'queen,cat', ui.pieceIds);
 ok('默认选中几何 + 叉 + 皇后', ui.checked.join() === 'geo,x,queen', ui.checked);
-ok('展位分属两个插件（几何 / 墨线）',
-  ui.plugins.join() === 'geometry,classic' && ui.srcs.join() === '几何,墨线', ui.plugins);
+ok('每个展位都记得自己出自哪个插件',
+  ui.plugins.join() === 'geometry,nature,sky,sticker,classic', ui.plugins);
+ok('插件名和样式名一样时不挂小标签，只有「纯色」挂「墨线」',
+  ui.srcs.join() === ',,,,墨线', JSON.stringify(ui.srcs));
 ok('单插件的排不挂插件标签', ui.markSrcs.every(v => v === false));
 ok('展位有玻璃罩 / 顶灯 / 台面 / 反光 / 名牌 / 勾', ui.parts.every(Boolean), ui.parts);
-ok('名牌只写名字，没有描述', ui.plates.join() === '几何,纯色,叉,点,皇后,小猫',
+ok('名牌只写名字，没有描述', ui.plates.join() === '几何,自然,天空,贴纸,纯色,叉,点,皇后,小猫',
   ui.plates.join());
 ok('标题写着当前用的样式',
   /几何/.test(ui.nows[0]) && /叉/.test(ui.nows[1]) && /皇后/.test(ui.nows[2]),
@@ -450,6 +453,82 @@ ok('存档里的怪值退回默认',
   dirty.look.surface === 'geo' && dirty.look.mark === 'x' && dirty.look.piece === 'queen' &&
   dirty.attrSurface === 'geo' && dirty.attrMark === 'x' && dirty.attrPiece === 'queen',
   JSON.stringify(dirty.look));
+
+// ---------- 贴纸的纱：全盘一个样 ----------
+console.log('\n--- 贴纸的纱 ---');
+await page.click('#btnLook');
+await page.waitForFunction(() => !document.getElementById('lookWrap').hidden, { timeout: 5000 });
+await sleep(300);
+await pick('surface', 'sticker');
+await page.keyboard.press('Escape');
+await sleep(380);
+await page.evaluate(() => {
+  const cells = [...document.querySelectorAll('.cell')];
+  if (!cells.some(c => c.classList.contains('is-x'))) {
+    const free = cells.find(c => !c.classList.contains('is-q'));
+    if (free) free.click();
+  }
+});
+await sleep(420);
+const veil = await page.evaluate(() => {
+  const grid = document.getElementById('grid');
+  const cells = [...document.querySelectorAll('.cell')];
+  const marked = c => c.classList.contains('is-x') || c.classList.contains('is-auto');
+  const x = cells.find(c => c.classList.contains('is-x'));
+  // 空格：手标的、自动标的、皇后都没有
+  const free = cells.find(c => !marked(c) && !c.classList.contains('is-q'));
+  const op = el => el ? +getComputedStyle(el.querySelector('.sk')).opacity : -1;
+  return {
+    cssVar: getComputedStyle(grid).getPropertyValue('--sk-veil').trim(),
+    x: op(x), free: op(free)
+  };
+});
+ok('贴纸这套整层戴纱（veil = .45）', Math.abs(+veil.cssVar - .45) < .01, veil.cssVar);
+ok('空着的格子和打了叉的格子一样淡，不分两套',
+  veil.x === veil.free && veil.free > 0 && veil.free < .6,
+  `x=${veil.x} free=${veil.free}`);
+await page.screenshot({ path: SHOTS + '25-look-marked.png' });
+
+// 换回几何：纱要摘干净，别的主题仍是原样
+await page.click('#btnLook');
+await page.waitForFunction(() => !document.getElementById('lookWrap').hidden, { timeout: 5000 });
+await sleep(300);
+await pick('surface', 'geo');
+await page.keyboard.press('Escape');
+await sleep(380);
+const noVeil = await page.evaluate(() => ({
+  cssVar: getComputedStyle(document.getElementById('grid')).getPropertyValue('--sk-veil').trim(),
+  sk: +getComputedStyle(document.querySelector('.sk')).opacity
+}));
+ok('换回几何就把纱摘掉', noVeil.cssVar === '1' && noVeil.sk === 1,
+  `var=${noVeil.cssVar} sk=${noVeil.sk}`);
+
+// ---------- 矮屏：三排展柜塞不进一屏 ----------
+console.log('\n--- 矮屏 ---');
+await page.setViewport({ width: 360, height: 640, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+await boot();
+await openLook();
+const tiny = await page.evaluate(() => {
+  const btn = document.querySelector('.look-sheet .sheet-done');
+  const sheet = document.getElementById('lookSheet');
+  const b = btn.getBoundingClientRect(), s = sheet.getBoundingClientRect();
+  return {
+    pos: getComputedStyle(btn).position,
+    bottom: Math.round(b.bottom), sheetBottom: Math.round(s.bottom), vh: innerHeight,
+    scrolls: sheet.scrollHeight > sheet.clientHeight + 4,
+    // 5 套主题排两行，第二行不能横向跑出去
+    rowRight: Math.round(Math.max(...[...document.querySelectorAll('#surfaceRow .showcase')]
+      .map(e => e.getBoundingClientRect().right)))
+  };
+});
+ok('矮屏上面板确实要滚', tiny.scrolls, `${tiny.bottom}/${tiny.sheetBottom}`);
+ok('矮屏上「知道了」钉在面板底部、不掉到屏幕外',
+  tiny.pos === 'sticky' && tiny.bottom <= tiny.sheetBottom + 1 && tiny.bottom <= tiny.vh + 1,
+  `${tiny.pos} bottom=${tiny.bottom} sheet=${tiny.sheetBottom} vh=${tiny.vh}`);
+ok('矮屏上色块展位仍在面板宽度内', tiny.rowRight <= 360 - 10, tiny.rowRight);
+await page.screenshot({ path: SHOTS + '24-look-tiny.png' });
+await page.keyboard.press('Escape');
+await sleep(200);
 
 // ---------- 汇总 ----------
 console.log('\n--- console errors ---');

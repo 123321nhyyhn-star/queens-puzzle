@@ -14,12 +14,12 @@ import {
   app, btnLook, lookSheet, lookWrap, markNow, markRow, pieceNow, pieceRow,
   surfaceNow, surfaceRow
 } from '../core/dom.js';
-import { REGION_COLORS, shadeOf } from '../core/palette.js';
+import { REGION_COLORS } from '../core/palette.js';
 import { settings, view } from '../core/state.js';
 import { saveSettings } from '../core/storage.js';
 import { announce } from '../core/utils.js';
 import { applyPieceStyle } from '../game/board.js';
-import { applySurface } from '../game/skin.js';
+import { applySurface, surfaceInk } from '../game/skin.js';
 import {
   DEFAULT_LOOK, KIND, KINDS, groupsOf, styleId, styleName
 } from '../looks/index.js';
@@ -44,25 +44,30 @@ var SKIN_PICKS = [8, 14, 5, 10];
 function preview(kind, o) {
   if (kind === 'surface') {
     /* 2×2 的一小块棋盘：底色 + 图形，就是它在盘子上缩小的样子。
-     * 预览里的图案比棋盘上**深一点**（tone 放大一倍多）：缩到五十来像素，
-     * 按棋盘那个浓度画就等于什么都没画，展柜里得让人认出这是哪一套。 */
+     * 预览里的图案比棋盘上**深一点**（浓度放到三倍多）：缩到五十来像素，
+     * 按棋盘那个浓度画就等于什么都没画，展柜里得让人认出这是哪一套。
+     * 压暗 / 提亮由 surfaceInk 按这套图案自己的 ink 决定，预览不另算。 */
     var c = 50;
-    var ink = o.motifs ? Math.max(.02, Math.min(.16, (o.tone || 0) * 2.4)) : 0;
+    var k = o.motifs ? Math.max(.02, Math.min(.5, (o.tone || 0) * 3.2)) : 0;
     var out = '';
-    for (var k = 0; k < 4; k++) {
-      var ci = SKIN_PICKS[k] % REGION_COLORS.length;
+    for (var i = 0; i < 4; i++) {
+      var ci = SKIN_PICKS[i] % REGION_COLORS.length;
       var color = REGION_COLORS[ci];
-      var x = (k % 2) * c, y = ((k / 2) | 0) * c;
+      var x = (i % 2) * c, y = ((i / 2) | 0) * c;
       out += '<rect x="' + x + '" y="' + y + '" width="' + c + '" height="' + c +
         '" fill="' + color + '"/>';
       if (o.motifs && o.motifs[ci]) {
-        var tone = shadeOf(color, ink);
+        var ink = surfaceInk(color, o, k);
         out += '<g transform="translate(' + x + ' ' + y + ') scale(.5)"' +
-          ' fill="' + tone + '" style="color:' + tone + '">' + o.motifs[ci] + '</g>';
+          ' fill="' + ink + '" style="color:' + ink + '">' + o.motifs[ci] + '</g>';
       }
     }
-    return '<span class="pv-skin"><svg viewBox="0 0 100 100" aria-hidden="true">' +
-      out + '</svg></span>';
+    /* 预览也戴上这套图案自己的纱（veil）：展柜里看到什么，选完棋盘上就是什么。
+     * 只戴一半——纱开个方（.45 → .67）：小盘只有四十来像素，全戴上就糊成一片，
+     * 展柜毕竟还得让人认出这是哪一套。 */
+    var veil = isFinite(o.veil) ? Math.sqrt(o.veil) : 1;
+    return '<span class="pv-skin" style="opacity:' + veil + '">' +
+      '<svg viewBox="0 0 100 100" aria-hidden="true">' + out + '</svg></span>';
   }
 
   if (kind === 'mark') {
@@ -107,9 +112,12 @@ function buildCase(kind) {
       b.setAttribute('aria-checked', 'false');
       b.dataset[kind] = o.id;
       b.dataset.plugin = o.plugin;
-      b.title = (multi ? o.pluginName + ' · ' : '') + o.name +
-        (o.desc ? '：' + o.desc : '');
-      b.innerHTML = slotHtml(kind, o, multi ? o.pluginName : '');
+      /* 插件名只在「说了多一件事」的时候才露出来：这一排跨了几个插件、
+       * 而这套的名字又跟插件不一样（比如「纯色」出自「墨线」）。
+       * 几何 / 自然 / 天空 / 贴纸 是一套一个插件，名字本来就是它，再标一遍是废话。 */
+      var src = multi && o.pluginName !== o.name ? o.pluginName : '';
+      b.title = (src ? src + ' · ' : '') + o.name + (o.desc ? '：' + o.desc : '');
+      b.innerHTML = slotHtml(kind, o, src);
       host.appendChild(b);
     }
   }

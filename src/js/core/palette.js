@@ -124,12 +124,24 @@ export function assignRegionColors(n, regions) {
    不走掺墨：掺墨会把色相往暖里拽，一块淡青的图案泛灰；乘系数只是「这块自己深了」，
    色相不动，远看还是那一块颜色——色块上的图形才不会像贴上去的另一块。
 
-   k 是压暗多少（0–1）。0.13 左右是「看得见但不抢戏」；k = 0 就是原色（没有图案）。 */
+   k 是压暗多少（0–1）。0.045 左右是「看得见但不抢戏」；k = 0 就是原色（没有图案）。 */
 export function shadeOf(hex, k) {
-  var f = 1 - (isFinite(k) ? Math.max(0, Math.min(.9, k)) : .13);
+  var f = 1 - (isFinite(k) ? Math.max(0, Math.min(.9, k)) : .05);
   var r = Math.round(parseInt(hex.substr(1, 2), 16) * f);
   var g = Math.round(parseInt(hex.substr(3, 2), 16) * f);
   var b = Math.round(parseInt(hex.substr(5, 2), 16) * f);
+  return 'rgb(' + r + ',' + g + ',' + b + ')';
+}
+
+/* 「提亮」版的图案色：同一个颜色朝纸白里混，像色块上浮着一层薄云。
+   天空那套用它——把图形做得比底色**浅**，比压暗更像天空，也不跟墨色棋子撞。
+   k 是混进去多少白（0–1），0.2 上下才有得看：淡彩本来就很浅，掺少了直接糊在一起。 */
+export function tintOf(hex, k) {
+  var f = isFinite(k) ? Math.max(0, Math.min(.9, k)) : .2;
+  function up(c) { return Math.round(c + (255 - c) * f); }
+  var r = up(parseInt(hex.substr(1, 2), 16));
+  var g = up(parseInt(hex.substr(3, 2), 16));
+  var b = up(parseInt(hex.substr(5, 2), 16));
   return 'rgb(' + r + ',' + g + ',' + b + ')';
 }
 

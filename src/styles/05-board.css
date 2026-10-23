@@ -62,6 +62,8 @@
    图形本身来自外观插件（src/js/looks/），这里只管位置与颜色：
    · --rc-ink 是这一块底色的「压暗一档」（见 palette.js 的 shadeOf），
      图形永远比底色深一点点，所以它像是色块自己的纹路，不是贴上去的另一块颜色；
+   · --sk-veil 是整层图案的纱（插件里的 veil，没写就是 1）。有的主题（贴纸）
+     自己就亮，全套淡一档才不跟 × 抢——是这套图案的属性，不分打没打叉；
    · 图形不带 fill，继承 .sk 上的 currentColor；
    · 没有图案的时候（纯色）连节点都留着，只是 grid 上没有 .has-skin，直接不显示。 */
 .sk {
@@ -72,6 +74,7 @@
   height: 100%;
   fill: currentColor;
   color: var(--rc-ink, rgba(58, 51, 53, .13));
+  opacity: var(--sk-veil, 1);
   pointer-events: none;
 }
 

@@ -16,7 +16,7 @@
  * ========================================================================== */
 
 import { gridEl, skinDefsEl } from '../core/dom.js';
-import { REGION_COLORS, shadeOf } from '../core/palette.js';
+import { REGION_COLORS, shadeOf, tintOf } from '../core/palette.js';
 import { settings, view } from '../core/state.js';
 import { findOf } from '../looks/index.js';
 
@@ -28,11 +28,21 @@ export function currentSurface() {
   return findOf('surface', settings.surfaceStyle);
 }
 
-/** 某种底色在某套图案里的墨色。tone = 0 时就是底色本身（等于看不见）。 */
-export function skinInk(color, surface) {
+/**
+ * 某种底色在某套图案里的墨色。
+ *   surface.ink = 'tint' → 提亮（天空那套：像浮着一层薄云）
+ *   默认（'shade'）      → 压暗（图案像是这块自己深了一点）
+ * kOverride 给展柜预览用：缩到五十来像素，得按棋盘浓度放大才看得见。
+ */
+export function surfaceInk(color, surface, kOverride) {
   var s = surface || currentSurface();
-  var k = s && isFinite(s.tone) ? s.tone : TONE_FALLBACK;
-  return shadeOf(color, k);
+  var k = isFinite(kOverride) ? kOverride : (s && isFinite(s.tone) ? s.tone : TONE_FALLBACK);
+  return s && s.ink === 'tint' ? tintOf(color, k) : shadeOf(color, k);
+}
+
+/** 棋盘上用：照这套图案自己的浓度。 */
+export function skinInk(color, surface) {
+  return surfaceInk(color, surface);
 }
 
 function motifId(surfaceId, ci) {
@@ -95,6 +105,12 @@ export function applySurface() {
   /* 有没有图案这件事交给 grid 上的一个类，而不是在 CSS 里按图案 id 写名单：
    * 插件可以随时增删，CSS 不该认识任何一套具体的图案。 */
   if (gridEl) gridEl.classList.toggle('has-skin', !!(s && s.motifs));
+
+  /* 整层图案的「纱」：有的主题自己就亮（贴纸的白边），全套压一档才不跟 × 抢。
+   * 落成变量给 .sk 吃，没写 veil 的主题就是 1——CSS 里仍然不出现任何图案 id。 */
+  if (gridEl) {
+    gridEl.style.setProperty('--sk-veil', String(s && isFinite(s.veil) ? s.veil : 1));
+  }
 
   buildDefs(s);
 
