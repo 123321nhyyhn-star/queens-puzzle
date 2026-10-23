@@ -162,6 +162,28 @@
   color: var(--ink-mute);
 }
 
+/* 步数：撤销栈里还剩几步（推演的时候不用自己数「我走了几步」）。
+   图标是一枚回退箭头，读法就是「按这么多下撤销」。
+   一步都没有时整段淡下去——那不是读数，是「还没有能撤的东西」；
+   到顶了写 60+（见 core/utils.js 的 stepText）。 */
+.hud-step {
+  color: var(--ink);
+}
+
+.hud-step svg {
+  flex: 0 0 auto;
+  color: var(--ink-mute);
+}
+
+.hud-step .step-unit {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink-mute);
+}
+
+.hud-step.is-zero { color: var(--ink-faint); }
+.hud-step.is-zero svg { color: var(--ink-faint); }
+
 /* 皇后放满：这一段绿底白字。这是「这盘摆完了」的状态提示，
  * 跟尺寸 / 难度那些读数不是一回事，所以允许它跳出来。 */
 .hud-queen.is-full {

@@ -1,6 +1,6 @@
 /* ============================================================================
  * history.js
- * 撤销 / 重做：整盘 marks 快照，最多 60 步。
+ * 撤销 / 重做：整盘 marks 快照，最多 UNDO_MAX 步（core/state.js）。
  *
  * 放在 app 层：撤销要判「现在能不能操作」、要收起提示面板、要落盘，
  * 已经不是单纯的视图逻辑了。
@@ -8,7 +8,7 @@
 
 import { canPlay } from './actions.js';
 import { buzz, sfx } from '../core/audio.js';
-import { guide, settings, state, view } from '../core/state.js';
+import { guide, settings, state, UNDO_MAX, view } from '../core/state.js';
 import { save } from '../core/storage.js';
 import { announce } from '../core/utils.js';
 import { closeGuide } from '../ui/guide.js';
@@ -28,7 +28,7 @@ function snapshot() {
 
 export function pushHistory() {
   view.undo.push(snapshot());
-  if (view.undo.length > 60) view.undo.shift();
+  if (view.undo.length > UNDO_MAX) view.undo.shift();
   view.redo.length = 0;
 }
 

@@ -77,3 +77,69 @@
   flex: 1 1 auto;
   min-width: 0;
 }
+
+/* ---- 「只差皇后」的补齐按钮 ----
+   棋盘上除了皇后位全都划掉了的时候，这一行整行让给它：正文藏起来，
+   按钮居中。高度还是那 36px，所以棋盘一格都不会挪（见 ui/hint.js）。
+
+   做成一颗带扣的黄胶囊而不是一块浮层：它就长在玩家一直读的那句话的位置上，
+   不用去别处找；也不会盖住棋盘或工具栏。 */
+.finish-nudge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  height: 30px;
+  margin: 0 auto;
+  padding: 0 5px 0 9px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 2px 0 var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .01em;
+  color: var(--ink);
+  white-space: nowrap;
+  cursor: pointer;
+  animation: nudgeIn .26s var(--spring) both;
+}
+
+.finish-nudge[hidden] { display: none; }
+
+.finish-nudge:active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+
+.fn-q { flex: 0 0 auto; }
+
+.fn-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 「补齐」两个字做成胶囊里的一枚深色扣子：一眼看出这一颗是可以按的，
+   而不是又一句提示文案 */
+.fn-go {
+  flex: 0 0 auto;
+  padding: 3px 8px 4px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--bg-body);
+  font-size: 11px;
+  letter-spacing: .04em;
+}
+
+.hint-row.is-nudge { justify-content: center; }
+.hint-row.is-nudge .hint { display: none; }
+
+@keyframes nudgeIn {
+  from { opacity: 0; transform: translateY(5px) scale(.94); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .finish-nudge { animation: none; }
+}

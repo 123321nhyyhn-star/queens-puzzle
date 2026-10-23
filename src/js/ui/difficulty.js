@@ -10,9 +10,9 @@ import { limitRemaining, elapsedMs } from '../core/clock.js';
 import { limitLabel } from '../core/config.js';
 import { app, btnHud, diffBadge, diffBig, diffGroupTitle, diffLead, diffLegend, diffLevelEl,
   diffScoreEl, diffSeg, diffSheet, diffSteps, diffWrap, infoDiffCard, infoDiffSub, infoQueens,
-  infoQueensSub, infoSize, infoSizeSub, infoTime, infoTimeSub } from '../core/dom.js';
-import { state, view } from '../core/state.js';
-import { formatTime } from '../core/utils.js';
+  infoQueensSub, infoSize, infoSizeSub, infoSteps, infoStepsSub, infoTime, infoTimeSub } from '../core/dom.js';
+import { state, UNDO_MAX, view } from '../core/state.js';
+import { formatTime, stepText } from '../core/utils.js';
 import { queenCount } from '../game/rules.js';
 
 /* ==========================================================
@@ -40,13 +40,14 @@ export function updateDiffChip() {
   paintHudLabel();
 }
 
-/* 整条读成一个按钮，读屏器听到的就是这一句：把四段读数连起来说，
+/* 整条读成一个按钮，读屏器听到的就是这一句：把几段读数连起来说，
  * 不然只念一句「本局信息」，等于什么都没说。 */
 export function paintHudLabel() {
   if (!state.size) return;
   var parts = [
     '棋盘 ' + state.size + '×' + state.size,
-    '皇后 ' + queenCount() + '/' + state.size
+    '皇后 ' + queenCount() + '/' + state.size,
+    '可撤销 ' + view.undo.length + ' 步'
   ];
   if (state.vibe) parts.push('难度 ' + state.vibe.level + ' ' + state.vibe.score.toFixed(1) + ' 分');
   btnHud.setAttribute('aria-label', '本局信息：' + parts.join('，'));
@@ -91,6 +92,16 @@ export function paintInfo() {
   if (state.status === 'lost') infoQueensSub.textContent = '时间到，这局没解开';
   else if (q >= n) infoQueensSub.textContent = '放满了，对一下行列与色块';
   else infoQueensSub.textContent = '还差 ' + (n - q) + ' 只';
+
+  /* 步数 = 撤销栈里还剩几步。写「最多退回 N 步」而不是「走了 N 步」：
+   * 这两个数在拖动连涂（一整笔只留一个撤销点）和清空之后就分道扬镳了，
+   * 而玩家真正要按的是撤销那几下。 */
+  var depth = view.undo.length;
+  infoSteps.textContent = stepText(depth, UNDO_MAX);
+  if (state.status === 'won') infoStepsSub.textContent = '这局已经解开，不用再退了';
+  else if (!depth) infoStepsSub.textContent = '还没有能撤回的步骤';
+  else if (depth >= UNDO_MAX) infoStepsSub.textContent = '撤销栈满了（最多 ' + UNDO_MAX + ' 步，更早的退不回去）';
+  else infoStepsSub.textContent = '按「撤销」最多退回 ' + depth + ' 步';
 }
 
 export function renderDiff() {

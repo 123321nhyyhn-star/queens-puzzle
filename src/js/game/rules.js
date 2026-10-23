@@ -140,6 +140,55 @@ export function queenCount() {
   return n;
 }
 
+/* ---- 只差皇后 ----
+ * 判定「把剩下的空格补成皇后就能赢」，返回那几格的下标；不满足就返回 null。
+ * 提示行拿它决定要不要露出「补齐」那颗按钮（见 ui/hint.js），
+ * 点下去由 app/actions.js 的 fillQueens() 挨个落子。
+ *
+ * 三条缺一不可：
+ *   1. 已经放下的皇后全在解位上 —— 放错了位置，怎么补都赢不了；
+ *   2. 解位上没有被手标 × —— 那种格补不进去（也没法替玩家擦掉）；
+ *   3. 棋盘上「还没标记」的格子数正好等于缺的皇后数。
+ *
+ * 第 3 条是这件事的边界：它保证棋盘上除了皇后位，别处都已经划掉了。
+ * 没有它，一开局就满足条件（解位当然是空的），一键补齐就成了自动求解。
+ * 反过来只要它成立，剩下的空格就**一定**是那几只皇后 ——
+ * 每只皇后各占一行一列一块，别的皇后叉不到它的位置，所以解位永远是「活格」。
+ */
+export function pendingQueens() {
+  if (state.status !== 'playing' || !state.solution) return null;
+  var n = state.size;
+  var total = n * n;
+  var sol = state.solution;
+  var onSol = new Uint8Array(total);
+  var missing = [];
+  var open = 0;
+  var i, r;
+
+  for (r = 0; r < n; r++) onSol[r * n + sol[r]] = 1;
+
+  for (i = 0; i < total; i++) {
+    if (state.marks[i] === 2) {
+      if (!onSol[i]) return null;          // 有皇后不在解位上
+      continue;
+    }
+    if (state.marks[i] === 1) continue;    // 手标 ×：不是活格
+    if (state.auto && state.auto[i]) continue;  // 自动打叉画出来的 ×
+    open++;
+  }
+
+  for (r = 0; r < n; r++) {
+    var qi = r * n + sol[r];
+    if (state.marks[qi] === 2) continue;
+    if (state.marks[qi] === 1) return null;   // 解位被划掉了
+    missing.push(qi);
+  }
+
+  if (!missing.length) return null;       // 已经是赢的盘，没得补
+  if (open !== missing.length) return null;   // 别处还有活格：不只是「缺皇后」
+  return missing;
+}
+
 /* ---- 填错的色块 ----
  * 一个色块整块都被 × 填满、却一颗皇后都没有：这块已经不可能放下了，
  * 说明前面哪一步铺错了。手动打的 × 和自动标出的 × 都算 —— 自动 × 本来就是

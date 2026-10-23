@@ -145,7 +145,7 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
-  margin: 10px 0 4px;
+  margin: 8px 0 2px;
 }
 
 .info-card {
@@ -196,14 +196,29 @@
   color: var(--ink-mute);
 }
 
+/* 第五张卡片「步数」占满一整行：前四张是这一局的读数，这一张答的是
+   「按几下撤销能退回去」，横着排一行就够，不必再占半个格子。 */
+.info-card.is-wide {
+  grid-column: 1 / -1;
+  flex-flow: row wrap;
+  align-items: baseline;
+  gap: 2px 9px;
+  padding: 6px 11px 7px;
+}
+
+.info-card.is-wide .info-s {
+  flex: 1 1 140px;
+  text-align: right;
+}
+
 .info-setup {
   display: block;
-  margin: 10px auto 0;
+  margin: 8px auto 0;
 }
 
 /* ---- 难度构成 ---- */
 .diff-lead {
-  margin: 4px 0 14px;
+  margin: 2px 0 10px;
   font-size: 12.5px;
   line-height: 1.6;
   color: var(--ink-mute);
@@ -212,8 +227,8 @@
 .diff-steps {
   display: flex;
   flex-direction: column;
-  gap: 9px;
-  margin: 4px 0 14px;
+  gap: 8px;
+  margin: 2px 0 10px;
 }
 
 .diff-step {
@@ -257,12 +272,12 @@
 .diff-step.is-guess .ds-bar i { background: #E23B3B; }
 
 .diff-legend {
-  margin: 0 0 4px;
-  padding: 10px 12px;
+  margin: 0 0 2px;
+  padding: 9px 12px;
   border-radius: 12px;
   background: var(--bg-neutral);
   font-size: 11.5px;
-  line-height: 1.85;
+  line-height: 1.72;
   color: var(--ink-mute);
 }
 

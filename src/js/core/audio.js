@@ -104,6 +104,12 @@ export function sfx(name, detail) {
       audio.tone('sine', 210, 148, 0.14, 0, 0.55);
       audio.tone('triangle', 1046, 1046, 0.06, 0.03, 0.16);
       break;
+    case 'fill':
+      /* 一键补齐那一串：一只一声很短的「嗒」，音高随着落子往上爬。
+       * 十几只连起来是一条上扬的线；照搬 'queen' 会糊成一片噪声。 */
+      var k = (detail && detail.i) || 0;
+      audio.tone('sine', 520 + k * 26, 560 + k * 26, 0.045, 0, 0.16);
+      break;
     case 'remove':
       audio.tone('sine', 300, 190, 0.09, 0, 0.4);
       break;

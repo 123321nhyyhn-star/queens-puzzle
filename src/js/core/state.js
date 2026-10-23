@@ -66,6 +66,9 @@ export const view = {
   lastStates: [],
   undo: [],
   redo: [],
+  /* 「一键补齐」正在一串串落子：这期间棋盘只读（canPlay 看它），
+   * 免得手快的人跟动画抢同一个格子。换盘 / 重开时由 applyBoard 复位。 */
+  filling: false,
   sheetOpen: false,
   /* 设置面板的「更多选项」展开着没有。只活在这一次会话里：刷新页面就收回，
    * 不写盘——大多数人打开设置只是换一局，开关那一堆不该每次都摊在眼前。 */
@@ -95,3 +98,7 @@ export function hasProgress() {
   for (var i = 0; i < state.marks.length; i++) if (state.marks[i] !== 0) return true;
   return false;
 }
+
+/* 撤销栈的深度上限：整盘快照，太深了占内存（8×8 一步 64 字节，16×16 一步 256）。
+ * 到顶以后最早的几步就撤不回去了，信息条上写成「60+」——数字得跟能做的事一致。 */
+export var UNDO_MAX = 60;

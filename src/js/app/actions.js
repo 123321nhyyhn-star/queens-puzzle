@@ -4,12 +4,14 @@
  * ========================================================================== */
 
 import { buzz, sfx } from '../core/audio.js';
+import { REDUCE_MOTION } from '../core/config.js';
 import { startTimer } from '../core/clock.js';
-import { guide, state, view } from '../core/state.js';
+import { guide, settings, state, view } from '../core/state.js';
 import { save } from '../core/storage.js';
 import { announce } from '../core/utils.js';
 import { closeGuide } from '../ui/guide.js';
-import { clearHintTimer, flashHint } from '../ui/hint.js';
+import { clearHintTimer, flashHint, updateHint } from '../ui/hint.js';
+import { pendingQueens } from '../game/rules.js';
 import { pushHistory } from './history.js';
 import { render } from '../ui/render.js';
 import { checkWin } from '../ui/win.js';
@@ -19,7 +21,7 @@ import { checkWin } from '../ui/win.js';
    ========================================================== */
 export function canPlay() {
   return state.status === 'playing' && !view.sheetOpen && !view.diffOpen && !view.resultOpen &&
-    !view.recordsOpen && !view.lookOpen && !view.mismatchOpen;
+    !view.recordsOpen && !view.lookOpen && !view.mismatchOpen && !view.filling;
 }
 
 export function setMarks(next, anim) {
@@ -112,4 +114,64 @@ export function clearBoard(silent) {
   setMarks(state.marks);
   if (!silent) flashHint('已清空，可撤销');
   announce('已清空棋盘');
+}
+
+/* ==========================================================
+   一键补齐
+   ----------------------------------------------------------
+   棋盘上只剩皇后没标的时候（判据见 game/rules.js 的 pendingQueens），
+   玩家点提示行那颗「补齐」，这里把剩下的皇后挨个落上去。
+   赢还是由 checkWin 照常判——它跟手动落子走的是同一条路，
+   所以这条捷径没法把一盘没解开的棋判成解开。
+
+   两个刻意的取舍：
+   · 整串只压一个撤销点（pushHistory 一次）：后悔了就退一步回到补齐之前，
+     不会退成「一只一只往回掉」的十几步；
+   · 落子期间 view.filling = true，棋盘只读。动画总长压在一秒上下，
+     手快点两下也抢不过它，省得两边同时改 state.marks。
+   ========================================================== */
+export function fillQueens() {
+  if (!canPlay()) return false;
+  if (settings.noHint) return false;   // 挑战里禁用提示，这条捷径也不给
+  var list = pendingQueens();
+  if (!list || !list.length) return false;
+
+  if (guide.open) closeGuide();
+  clearHintTimer();
+  pushHistory();
+  state.lastTap = null;
+  startTimer();
+  view.filling = true;
+
+  /* 中途换盘 / 重试会把 state.marks 整个换成一个新数组，
+   * 用它认「这串动画还属于现在这一盘吗」——比记一个计数器更省事。 */
+  var marks = state.marks;
+  var total = list.length;
+  // 总数多就快一点，总长压在一秒上下：14 只约 78ms 一只，4 只约 120ms 一只
+  var gap = REDUCE_MOTION ? 0 : Math.min(120, Math.max(45, Math.round(1100 / total)));
+  var at = 0;
+
+  buzz(10);
+
+  function step() {
+    if (state.marks !== marks || state.status !== 'playing') {
+      view.filling = false;
+      updateHint();
+      return;
+    }
+    var i = list[at];
+    at++;
+    state.marks[i] = 2;
+    state.moves++;
+    sfx('fill', { i: at - 1 });
+    setMarks(state.marks, { from: i });   // 画一遍、存盘、判胜
+    if (at < total) { window.setTimeout(step, gap); return; }
+
+    view.filling = false;
+    updateHint();   // 「正在补齐…」换成「解开了」
+    announce('已补齐剩下 ' + total + ' 只皇后');
+  }
+
+  step();
+  return true;
 }

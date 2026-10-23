@@ -3,13 +3,13 @@
  * 事件接线层：所有 DOM 事件的绑定集中在这里，方便一眼看清「哪里点了会怎样」。
  * ========================================================================== */
 
-import { canPlay, clearBoard, onCell, placeQueen } from './app/actions.js';
+import { canPlay, clearBoard, fillQueens, onCell, placeQueen } from './app/actions.js';
 import { newGame, retryGame } from './app/puzzle.js';
 import { audio, buzz, sfx } from './core/audio.js';
 import { pauseTimer, startTimer } from './core/clock.js';
 import { DIFF_BANDS, DIFF_ORDER, SIZE_MAX, SIZE_MIN } from './core/config.js';
 import { btnAgain, btnClear, btnClearRecs, btnCloseDiff, btnCloseLook, btnCloseRec,
-  btnCloseSheet, btnCopyCode, btnDiffDone, btnHint, btnHud, btnInfoSetup, btnLoadCode, btnLook,
+  btnCloseSheet, btnCopyCode, btnDiffDone, btnFinish, btnHint, btnHud, btnInfoSetup, btnLoadCode, btnLook,
   btnLookDone, btnMoreOpts, btnMoreRecs, btnNew, btnPeek, btnRecords, btnReplay, btnSettings,
   btnShuffle, btnUndo, coachClose, coachNext, coachPrev, diffBackdrop, diffOpts, diffSheet,
   gridEl, limChips, limitOpts, lookBackdrop, lookSheet, lvChips, mismatchEl, quickRow,
@@ -230,6 +230,9 @@ gridEl.addEventListener('click', function (e) {
 btnUndo.addEventListener('click', undo);
 btnHint.addEventListener('click', useHint);
 btnClear.addEventListener('click', function () { clearBoard(false); });
+/* 提示行上的「补齐」：只剩皇后没标时才露出来（见 ui/hint.js），
+ * 点一下把剩下的皇后挨个落上去（见 app/actions.js 的 fillQueens） */
+btnFinish.addEventListener('click', function () { fillQueens(); });
 
 coachPrev.addEventListener('click', guidePrev);
 coachNext.addEventListener('click', guideNext);

@@ -76,7 +76,7 @@
     </div>
   </header>
 
-  <!-- 局内信息条：棋盘 / 用时 / 皇后 / 难度走同一条、同一个按钮、同一个信息页。
+  <!-- 局内信息条：棋盘 / 用时 / 步数 / 皇后 / 难度走同一条、同一个按钮、同一个信息页。
        以前是三个胶囊（只有一个能点、还开到设置面板里）加提示行右侧一个难度标签，
        四处四种样子、点下去三种结果，全凭记忆分辨。
        它和提示行装在一起（.stage-head），整块贴在棋盘上方。 -->
@@ -84,6 +84,15 @@
     <div class="stage-head" id="stageHead">
       <div class="hint-row" id="hintRow">
         <p class="hint" id="hint">轻点标 ×，按住可整行整列连涂</p>
+        <!-- 棋盘上只剩皇后没标时，这一行整行让给它：点一下把剩下的皇后挨个落上去 -->
+        <button class="finish-nudge" id="btnFinish" type="button" hidden>
+          <svg class="fn-q" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3.4 7.6l4.4 3L12 4.2l4.2 6.4 4.4-3-1.5 9.2H4.9L3.4 7.6z"></path>
+            <path d="M5.6 20.2h12.8"></path>
+          </svg>
+          <span class="fn-text" id="finishText">只差 0 只皇后</span>
+          <span class="fn-go">补齐</span>
+        </button>
       </div>
 
       <div class="hud-row">
@@ -95,6 +104,14 @@
               <path d="M12 7v5l3 2"></path>
             </svg>
             <span id="timeText">00:00</span>
+          </span>
+          <!-- 步数 = 撤销栈里还剩几步。图标是回退箭头，读法就是「按这么多下撤销」 -->
+          <span class="hud-seg hud-step is-zero" id="stepPill" title="可撤销的步数">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M4 12a8 8 0 1 0 2.6-5.9"></path>
+              <path d="M4 4v5h5"></path>
+            </svg>
+            <span id="stepCount">0</span><span class="step-unit">步</span>
           </span>
           <span class="hud-seg hud-queen" id="queenPill"><svg class="hud-q" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.4 7.6l4.4 3L12 4.2l4.2 6.4 4.4-3-1.5 9.2H4.9L3.4 7.6z"></path><path d="M5.6 20.2h12.8"></path></svg> <span id="queenCount">0/8</span></span>
           <span class="hud-seg hud-diff" id="diffSeg" hidden>
@@ -292,9 +309,9 @@
         </svg>
       </button>
     </div>
-    <p class="sheet-note">棋盘上方那一条里的四项，这里都摊开说明</p>
+    <p class="sheet-note">棋盘上方那一条里的几项，这里都摊开说明</p>
 
-    <!-- 四张卡片的顺序与顶栏信息条一致，点进来不用重新找 -->
+    <!-- 卡片的顺序与顶栏信息条一致，点进来不用重新找 -->
     <div class="info-grid">
       <div class="info-card">
         <span class="info-k">棋盘</span>
@@ -315,6 +332,12 @@
         <span class="info-k">难度</span>
         <b class="info-v"><span class="info-level" id="diffBadge" data-tone="mid">中等</span> <em id="diffBig">5.2</em></b>
         <span class="info-s" id="infoDiffSub">本局难度评估</span>
+      </div>
+      <!-- 步数占满一整行：它答的是「能退回几步」，跟上面四项读数不是同一类 -->
+      <div class="info-card is-wide">
+        <span class="info-k">步数</span>
+        <b class="info-v" id="infoSteps">0</b>
+        <span class="info-s" id="infoStepsSub">还没有能撤回的步骤</span>
       </div>
     </div>
 

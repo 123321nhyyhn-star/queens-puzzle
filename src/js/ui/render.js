@@ -6,9 +6,9 @@
 import { buzz, sfx } from '../core/audio.js';
 import { paintClock } from '../core/clock.js';
 import { boardEl, btnClear, btnHint, btnUndo, hudSize, linksEl, queenCountEl, queenPill, rbEl,
-  rlBad, rlEl } from '../core/dom.js';
-import { settings, state, view } from '../core/state.js';
-import { pulseClass, svgEl } from '../core/utils.js';
+  rlBad, rlEl, stepCountEl, stepPill } from '../core/dom.js';
+import { settings, state, UNDO_MAX, view } from '../core/state.js';
+import { pulseClass, stepText, svgEl } from '../core/utils.js';
 import { cellSize, regionPath } from '../game/geometry.js';
 import { FORCED_COL, FORCED_REGION, FORCED_ROW, badRegions, computeAuto, computeConflicts,
   computeForced, queenCount, regionCounts } from '../game/rules.js';
@@ -308,6 +308,15 @@ export function updateStats() {
   queenCountEl.textContent = q + '/' + total;
   queenPill.classList.toggle('is-full', q === total && playing);
   hudSize.textContent = total + '×' + total;
+
+  /* 步数：撤销栈里还剩几步。推演的时候不用自己数「我走几步了」，
+   * 一按撤销就能退回去；栈满了写 60+（更早的几步已经撤不回去）。
+   * 读的是撤销栈、不是 state.moves——后者只记放了几只皇后，进了战绩。 */
+  var depth = view.undo.length;
+  stepCountEl.textContent = stepText(depth, UNDO_MAX);
+  stepPill.classList.toggle('is-zero', depth === 0);
+  stepPill.title = depth ? '可撤销 ' + depth + ' 步' : '还没有可撤销的步骤';
+
   paintHudLabel();
 
   /* 挑战里禁用的按钮跟「暂时没得撤」是两回事：

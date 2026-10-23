@@ -1,12 +1,15 @@
 /* ============================================================================
  * hint.js
  * 提示行文案：常态提示、临时提示（1.7s 后自动回到常态）。
+ *
+ * 另外还管提示行上的那一颗「补齐」按钮：棋盘上只剩皇后没标时，
+ * 整行让给它（见 game/rules.js 的 pendingQueens）。
  * ========================================================================== */
 
 import { listOf } from '../looks/index.js';
-import { hintEl } from '../core/dom.js';
-import { settings, state } from '../core/state.js';
-import { queenCount } from '../game/rules.js';
+import { btnFinish, finishText, hintEl, hintRowEl } from '../core/dom.js';
+import { settings, state, view } from '../core/state.js';
+import { pendingQueens, queenCount } from '../game/rules.js';
 
 /* 临时提示的计时器：非 null 表示提示行正被一句临时文案占着，
  * 这期间 render() 触发的 updateHint() 不应该把话抢回去。 */
@@ -27,24 +30,61 @@ function idleHint() {
   return (marks[0] && marks[0].hint) || '轻点标记，按住可以连涂';
 }
 
+/* ---- 提示行上的「补齐」 ----
+ * 0 表示不该露；露出来时整行只放这一颗按钮（文案里已经说了差几只），
+ * 提示行的 36px 高度不变，棋盘一格都不会挪。 */
+function setNudge(count) {
+  if (!count) {
+    if (!btnFinish.hidden) {
+      btnFinish.hidden = true;
+      hintRowEl.classList.remove('is-nudge');
+    }
+    return;
+  }
+  finishText.textContent = '只差 ' + count + ' 只皇后';
+  btnFinish.setAttribute('aria-label', '自动补齐剩下 ' + count + ' 只皇后');
+  if (btnFinish.hidden) {
+    btnFinish.hidden = false;
+    hintRowEl.classList.add('is-nudge');
+  }
+}
+
 export function updateHint() {
   if (hintTimer) return;
   hintEl.classList.remove('is-alert', 'is-ok');
+
+  /* 补齐那一串正在落子：棋盘上的数字一路在变，这里就别跟着数了 */
+  if (view.filling) {
+    setNudge(0);
+    hintEl.textContent = '正在补齐…';
+    return;
+  }
+
   if (state.status === 'won') {
+    setNudge(0);
     hintEl.textContent = '解开了，漂亮！';
     hintEl.classList.add('is-ok');
     return;
   }
   if (state.status === 'lost') {
+    setNudge(0);
     hintEl.textContent = '时间到，这局没解开 · 重开或换一局';
     hintEl.classList.add('is-alert');
     return;
   }
   if (state.conflicts && state.conflicts.count > 0) {
+    setNudge(0);
     hintEl.textContent = state.conflicts.pairs[0].reason;
     hintEl.classList.add('is-alert');
     return;
   }
+
+  /* 只剩皇后没标：这一行让给「补齐」，其他文案都不用说了。
+   * 挑战里禁用提示时不给这条路——那档挑战的意思就是「全自己来」。 */
+  var rest = settings.noHint ? null : pendingQueens();
+  setNudge(rest ? rest.length : 0);
+  if (rest) return;
+
   var q = queenCount();
   var n = state.size;
   if (q === 0) hintEl.textContent = idleHint();
@@ -53,6 +93,9 @@ export function updateHint() {
 }
 
 export function flashHint(text, ok, ms) {
+  /* 临时那句话优先：它写进的是提示行的正文，而正文在「补齐」露着的时候是藏起来的。
+   * 所以先把按钮收回去，等这句话过期，updateHint() 自己会把按钮放回来。 */
+  setNudge(0);
   hintEl.textContent = text;
   hintEl.classList.remove('is-alert', 'is-ok');
   hintEl.classList.add(ok ? 'is-ok' : 'is-alert');

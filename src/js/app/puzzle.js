@@ -206,6 +206,9 @@ export function applyBoard(n, regions, solution, seed, preVibe) {
   view.lastConflictCount = 0;
   view.undo = [];
   view.redo = [];
+  /* 上一局可能还有一串「补齐」在落子：换盘时把锁解开，
+   * 那一串自己会发现 state.marks 已经不是它记的那个数组，随即收手。 */
+  view.filling = false;
   view.lastFinish = null;   // 上一局的成绩别飘到这一局的结果卡上
 
   settings.size = n;

@@ -21,6 +21,9 @@ export var skinDefsEl = $('skinDefs');
 export var linksEl = $('links');
 export var hintEl = $('hint');
 export var hintRowEl = $('hintRow');
+/* 「只差皇后」时占住整行提示区的补齐按钮（见 ui/hint.js） */
+export var btnFinish = $('btnFinish');
+export var finishText = $('finishText');
 /* 提示行 + 信息条：舞台上算一块，量高度时用它 */
 export var stageHeadEl = $('stageHead');
 export var regionsEl = $('regions');
@@ -36,12 +39,14 @@ export var coachClose = $('coachClose');
 export var glEl = $('gl');
 export var glTags = $('glTags');
 
-/* 局内信息条：棋盘 / 用时 / 皇后 / 难度四段，整条是一个按钮（btnHud）。
- * 四段只是读数，点了都进同一个信息页，所以不各自做成按钮。 */
+/* 局内信息条：棋盘 / 用时 / 步数 / 皇后 / 难度五段，整条是一个按钮（btnHud）。
+ * 各段只是读数，点了都进同一个信息页，所以不各自做成按钮。 */
 export var btnHud = $('btnHud');
 export var hudSize = $('hudSize');
 export var timePill = $('timePill');
 export var timeText = $('timeText');
+export var stepPill = $('stepPill');
+export var stepCountEl = $('stepCount');
 export var queenPill = $('queenPill');
 export var queenCountEl = $('queenCount');
 export var diffSeg = $('diffSeg');
@@ -97,6 +102,8 @@ export var infoTime = $('infoTime');
 export var infoTimeSub = $('infoTimeSub');
 export var infoQueens = $('infoQueens');
 export var infoQueensSub = $('infoQueensSub');
+export var infoSteps = $('infoSteps');
+export var infoStepsSub = $('infoStepsSub');
 export var infoDiffCard = $('infoDiffCard');
 export var infoDiffSub = $('infoDiffSub');
 export var diffGroupTitle = $('diffGroupTitle');
