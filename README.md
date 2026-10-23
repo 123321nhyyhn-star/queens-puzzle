@@ -439,7 +439,7 @@ looks  ←  core  ←  game  ←  ui  ←  app
 | 加一项挑战 | 照「限时 / 禁用提示 / 禁用撤销」三件套：`DEFAULT_SETTINGS` + `pending`（`core/state.js`）+ `index.html` 的 `.challenge` 块 + `ui/settings.js` 的 `syncSheet`/`commitChallenge` + 动作入口里 `settings.xxx` 一拦 |
 | 改超时判负的时机 | `core/clock.js` 的 `limitExpired`、`ui/win.js` 的 `checkTimeout`（由 `main.js` 的 250ms 心跳调用） |
 | 改出题规则 | `src/js/engine/engine.js`（改动后跑 `node tools/test-engine.mjs`） |
-| 改提示措辞 / 推理等级 | `src/js/engine/hint.js`（`node tools/test-hint.mjs`） |
+| 改提示措辞 / 推理等级 | `src/js/engine/hint.js`（`node tools/test-hint.mjs`；L4 那套话看 `check-probe-guide.mjs`） |
 | 改难度评分 | `src/js/engine/difficulty.js` + `game/vibe.js` |
 | 改信息条有哪几段 / 什么顺序 | `index.html` 的 `.hud`（每段一个 `.hud-seg`，样式在 `03-topbar.css`），读数由 `ui/render.js` 与 `ui/difficulty.js` 写 |
 | 改信息页的卡片 / 文案 | `index.html` 的 `.info-grid` + `ui/difficulty.js` 的 `paintInfo()` / `renderDiff()`，样式在 `11-sheet-difficulty.css` |
@@ -461,6 +461,7 @@ looks  ←  core  ←  game  ←  ui  ←  app
 npm test                 # 全量端到端回归（tools/e2e.mjs，100+ 项）
 node tools/test-engine.mjs   # 出题引擎（唯一解、连通性）
 node tools/test-hint.mjs     # 提示引擎
+node tools/check-probe-guide.mjs # 试推（L4）那套话：5–8 步 / 假设与结论之间必须讲清 / 玩家的 × 也算约束（不许圈到画过叉的格）/ 盘上有错的 × 先纠错 / 面板高度
 node tools/check-challenge.mjs   # 挑战：限时 / 禁用提示 / 禁用撤销（60 项）
 node tools/check-records.mjs     # 战绩：记录写入 / 缩略图 / 分享码 / 排行榜分组 / 删除清空
 node tools/check-look.mjs        # 外观：五套色块 / 三排展柜 / 图案落地 / 纱 / 叉与皇后 / 存盘兜底 / 矮屏（76 项）

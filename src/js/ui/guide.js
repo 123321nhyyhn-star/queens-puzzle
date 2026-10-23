@@ -279,19 +279,29 @@ export function paintGl(hl) {
   }
   setChipHints(regions);
 
-  var kill = !!hl.kill;
-  for (i = 0; i < cells.length; i++) {
-    var idx = cells[i];
-    r = (idx / n) | 0;
-    c = idx % n;
+  /* 圈一格的框；ghost（假设里被排除的）用灰虚线圈，assume（假设里被迫落子的）
+     用紫圈 + 中心小点。先画 assume 再画 cells，最后画的压在上面。 */
+  var kill = !!hl.kill, ghost = !!hl.ghost, bad = !!hl.bad;
+  function ring(idx, cls, dot) {
+    var rr = (idx / n) | 0, cc = idx % n;
     var pad = Math.max(1.5, cell * 0.045);
-    var attrs = {
-      x: c * cell + pad, y: r * cell + pad,
+    var cx = cc * cell + cell / 2, cy = rr * cell + cell / 2;
+    glEl.appendChild(svgEl('rect', {
+      x: cc * cell + pad, y: rr * cell + pad,
       width: cell - pad * 2, height: cell - pad * 2,
       rx: Math.min(7, cell * 0.16),
-      'class': 'gl-cell' + (kill ? ' is-kill' : '') + (hl.bad ? ' is-bad' : '')
-    };
-    glEl.appendChild(svgEl('rect', attrs));
+      'class': 'gl-cell' + cls
+    }));
+    if (dot) {
+      glEl.appendChild(svgEl('circle', {
+        cx: cx, cy: cy, r: Math.max(2.2, cell * 0.13), 'class': 'gl-dot'
+      }));
+    }
+  }
+  var assumeCells = hl.assume || [];
+  for (i = 0; i < assumeCells.length; i++) ring(assumeCells[i], ' is-ghost is-assume', true);
+  for (i = 0; i < cells.length; i++) {
+    ring(cells[i], (kill ? ' is-kill' : '') + (bad ? ' is-bad' : '') + (ghost ? ' is-ghost' : ''));
   }
 }
 

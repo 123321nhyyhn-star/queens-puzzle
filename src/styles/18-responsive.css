@@ -93,8 +93,9 @@
   .coach-top { flex: 1 1 auto; min-width: 0; gap: 6px; }
   .coach-text { min-height: 0; font-size: 11.5px; line-height: 15px; }
   .coach-ctl { flex: 0 0 auto; gap: 5px; }
-  .coach-dots { flex: 0 0 38px; }
-  .coach-dots i { width: 5px; height: 5px; }
+  /* 试推那套话最多 8 步，8 颗点塞不进原来的 38px：让它按内容占宽、点再小一号 */
+  .coach-dots { flex: 0 1 auto; gap: 3px; }
+  .coach-dots i { width: 4px; height: 4px; }
   .cbtn { min-height: 26px; padding: 0 8px; font-size: 11px; border-radius: 8px; }
   .cbtn-go { min-width: 60px; }
 }

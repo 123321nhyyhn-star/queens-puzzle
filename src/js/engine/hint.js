@@ -288,24 +288,43 @@
   /* ------------------------------------------------------------- L4 试推 */
   /* 假设某格放皇后，用 L1–L3 往下推；推出矛盾就说明这格不能放。
      候选顺序：按「所在单位的活格数」从小到大 —— 选择越少，假设越容易撞墙。
-     试完这一档还没撞墙就继续试别的单位，直到预算用完。 */
+     试完这一档还没撞墙就继续试别的单位，直到预算用完。
+
+     skip（= 玩家盘面上已经标过的格子）在这里有**两个**作用，缺一个就会出乱子：
+     ① 不拿它当假设的候选；
+     ② 试推的盘面里也把它当成「不能放」。
+     少了 ②，推演会一路推到一格玩家早就画了 × 的位置，然后念「只剩一格」——
+     屏幕上明明白白一个叉，玩家只会觉得提示在胡说（也确实是胡说）。
+     这些 × 一定不在解位上：plan 在试推之前就把「把解位画成 ×」的情况拦去纠错了。
+     所以把它们当约束只是缩小可行集，不会推出假的「无解」。 */
   function probeRefute(st, ctx, maxK, skip) {
     var n = ctx.n;
     var lists = [], g, r, c, lg, lr, lc;
 
+    function liveOf(cells) {
+      var out = [], k, cc;
+      for (k = 0; k < cells.length; k++) {
+        cc = cells[k];
+        if (!st.alive[cc]) continue;
+        if (skip && skip(cc)) continue;
+        out.push(cc);
+      }
+      return out;
+    }
+
     for (g = 0; g < n; g++) {
       if (st.regDone[g]) continue;
-      lg = liveCells(st, ctx.regCells[g]);
+      lg = liveOf(ctx.regCells[g]);
       if (lg.length > 1) lists.push(lg);
     }
     for (r = 0; r < n; r++) {
       if (st.rowDone[r]) continue;
-      lr = liveCells(st, ctx.rowCells[r]);
+      lr = liveOf(ctx.rowCells[r]);
       if (lr.length > 1) lists.push(lr);
     }
     for (c = 0; c < n; c++) {
       if (st.colDone[c]) continue;
-      lc = liveCells(st, ctx.colCells[c]);
+      lc = liveOf(ctx.colCells[c]);
       if (lc.length > 1) lists.push(lc);
     }
     lists.sort(function (a, b) { return a.length - b.length; });
@@ -319,23 +338,31 @@
         var cell = list[i];
         if (seen[cell]) continue;
         seen[cell] = 1;
-        if (skip && skip(cell)) continue;
         tried++;
         var trial = cloneState(st);
+        // ② 玩家划掉的格子，在假设里同样不能放
+        if (skip) {
+          for (var z = 0; z < ctx.N; z++) if (skip(z)) trial.alive[z] = 0;
+        }
         place(trial, ctx, cell);
-        var dead = runToDead(trial, ctx, maxK);
-        if (dead) return { rule: 'P', level: 4, kind: 'cross', cell: cell, dead: dead, kills: [cell] };
+        var trace = [];
+        var dead = runToDead(trial, ctx, maxK, trace);
+        if (dead) return { rule: 'P', level: 4, kind: 'cross', cell: cell, dead: dead, trace: trace, kills: [cell] };
       }
     }
     return null;
   }
 
-  /* 一路推到没有新结论为止；遇到某个单位一个位置都不剩 → 矛盾 */
-  function runToDead(st, ctx, maxK) {
+  /* 一路推到没有新结论为止；遇到某个单位一个位置都不剩 → 矛盾。
+     trace 给了就把每一步推出来的结论连「推之前那一刻的盘面」一起记下来：
+     文案要讲「中间发生了什么」，还得知道那一步之前哪些格子已经没了，
+     否则屏幕上明明有十几格空白，文案却说「只剩一格」。 */
+  function runToDead(st, ctx, maxK, trace) {
     for (var guard = 0; guard < 400; guard++) {
       var hit = findHit(st, ctx, maxK);
       if (!hit) return null;
       if (hit.dead) return hit.dead;
+      if (trace) trace.push({ hit: hit, alive: st.alive.slice() });
       applyHit(st, ctx, hit);
       if (st.cnt === ctx.n) return null;
     }
@@ -379,6 +406,86 @@
   }
   function cellTxt(i, n) {
     return '第' + (((i / n) | 0) + 1) + '行第' + ((i % n) + 1) + '列';
+  }
+
+  /* 差分去重：圈画层是按格画的，同一格出现两次就会叠两层描边（比旁边的重一倍） */
+  function uniqCells(list) {
+    var seen = Object.create(null), out = [], i, c;
+    for (i = 0; i < list.length; i++) {
+      c = list[i];
+      if (seen[c]) continue;
+      seen[c] = 1;
+      out.push(c);
+    }
+    return out;
+  }
+
+  /* 一格周围一圈（3×3 去掉自己）：放皇后时这些格子跟着一起作废 */
+  function aroundOf(idx, n) {
+    var r = (idx / n) | 0, c = idx % n, out = [];
+    for (var dr = -1; dr <= 1; dr++) {
+      for (var dc = -1; dc <= 1; dc++) {
+        if (!dr && !dc) continue;
+        var rr = r + dr, cc = c + dc;
+        if (rr < 0 || rr >= n || cc < 0 || cc >= n) continue;
+        out.push(rr * n + cc);
+      }
+    }
+    return out;
+  }
+
+  /* 试推链里的一步 → 一句话 + 一组高亮。
+     这些结论只在「假设成立」时才对（假设本身是错的），所以圈画要跟真结论分开：
+     · 假设里被迫落子的那一格 → assume（紫圈 + 点，读作「假设里的皇后」）
+     · 假设里被排除的格子     → ghost（灰虚线圈，不脉冲）
+     「X 色块只剩一格」这种话必须把「已经没了的那些格」也圈出来，
+     否则玩家一抬头看见一色块的空格子，会觉得文案在乱说。 */
+  function traceStepOf(entry, ctx, isDone) {
+    var h = entry.hit;
+    if (h.kind === 'place') {
+      var unit, rows = [], cols = [], regions = [], unitCells;
+      if (h.rule === 'R1') { unit = reg(h.g) + '色块'; regions = [h.g]; unitCells = ctx.regCells[h.g]; }
+      else if (h.rule === 'R2') { unit = '第' + (h.line + 1) + '行'; rows = [h.line]; unitCells = ctx.rowCells[h.line]; }
+      else { unit = '第' + (h.line + 1) + '列'; cols = [h.line]; unitCells = ctx.colCells[h.line]; }
+      var away = [], ui;
+      for (ui = 0; ui < unitCells.length; ui++) {
+        var uc = unitCells[ui];
+        if (uc === h.cell || entry.alive[uc]) continue;
+        if (isDone && isDone(uc)) continue;
+        away.push(uc);
+      }
+      // 推出来的这一格一定是「玩家盘面上还没标过」的：试推的盘面已经把玩家画掉的
+      // 格子当成不能放了（见 probeRefute），所以这里可以放心念「皇后只能放这里」。
+      return {
+        text: unit + '只剩一格，皇后只能放这里',
+        hl: {
+          rows: rows, cols: cols, regions: regions,
+          cells: away, ghost: away.length > 0,
+          assume: [h.cell]
+        },
+        focus: h.cell
+      };
+    }
+    var rowsHl = h.dir === 'row' ? h.lines : [];
+    var colsHl = h.dir === 'col' ? h.lines : [];
+    // 文案报「N 格被排除」按假设里的真实代价数；但只圈玩家还没划掉的那些
+    var fresh = [], ki;
+    for (ki = 0; ki < h.kills.length; ki++) {
+      if (!isDone || !isDone(h.kills[ki])) fresh.push(h.kills[ki]);
+    }
+    var hl = { rows: rowsHl, cols: colsHl, cells: fresh, ghost: true };
+    if (h.rule.charAt(0) === 'A') {
+      return {
+        text: lineTxt(h.dir, h.lines) + '里其他色块的 ' + h.kills.length + ' 格被排除',
+        hl: hl, focus: fresh.length ? fresh[0] : h.kills[0]
+      };
+    }
+    hl.regions = h.regions;
+    return {
+      text: (h.k === 1 ? reg(h.regions[0]) + '色块' : '这 ' + h.k + ' 个色块')
+        + '在别处的 ' + h.kills.length + ' 格被排除',
+      hl: hl, focus: fresh.length ? fresh[0] : h.kills[0]
+    };
   }
 
   function step(text, hl, extra) {
@@ -557,16 +664,96 @@
     if (hit.rule === 'P') {
       var pc = hit.cell;
       var dead = hit.dead;
+      var pr = (pc / n) | 0, pcn = pc % n, pg = ctx.region[pc];
       var deadHl = {};
       var deadAt = '';
       if (dead.type === 'row') { deadHl.rows = [dead.index]; deadAt = '第' + (dead.index + 1) + '行'; }
       else if (dead.type === 'col') { deadHl.cols = [dead.index]; deadAt = '第' + (dead.index + 1) + '列'; }
       else { deadHl.regions = [dead.index]; deadAt = reg(dead.index) + '色块'; }
+
+      /* 一次假设要讲成一段完整的话，别再退回「往下推 → 就矛盾了」：
+         ① 为什么只能试假设 ② 假设谁 ③ 假设立刻排掉了什么
+         ④ 顺着往下推的头一步 ⑤ 中间那些重复的步骤归成一句 ⑥ 直接把棋盘推死的那一步
+         ⑦ 撞墙 ⑧ 结论。中间只留「头 + 尾」：尾那一步才是撞墙的直接原因。
+         假设一放就撞墙（没有中间步）时，④ 改成讲「这个单位是被哪几处挤空的」。
+
+         撞墙那一步还要把那个单位里「玩家盘面上还空着」的格子圈出来（ghost）：
+         不然屏幕上明明有几格空白，文案却说「已经没位置可放」—— 跟眼睛对不上。
+         同理，玩家自己已经划掉 / 自动划掉的格子不再画圈，别在 × 上套一个框。 */
+      var box = aroundOf(pc, n);
+      var deadCells = dead.type === 'row' ? ctx.rowCells[dead.index]
+        : dead.type === 'col' ? ctx.colCells[dead.index] : ctx.regCells[dead.index];
+      var deadGhost = [], boxRing = [], dg;
+      for (dg = 0; dg < deadCells.length; dg++) {
+        if (!isDone || !isDone(deadCells[dg])) deadGhost.push(deadCells[dg]);
+      }
+      for (dg = 0; dg < box.length; dg++) {
+        if (!isDone || !isDone(box[dg])) boxRing.push(box[dg]);
+      }
+
       steps.push(step('常规的数法都推不动了，试一个假设', { cells: [pc] }, { focus: pc }));
-      steps.push(step('假设' + cellTxt(pc, n) + '放皇后，往下推', { cells: [pc] }, { focus: pc }));
-      steps.push(step('往下推会发现：' + deadAt + '已经没有位置可放',
-        { cells: [pc], rows: deadHl.rows, cols: deadHl.cols, regions: deadHl.regions, dead: true },
+      steps.push(step('假设' + cellTxt(pc, n) + '放皇后', { assume: [pc] }, { focus: pc }));
+      steps.push(step('这一行、这一列、这个色块就都满了，周围一圈也不能放',
+        { rows: [pr], cols: [pcn], regions: [pg], cells: boxRing, ghost: true, assume: [pc] },
         { focus: pc }));
+
+      var trace = hit.trace || [];
+      if (!trace.length) {
+        /* 假设自己就把某个单位挤空了。要说准「被哪几处挤空」：
+           多数情况是那几格全挨着这一格（斜着挨着也算），少数还要算上整行整列。 */
+        var inBox = {}, allInBox = true, di;
+        for (di = 0; di < box.length; di++) inBox[box[di]] = 1;
+        inBox[pc] = 1;
+        for (di = 0; di < deadGhost.length; di++) {
+          if (!inBox[deadGhost[di]]) { allInBox = false; break; }
+        }
+        var squeeze = {
+          rows: (deadHl.rows || []).slice(), cols: (deadHl.cols || []).slice(),
+          regions: deadHl.regions, cells: uniqCells(boxRing.concat(deadGhost)), ghost: true,
+          assume: [pc], dead: true
+        };
+        if (!allInBox) {
+          squeeze.rows = squeeze.rows.concat([pr]);
+          squeeze.cols = squeeze.cols.concat([pcn]);
+        }
+        steps.push(step('偏偏' + deadAt + '的格子全在这几处，一格不剩', squeeze, { focus: pc }));
+      } else {
+        var firstTs = traceStepOf(trace[0], ctx, isDone);
+        steps.push(step('于是' + firstTs.text, firstTs.hl, { focus: firstTs.focus }));
+
+        var middles = trace.slice(1, trace.length - 1);
+        if (middles.length) {
+          var goneQ = [], gone = [], more = 0;
+          for (var mj = 0; mj < middles.length; mj++) {
+            var mh = middles[mj].hit;
+            if (mh.kind === 'place') { if (!isDone || !isDone(mh.cell)) goneQ.push(mh.cell); }
+            else {
+              more += mh.kills.length;
+              for (var mk = 0; mk < mh.kills.length; mk++) {
+                if (!isDone || !isDone(mh.kills[mk])) gone.push(mh.kills[mk]);
+              }
+            }
+          }
+          var midTxt = middles.length === 1 ? '中间又这样推了一步'
+            : '中间又这样推了 ' + middles.length + ' 步';
+          // 中间那几步涉及的格子玩家全都划过了 → 这一步没东西可圈，干脆不说
+          if (gone.length || goneQ.length) {
+            steps.push(step(midTxt + (more ? '，排掉 ' + more + ' 格' : ''),
+              { cells: uniqCells(gone), ghost: true, assume: uniqCells(goneQ) },
+              { focus: (gone[0] != null ? gone[0] : goneQ[0]) }));
+          }
+        }
+
+        if (trace.length > 1) {
+          var lastTs = traceStepOf(trace[trace.length - 1], ctx, isDone);
+          steps.push(step('接着' + lastTs.text, lastTs.hl, { focus: lastTs.focus }));
+        }
+        steps.push(step('推到这一步：' + deadAt + '已经没有位置可放',
+          { cells: deadGhost, ghost: true, rows: deadHl.rows, cols: deadHl.cols,
+            regions: deadHl.regions, assume: [pc], dead: true },
+          { focus: pc }));
+      }
+
       steps.push(step('所以' + cellTxt(pc, n) + '不能放皇后', { cells: [pc], kill: true }, { focus: pc }));
       return {
         rule: 'P', level: 4, title: '试推',
@@ -670,7 +857,12 @@
       }
     }
 
-    // ④ 都推不动 → 试推（玩家已经划掉的格子直接跳过）
+    // ④ 玩家把某格的皇后划成了 ×（而那一格就是解位）：先把 × 纠回去，再谈别的。
+    //    这一步必须排在试推之前 —— 试推会把玩家的 × 当成「不能放」，
+    //    盘面上留着一个错的 ×，推出来的结论就跟着错，玩家照着做只会越走越远。
+    if (wrongX.length) return fixCrossPlan(wrongX[0], n);
+
+    // ⑤ 都推不动 → 试推（玩家已经划掉的格子直接跳过）
     if (allowProbe) {
       var pr = probeRefute(work, ctx, maxK, isDone);
       if (pr) {
@@ -678,9 +870,6 @@
         if (sc2) { sc2.kind = 'cross'; return sc2; }
       }
     }
-
-    // ⑤ 真是没招了：如果玩家把某格皇后划掉了，先提醒
-    if (wrongX.length) return fixCrossPlan(wrongX[0], n);
 
     // ⑥ 到了必须猜的地方：把「二选一」的那几格指出来，不替玩家选
     var guess = smallestChoice(work, ctx, isDone);
