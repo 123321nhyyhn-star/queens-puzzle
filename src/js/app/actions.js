@@ -19,7 +19,7 @@ import { checkWin } from '../ui/win.js';
    ========================================================== */
 export function canPlay() {
   return state.status === 'playing' && !view.sheetOpen && !view.diffOpen && !view.resultOpen &&
-    !view.recordsOpen && !view.lookOpen;
+    !view.recordsOpen && !view.lookOpen && !view.mismatchOpen;
 }
 
 export function setMarks(next, anim) {

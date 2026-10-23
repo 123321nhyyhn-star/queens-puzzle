@@ -68,6 +68,7 @@ export var shuffleHint = $('shuffleHint');
 export var sizeMinus = $('sizeMinus');
 export var sizePlus = $('sizePlus');
 export var sizeVal = $('sizeVal');
+export var sizeHint = $('sizeHint');
 export var quickRow = $('quickRow');
 export var sheetNote = $('sheetNote');
 export var diffOpts = $('diffOpts');
@@ -117,12 +118,21 @@ export var btnAgain = $('btnAgain');
 export var btnReplay = $('btnReplay');
 export var btnPeek = $('btnPeek');
 
+/* 「没抽到够格的盘」那一层：给两条路，不装盘 */
+export var mismatchEl = $('mismatch');
+export var mmTitle = $('mmTitle');
+export var mmSub = $('mmSub');
+export var mmNeed = $('mmNeed');
+export var mmBest = $('mmBest');
+export var mmNote = $('mmNote');
+export var btnMmRetry = $('btnMmRetry');
+export var btnMmSetup = $('btnMmSetup');
+
 export var fxEl = $('fx');
 export var srStatus = $('srStatus');
 
 /* 设置面板里的尺寸步进器与几个开关：只有设置面板会用到，
  * 但也放在这里，保证「元素引用只在一处取」这条约定不被打破。 */
-export var sizeStepperEl = $('sizeStepper');
 export var swAuto = $('swAuto');
 export var swAlignDrag = $('swAlignDrag');
 export var swFadeMark = $('swFadeMark');

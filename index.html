@@ -163,7 +163,7 @@
     <p class="sheet-note" id="sheetNote">当前这局：8×8</p>
 
     <div class="stepper" id="sizeStepper">
-      <div class="stepper-label">棋盘大小<small>4×4 到 16×16，每盘唯一解</small></div>
+      <div class="stepper-label">棋盘大小<small id="sizeHint">4×4 到 16×16，每盘唯一解</small></div>
       <div class="stepper-ctl">
         <button class="step-btn" type="button" id="sizeMinus" aria-label="减小棋盘">−</button>
         <span class="step-val" id="sizeVal">8</span>
@@ -171,13 +171,9 @@
       </div>
     </div>
 
+    <!-- 常用尺寸按钮按「目标难度」开放的范围重建，见 ui/settings.js 的 buildQuickRow -->
     <div class="quick-row" id="quickRow">
       <span class="q-label">常用</span>
-      <button class="qbtn" type="button" data-size="6">6×6</button>
-      <button class="qbtn" type="button" data-size="8">8×8</button>
-      <button class="qbtn" type="button" data-size="10">10×10</button>
-      <button class="qbtn" type="button" data-size="12">12×12</button>
-      <button class="qbtn" type="button" data-size="15">15×15</button>
     </div>
 
     <div class="diff-row">
@@ -333,7 +329,8 @@
       <b>区块封锁</b> 整块候选挤在同一行，这行别处就能排掉<br>
       <b>集合计数</b> k 个色块只能落在 k 行里，这几行就被它们占满<br>
       <b>假设试推</b> 假设这格放子，推两步就矛盾 → 划掉<br>
-      <b>试错落子</b> 前面都推不动，只能先落一只再看看
+      <b>试错落子</b> 前面都推不动，只能先落一只再看看<br>
+      <span class="diff-note">分数算的是这盘要做多少功（试推几次、开局卡不卡），不是盘面多大——所以 13×13 不一定比 12×12 难。</span>
     </div>
 
     <button class="btn btn-hint sheet-done" id="btnDiffDone" type="button">知道了</button>
@@ -429,6 +426,25 @@
       <button class="btn-text" id="btnReplay" type="button">重来这局</button>
       <button class="btn-text" id="btnPeek" type="button">看看棋盘</button>
     </div>
+  </div>
+</div>
+
+<!-- 「没抽到够格的盘」：宁可不出盘，也不让玩家玩一盘不符合设定的。
+     两条路——再抽一局 / 更换设置。Esc 关不掉（关掉就只剩一块空棋盘）。 -->
+<div class="result is-mismatch" id="mismatch" hidden>
+  <div class="result-card" role="dialog" aria-modal="true" aria-labelledby="mmTitle" aria-describedby="mmSub">
+    <p class="result-kicker">TOO EASY</p>
+    <h2 class="result-title" id="mmTitle">还不够「极难」</h2>
+    <p class="result-sub" id="mmSub">13×13 抽了 6 张，最高 7.8（困难）</p>
+    <div class="result-stats">
+      <div class="result-stat"><b id="mmNeed">8.4</b><span>档位要求</span></div>
+      <div class="result-stat"><b id="mmBest">7.8</b><span>这批最高</span></div>
+    </div>
+    <button class="btn btn-hint" id="btnMmRetry" type="button">再抽一局</button>
+    <div class="result-links">
+      <button class="btn-text" id="btnMmSetup" type="button">更换设置</button>
+    </div>
+    <p class="mm-note" id="mmNote">同一档里盘越大越容易够格。</p>
   </div>
 </div>
 

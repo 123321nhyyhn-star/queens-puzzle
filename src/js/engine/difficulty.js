@@ -430,12 +430,20 @@
     };
   }
 
-  /* ------------------------------------------------------------ 人类视角分
-   * 0–100 的原始分适合做排序，但不适合给玩家看：它压在 43–83 之间，
-   * 说白了主要是「尺寸计」。这里换成 1.0–10.0 的体感分：
-   *   基线由尺寸决定（4×4 ≈ 1.8，16×16 ≈ 9.2，对数插值），
-   *   再用「需要多深的推理」做 ±0.6 的修正。
-   * 分级：容易 < 3.2 ≤ 中等 < 5.6 ≤ 困难 < 7.6 ≤ 极难
+  /* ------------------------------------------------------ 人类视角分 v2
+   * 旧刻度（下面的旧实现在 git 历史里）本质是「尺寸的另一种写法」：
+   * 与尺寸的相关 0.99，与「人到底试推了几次」只有 0.38。实测 13×13 里既有
+   * 纯逻辑推完的盘，也有要试推一百多次的盘；16×16 也有开局就能推完的。
+   * 尺寸只决定「一次功有多贵」，不决定「要做多少次功」。
+   *
+   * v2 只看「要做多少功」，三个自变量各管一件事：
+   *   n       盘面边长 —— 每落一只、每划一次叉要扫多少格
+   *   probes  试推次数 —— 人做了多少次「假设 → 矛盾」
+   *   open    开局纯逻辑推进率 = l3Steps / n —— 0 表示第一只就得假设
+   *
+   * 分数 = 尺寸基线 + 试推深度（对数饱和）+ 开局卡壳，落在 1.0–9.9。
+   * 跨尺寸不再严格单调（13×13 的中位分可能低于 12×12），这是实测事实：
+   * 13×13 的难度分布比 16×16 还宽，强行单调只会把小盘里的硬盘压平。
    */
   var LEVELS = [
     { level: '容易', tone: 'easy' },
@@ -444,36 +452,50 @@
     { level: '极难', tone: 'extreme' }
   ];
 
+  var LN2 = Math.LN2;
+  var SCALE_VERSION = 2;
+
+  /* 三个分量：base 尺寸基线、depth 试推深度、stuck 开局卡壳。
+   * w 是「大盘上一次试推更费眼」的权重（0.78 → 1.00）。 */
+  function scaleFields(n, m) {
+    m = m || {};
+    var s = Math.log(n / 2.5) / LN2;                 // 4→0.68 … 16→2.68
+    var base = 1.0 + 1.5 * s;                        // 尺寸基线 2.0 … 5.0
+    var w = 0.70 + 0.30 * (s / 2.678);
+    var depth = Math.pow(Math.log(1 + (m.probes || 0)) / LN2, 0.75);   // 饱和
+    var open = n ? Math.min(1, (m.l3Steps || 0) / n) : 0;
+    var probePart = 0.90 * depth * w;
+    var stuckPart = 0.70 * (1 - open);
+    return {
+      s: s,
+      base: base,
+      w: w,
+      depth: depth,
+      open: open,
+      probe: probePart,
+      stuck: stuckPart,
+      value: base + probePart + stuckPart
+    };
+  }
+
+  function scale(n, m) {
+    var f = scaleFields(n, m);
+    return Math.round(Math.max(1, Math.min(9.9, f.value)) * 10) / 10;
+  }
+
+  /* 分级阈值：5.5 → 8×8 以下几乎全部在下面；7.0 → 10×10 起才稳定达到；
+   * 8.4 → 只有 12×12 以上能到（13–16 的盘里约 18%）。 */
   function levelOf(v) {
-    if (v < 3.2) return LEVELS[0];
-    if (v < 5.6) return LEVELS[1];
-    if (v < 7.6) return LEVELS[2];
+    if (v < 5.5) return LEVELS[0];
+    if (v < 7.0) return LEVELS[1];
+    if (v < 8.4) return LEVELS[2];
     return LEVELS[3];
   }
 
-  function display(n, m, tier, extra) {
-    var sizePart = 1.8 + 7.4 * (Math.log(n / 4) / Math.log(4));
-    var adj = 0;
-
-    if (tier === 1) adj -= 0.5;
-    else if (tier === 2) adj -= 0.35;
-    else if (tier === 3) adj -= 0.2;
-    else if (tier === 5) adj += 0.4;
-
-    var gd = extra && extra.guess != null ? extra.guess : (m.guessDepth || 0);
-    adj += 0.1 * Math.max(-2, Math.min(2, (gd || 0) - 2));
-
-    var probes = extra && extra.probe != null ? extra.probe : m.probes;
-    adj += 0.06 * Math.max(-2, Math.min(2, Math.log(probes + 1) / Math.LN2 - 5));
-
-    var areaMax = extra && extra.areaMax != null ? extra.areaMax : m.areaMax;
-    adj += 0.08 * Math.max(-1, Math.min(1, (areaMax / m.n - 2) / 2));
-
-    adj = Math.max(-0.6, Math.min(0.6, adj));
-
-    var v = sizePart + adj;
-    v = Math.max(1, Math.min(9.9, v));
-    v = Math.round(v * 10) / 10;
+  /* 1.0–9.9 的体感分 + 档位。旧签名多出来的 tier/extra 一律忽略：
+   * 分数已经不看 tier 了，留着参数只是为了不惊动老工具。 */
+  function display(n, m) {
+    var v = scale(n, m);
     var lv = levelOf(v);
     return { score: v, level: lv.level, tone: lv.tone };
   }
@@ -483,11 +505,13 @@
     var m = analyze(n, regions, solution, opt);
     var rt = score(m);
     var ex = explain(n, regions, solution, opt);
-    var dp = display(n, m, rt.tier, ex);
+    var dp = display(n, m);
     return {
       score: dp.score,
       level: dp.level,
       tone: dp.tone,
+      // 老战绩按旧刻度算的，靠这个版本号区分（见 core/records.js）
+      scale: SCALE_VERSION,
       raw: rt.score,
       tier: rt.tier,
       label: rt.label,
@@ -677,13 +701,17 @@
   }
 
   return {
-    version: '1.0.0',
+    version: '2.0.0',
     analyze: analyze,
     score: score,
     rate: rate,
     explain: explain,
     display: display,
     vibe: vibe,
+    scale: scale,
+    scaleFields: scaleFields,
+    levelOf: levelOf,
+    SCALE_VERSION: SCALE_VERSION,
     // 供工具使用的内部件
     makeCtx: makeCtx,
     propagate: propagate,

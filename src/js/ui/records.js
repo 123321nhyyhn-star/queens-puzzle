@@ -87,7 +87,12 @@ function metaLine(rec, cls, withSize) {
 
 function lvChip(rec) {
   var score = rec.sc != null ? ' ' + rec.sc.toFixed(1) : '';
-  return '<span class="rec-lv" data-tone="' + rec.lv + '">' + recs.toneName(rec.lv) + score + '</span>';
+  /* v2 之前记的成绩是按旧刻度打的档（13×13 那时算极难），跟现在的分没法比，
+   * 所以挂个角标说清楚：这不是「算错了」，是换了把尺子。 */
+  var old = rec.sq !== recs.RECORD_SCALE
+    ? '<i class="rec-old" title="按旧刻度算的难度，不进排行榜">旧刻度</i>' : '';
+  return '<span class="rec-lv" data-tone="' + rec.lv + '">' +
+    recs.toneName(rec.lv) + score + old + '</span>';
 }
 
 function setStatus(text, ok) {
@@ -295,9 +300,13 @@ function renderBoard() {
   boardList.innerHTML = html;
 
   boardEmpty.hidden = g.length > 0;
-  if (!g.length) boardEmpty.textContent = recs.total()
-    ? '「' + limitLabel(lim) + ' · ' + recs.toneName(lv) + '」还没有成绩'
-    : '还没有战绩，先玩一局吧';
+  if (!g.length) {
+    var old = recs.legacyOf(lim, lv);
+    boardEmpty.textContent = recs.total()
+      ? '「' + limitLabel(lim) + ' · ' + recs.toneName(lv) + '」还没有成绩' +
+        (old ? '（另有 ' + old + ' 局是旧刻度，不计入排行）' : '')
+      : '还没有战绩，先玩一局吧';
+  }
 
   boardNote.textContent = '「' + limitLabel(lim) + ' · ' + recs.toneName(lv) + '」' +
     (g.length

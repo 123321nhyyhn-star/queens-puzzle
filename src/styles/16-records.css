@@ -158,6 +158,19 @@
 .rec-lv[data-tone="hard"] { background: #FFE4D2; }
 .rec-lv[data-tone="extreme"] { background: #FFDDDD; }
 
+/* 旧刻度的角标：不参与排行，只是说明分数换了把尺子 */
+.rec-lv .rec-old {
+  margin-left: 4px;
+  padding: 0 3px;
+  border-radius: 4px;
+  background: rgba(58, 51, 53, .12);
+  font-style: normal;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .02em;
+  color: var(--ink-mute);
+}
+
 .rec-lost {
   flex: 0 0 auto;
   padding: 1px 6px;

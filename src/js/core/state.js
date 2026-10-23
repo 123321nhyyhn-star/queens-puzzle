@@ -72,6 +72,9 @@ export const view = {
   sheetMore: false,
   diffOpen: false,
   resultOpen: false,
+  /* 「没抽到够格的盘」那一层：开着的时候不出盘、也不许落子，
+   * 由玩家自己选「再抽一局」还是「更换设置」（见 ui/mismatch.js）。 */
+  mismatchOpen: false,
   recordsOpen: false,
   lookOpen: false,     // 外观面板
   /* 已经画进 .piece 的皇后样式：外观面板只在真的换了样式时才重画一遍格子里的画 */

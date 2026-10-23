@@ -36,14 +36,8 @@
 .dbtn[data-level="hard"].is-on { background: #F2762E; color: #fff; }
 .dbtn[data-level="extreme"].is-on { background: #E23B3B; color: #fff; }
 
-/* 目标难度生效时，尺寸控件交出控制权 */
-.diff-locked {
-  opacity: .45;
-  pointer-events: none;
-}
-
-.diff-locked .step-btn,
-.diff-locked .qbtn { box-shadow: none; }
+/* 档位不再「接管」尺寸控件：它只开放一段可选区间（见 ui/settings.js 的 rangeOf）。
+ * 越界的尺寸根本不会出现在快捷行里，步进器也在区间两端禁用。 */
 
 .quick-row .q-label {
   align-self: center;
@@ -273,4 +267,14 @@
 }
 
 .diff-legend b { color: var(--ink); font-weight: 800; }
+
+/* 补一句「分数看的是功，不是盘面大小」：跨尺寸不单调是事实，别让人以为是 bug */
+.diff-legend .diff-note {
+  display: block;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(58, 51, 53, .16);
+  font-size: 11px;
+  color: var(--ink-faint);
+}
 

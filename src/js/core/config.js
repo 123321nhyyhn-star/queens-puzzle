@@ -24,13 +24,18 @@ export var RECORD_MAX = 300;
 export var RECORD_PAGE = 20;
 export var RECORD_TOP = 12;
 
-/* 目标难度：每个档位实测下来只对应一段棋盘尺寸（见难度调研报告），
- * 所以「选难度」实际就是「选尺寸区间」，不需要反复重试。 */
+/* 目标难度：档位跟难度分走，尺寸只是「可选范围」。
+ * lo/hi 是该档开放给玩家的棋盘尺寸（选了档位就只能在这些尺寸里挑），
+ * min 是该档的分数下限——生成时最多抽 3 张，够格就收（见 app/puzzle.js）。
+ *
+ * 区间与下限来自实测的可达性矩阵（docs/难度刻度v2-实施方案.md）：
+ *   4×4 / 5×5 只可能「容易」；6–7 到中等封顶；8–10 到困难封顶；
+ *   12×12 起才出得了极难，14×14 最稳。所以 13×13 归困难、不归极难。 */
 export var DIFF_BANDS = {
-  easy: { name: '容易', lo: 4, hi: 5 },
-  mid: { name: '中等', lo: 6, hi: 8 },
-  hard: { name: '困难', lo: 9, hi: 12 },
-  extreme: { name: '极难', lo: 13, hi: 16 }
+  easy: { name: '容易', lo: 4, hi: 5, min: 0 },
+  mid: { name: '中等', lo: 6, hi: 8, min: 5.5 },
+  hard: { name: '困难', lo: 9, hi: 13, min: 7.0 },
+  extreme: { name: '极难', lo: 14, hi: 16, min: 8.4 }
 };
 export var DIFF_ORDER = ['any', 'easy', 'mid', 'hard', 'extreme'];
 

@@ -133,6 +133,7 @@ r = await page.evaluate(() => {
     time: row.querySelector('.rec-time').textContent.trim(),
     size: row.querySelector('.rec-size').textContent.trim(),
     lv: row.querySelector('.rec-lv').textContent.trim(),
+    lvl: __QUEENS_DEBUG__.state.vibe.level,
     meta: row.querySelector('.rec-l2').textContent.trim(),
     expanded: row.querySelector('.rec-hit').getAttribute('aria-expanded'),
     inSheet: box.left >= sheet.left - 1 && box.right <= sheet.right + 1,
@@ -141,7 +142,7 @@ r = await page.evaluate(() => {
 });
 check('记录列表画出一条', r.rows === 1, `rows=${r.rows}`);
 check('缩略图是内联 SVG', r.imgSrc.startsWith('data:image/svg+xml'), r.imgSrc);
-check('记录行信息完整', /^\d\d:\d\d$/.test(r.time) && r.size === '8×8' && r.lv.includes('中等'),
+check('记录行信息完整', /^\d\d:\d\d$/.test(r.time) && r.size === '8×8' && r.lv.includes(r.lvl),
   `${r.time} ${r.size} ${r.lv}`);
 check('记录行小字含限时与日期', r.meta.includes('不限时') && r.meta.includes('步') && r.meta.includes('今天'), r.meta);
 check('行不超出面板', r.inSheet && r.overflow <= 0, `overflow=${r.overflow}`);
@@ -182,13 +183,18 @@ r = await page.evaluate(() => ({
   rows: document.querySelectorAll('#boardList .lb-row').length,
   rank: (document.querySelector('#boardList .lb-rank') || {}).textContent || '',
   time: (document.querySelector('#boardList .lb-time') || {}).textContent || '',
+  lvl: __QUEENS_DEBUG__.state.vibe.level,
   medal: (document.querySelector('#boardList .lb-row') || {}).dataset ? document.querySelector('#boardList .lb-row').dataset.medal : ''
 }));
 check('限时 5 挡 + 难度 4 挡', r.lims === 5 && r.lvs === 4, `lim=${r.lims} lv=${r.lvs}`);
-check('默认选中「不限 + 中等」', r.limOn.startsWith('不限') && r.lvOn.includes('中等'), `${r.limOn} / ${r.lvOn}`);
+/* 8×8 在 v2 刻度下大多数是中等，但也有少量容易/困难 —— 所以「默认落在哪一档」
+ * 跟着这一局的真实档位走，别写死「中等」。 */
+check('默认落在这局自己的「限时 + 难度」组',
+  r.limOn.startsWith('不限') && r.lvOn.replace(/[0-9]+$/, '') === r.lvl,
+  `${r.limOn} / ${r.lvOn} / 本局=${r.lvl}`);
 check('榜单里有这一局', r.rows === 1 && r.rank === '1' && /^\d\d:\d\d$/.test(r.time), `${r.rows} ${r.rank} ${r.time}`);
 check('第一名挂金牌', r.medal === '1', `medal=${r.medal}`);
-check('分组说明写清楚', r.note.includes('不限时') && r.note.includes('中等') && r.note.includes('最快'), r.note);
+check('分组说明写清楚', r.note.includes('不限时') && r.note.includes(r.lvl) && r.note.includes('最快'), r.note);
 await page.screenshot({ path: `${OUT}/records-board.png` });
 
 /* ---------- 5. 换一组筛选 → 空 ---------- */
@@ -231,16 +237,27 @@ await closeResultIfAny();
 await openRecords();
 await openTab('board');
 r = await page.evaluate(() => {
-  const chip = (sel) => document.querySelector(sel).textContent.trim();
-  const click = (sel) => document.querySelector(sel).click();
-  click('#limChips [data-lim="0"]');
-  const a = document.querySelectorAll('#boardList .lb-row').length;
-  click('#limChips [data-lim="300000"]');
-  const b = document.querySelectorAll('#boardList .lb-row').length;
-  return { a, b, note: document.getElementById('boardNote').textContent.trim(), n5: chip('#limChips [data-lim="300000"]') };
+  /* 两局的档位不一定相同（8×8 偶尔会落在容易/困难），所以按限时把四个难度加起来数 */
+  const tones = ['easy', 'mid', 'hard', 'extreme'];
+  const count = (ms) => {
+    document.querySelector('#limChips [data-lim="' + ms + '"]').click();
+    let total = 0;
+    for (const t of tones) {
+      document.querySelector('#lvChips [data-lv="' + t + '"]').click();
+      total += document.querySelectorAll('#boardList .lb-row').length;
+    }
+    return total;
+  };
+  const a = count(0), b = count(300000), c = count(180000);
+  // 角标跟着当前选中的难度算：切回这局 5 分钟那盘的档位再读
+  const recLv = __QUEENS_DEBUG__.records()[0].lv;
+  document.querySelector('#lvChips [data-lv="' + recLv + '"]').click();
+  document.querySelector('#limChips [data-lim="300000"]').click();
+  const n5 = document.querySelector('#limChips [data-lim="300000"]').textContent.trim();
+  return { a, b, c, n5 };
 });
-check('不同限时分开统计', r.a === 1 && r.b === 1, `不限=${r.a} 5分=${r.b}`);
-check('5 分钟组的角标是 1', r.n5.endsWith('1'), r.n5);
+check('不同限时分开统计', r.a === 1 && r.b === 1 && r.c === 0, `不限=${r.a} 5分=${r.b} 3分=${r.c}`);
+check('5 分钟组的角标是 1（当前难度下）', r.n5.endsWith('1'), r.n5);
 
 /* ---------- 8. 超时那局：记下来但不进榜 ---------- */
 await page.evaluate(() => document.getElementById('btnCloseRec').click());
@@ -272,12 +289,16 @@ check('记录列表标出未完成', r.rows === 3 && r.lost === 1 && r.badge ===
 
 await openTab('board');
 r = await page.evaluate(() => {
+  const tones = ['easy', 'mid', 'hard', 'extreme'];
   document.querySelector('#limChips [data-lim="0"]').click();
-  const a = document.querySelectorAll('#boardList .lb-row').length;
-  document.querySelector('#lvChips [data-lv="mid"]').click();
-  return { a };
+  let total = 0;
+  for (const t of tones) {
+    document.querySelector('#lvChips [data-lv="' + t + '"]').click();
+    total += document.querySelectorAll('#boardList .lb-row').length;
+  }
+  return { a: total, records: __QUEENS_DEBUG__.records().length };
 });
-check('输掉的局不进榜', r.a === 1, `不限时中等=${r.a}`);
+check('输掉的局不进榜', r.a === 1 && r.records === 3, `不限时全部难度=${r.a} 记录=${r.records}`);
 await openTab('list');
 
 /* ---------- 9. 删除一条（两步确认） ---------- */
@@ -349,7 +370,7 @@ await page.evaluate(() => {
   for (let i = 0; i < 25; i++) {
     out.push({
       v: 1, id: 'seed' + i, at: Date.now() - i * 86400000, n: n, sd: 1, rg: rg, so: so,
-      lv: lvs[i % 4], sc: 3 + (i % 7), lim: lims[i % 3], ms: 200000 - i * 3000,
+      lv: lvs[i % 4], sc: 3 + (i % 7), sq: 2, lim: lims[i % 3], ms: 200000 - i * 3000,
       h: i % 3, mv: 20 + i, won: i % 5 !== 0, nh: false, nu: false
     });
   }
@@ -402,7 +423,47 @@ check('名次与奖牌', r.ranks.join(',') === '1,2' && r.medals.join(',') === '
 check('限时角标跟着换难度重算', r.chip.endsWith('2'), r.chip);
 await page.screenshot({ path: `${OUT}/records-board-many.png` });
 
-/* ---------- 13. 小屏不挤 ---------- */
+/* ---------- 13. 旧刻度的记录：留在列表里，但不进排行榜 ---------- */
+// 刻度换成 v2 之后，老记录的 lv / sc 是按旧尺子量的（13×13 那时算极难），
+// 不能和新成绩放一张榜上比。老记录没有 sq 字段，正好用来验证这一点。
+await page.evaluate(() => {
+  const arr = JSON.parse(localStorage.getItem('queens.records.v1') || '[]');
+  if (!arr.length) return;
+  const old = JSON.parse(JSON.stringify(arr[12]));
+  old.id = 'legacy1';
+  old.at = Date.now();
+  old.ms = 1000;        // 快得离谱：要是进了榜，第一名就会是它
+  delete old.sq;
+  arr.unshift(old);
+  localStorage.setItem('queens.records.v1', JSON.stringify(arr));
+});
+await page.reload({ waitUntil: 'networkidle0' });
+await page.waitForFunction('window.__QUEENS_DEBUG__ && __QUEENS_DEBUG__.state.regions.length > 0', { timeout: 15000 });
+await sleep(400);
+await closeResultIfAny();
+await openRecords();
+r = await page.evaluate(() => {
+  const row = document.querySelector('#recList .rec');
+  return {
+    id: row && row.dataset.id,
+    tag: !!(row && row.querySelector('.rec-old')),
+    text: row ? row.querySelector('.rec-lv').textContent.trim() : ''
+  };
+});
+check('旧刻度记录留在列表里并挂「旧刻度」角标',
+  r.id === 'legacy1' && r.tag && /旧刻度/.test(r.text), JSON.stringify(r));
+await openTab('board');
+await page.evaluate(() => document.querySelector('#limChips [data-lim="0"]').click());
+await page.evaluate(() => document.querySelector('#lvChips [data-lv="easy"]').click());
+await sleep(240);
+r = await page.evaluate(() => ({
+  n: document.querySelectorAll('#boardList .lb-row').length,
+  times: [...document.querySelectorAll('#boardList .lb-time')].map(x => x.textContent.trim())
+}));
+check('旧刻度记录不进排行榜', r.n === 2 && r.times.indexOf('00:01') < 0,
+  JSON.stringify(r));
+
+/* ---------- 14. 小屏不挤 ---------- */
 await page.setViewport({ width: 340, height: 720, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 await sleep(320);
 await openTab('list');
@@ -421,7 +482,7 @@ await page.evaluate(() => document.getElementById('btnCloseRec').click());
 await sleep(200);
 await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 
-/* ---------- 14. 没有页面报错 ---------- */
+/* ---------- 15. 没有页面报错 ---------- */
 check('无 JS 报错', errors.length === 0, errors.slice(0, 3).join(' | '));
 
 log(`\n${failures === 0 ? '全部通过' : failures + ' 项失败'}`);

@@ -876,16 +876,33 @@ const playable = await page.evaluate(() => {
 check('关闭后恢复操作', playable === 1, `marks[0]=${playable}`);
 await page.evaluate(() => __QUEENS_DEBUG__.clear());
 
-// 尺寸越大分数越高
+// 尺寸决定「一次功有多贵」：大盘整体更难，但不再严格单调
+// （v2 刻度看的是要做多少功，8×8 里也有纯逻辑一遍推完的盘）
+await page.evaluate(() => { __QUEENS_DEBUG__.settings.difficulty = 'any'; });
 const ladders = [];
 for (const n of [4, 8, 16]) {
   await page.evaluate((size) => __QUEENS_DEBUG__.newGame(size), n);
   await page.waitForFunction(`__QUEENS_DEBUG__.state.size === ${n} && __QUEENS_DEBUG__.state.vibe`, { timeout: 30000 });
   ladders.push(await page.evaluate(() => __QUEENS_DEBUG__.state.vibe.score));
 }
-check('分数随尺寸递增', ladders[0] < ladders[1] && ladders[1] < ladders[2], ladders.join(' < '));
-check('16×16 判为极难/困难', await page.evaluate(() =>
-  ['困难', '极难'].indexOf(__QUEENS_DEBUG__.state.vibe.level) >= 0), await page.evaluate(() => __QUEENS_DEBUG__.state.vibe.level));
+check('大盘整体更难（16×16 比 4×4 高 1.5 分以上）', ladders[2] - ladders[0] >= 1.5, ladders.join(' / '));
+check('分数都在 1.0–9.9', ladders.every(v => v >= 1 && v <= 9.9), ladders.join(' / '));
+
+// 4×4 物理上不可能难；16×16 偶尔会抽到特别顺的盘（约 3% 是中等），所以抽三次看两次
+const smallTone = await page.evaluate(() => {
+  __QUEENS_DEBUG__.newGame(4);
+  return __QUEENS_DEBUG__.state.vibe && __QUEENS_DEBUG__.state.vibe.level;
+});
+check('4×4 一定是容易', smallTone === '容易', smallTone);
+const bigTones = [];
+for (let i = 0; i < 3; i++) {
+  const prevSeed = await page.evaluate(() => __QUEENS_DEBUG__.state.seed);
+  await page.evaluate(() => __QUEENS_DEBUG__.newGame(16));
+  await page.waitForFunction(s => __QUEENS_DEBUG__.state.seed !== s && __QUEENS_DEBUG__.state.vibe,
+    { timeout: 40000 }, prevSeed);
+  bigTones.push(await page.evaluate(() => __QUEENS_DEBUG__.state.vibe.level));
+}
+check('16×16 基本落在困难/极难', bigTones.filter(t => t === '困难' || t === '极难').length >= 2, bigTones.join(' '));
 
 // 续玩（从存档恢复）也要有难度：新开一页会走 loadGame 分支
 await sleep(500);   // 等 save() 的 160ms 防抖落地

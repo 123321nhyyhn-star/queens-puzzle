@@ -6,7 +6,7 @@
 import { DIFF_BANDS, LIMIT_OPTIONS, limitLabel, normalizeLimit, SIZE_MAX, SIZE_MIN } from '../core/config.js';
 import { app, btnMoreOpts, btnSettings, btnShuffle, challengeTitle, diffHint, diffOpts, limitHint,
   limitOpts, moreOptsLabel, quickRow, sheet, sheetMore, sheetNote, sheetWrap, shuffleHint,
-  sizeMinus, sizePlus, sizeStepperEl, sizeVal, swAlignDrag, swAuto, swConflict, swFadeMark,
+  sizeHint, sizeMinus, sizePlus, sizeVal, swAlignDrag, swAuto, swConflict, swFadeMark,
   swFadeQueen, swForced, swHaptics, swNoHint, swNoUndo, swSound } from '../core/dom.js';
 import { pending, settings, state, view } from '../core/state.js';
 import { saveSettings } from '../core/storage.js';
@@ -73,26 +73,64 @@ export function commitChallenge() {
 /* ==========================================================
    设置面板
    ========================================================== */
+/* 档位开放给玩家的尺寸区间。没选档位就是全量 4–16。
+ * 这不是「限制」，是实测出来的可达性：4×4 里不存在困难的盘，
+ * 16×16 也不会是容易的，把够不着的组合收起来比让人选完失望好。 */
+function rangeOf(level) {
+  var b = level && level !== 'any' ? DIFF_BANDS[level] : null;
+  return b ? [b.lo, b.hi] : [SIZE_MIN, SIZE_MAX];
+}
+
+/* 「不限」时给几个常用尺寸；选了档位就把这一档开放的尺寸全摊开 */
+var QUICK_ANY = [6, 8, 10, 12, 15];
+var quickKey = '';
+
+function buildQuickRow(lo, hi) {
+  var key = lo + '-' + hi;
+  if (key === quickKey) return;
+  quickKey = key;
+
+  var all = lo === SIZE_MIN && hi === SIZE_MAX;
+  var sizes = all ? QUICK_ANY : [];
+  for (var i = lo; !all && i <= hi; i++) sizes.push(i);
+
+  var html = '<span class="q-label">' + (all ? '常用' : '可选') + '</span>';
+  for (var k = 0; k < sizes.length; k++) {
+    html += '<button class="qbtn" type="button" data-size="' + sizes[k] + '">' +
+      sizes[k] + '×' + sizes[k] + '</button>';
+  }
+  quickRow.innerHTML = html;
+}
+
 export function syncSheet() {
   var diff = pending.difficulty;
   var target = diff && diff !== 'any' ? diff : null;
   var band = target ? DIFF_BANDS[target] : null;
+  var rng = rangeOf(target);
+  var lo = rng[0], hi = rng[1];
+
+  /* 换了档位就把待生效尺寸夹回它开放的区间：选完「极难」还挂着 8×8 是要闹哪样 */
+  pending.size = clamp(pending.size, lo, hi);
 
   sizeVal.textContent = String(pending.size);
-  sizeMinus.disabled = pending.size <= SIZE_MIN;
-  sizePlus.disabled = pending.size >= SIZE_MAX;
+  sizeMinus.disabled = pending.size <= lo;
+  sizePlus.disabled = pending.size >= hi;
+  buildQuickRow(lo, hi);
 
-  // 目标难度接管尺寸，手动改尺寸没有意义
-  sizeStepperEl.classList.toggle('diff-locked', !!target);
-  quickRow.classList.toggle('diff-locked', !!target);
+  /* 两行各说一件事，别重复：尺寸那行说「这一档能挑多大」，
+   * 难度那行说「这一档的分数从哪儿起」+ 什么时候生效。 */
+  sizeHint.textContent = band
+    ? '「' + band.name + '」开放 ' + lo + '×' + lo + '–' + hi + '×' + hi
+    : '4×4 到 16×16，每盘唯一解';
 
   sheetNote.textContent = '当前这局：' + state.size + '×' + state.size +
     (state.vibe ? ' · ' + state.vibe.level + ' ' + state.vibe.score.toFixed(1) : '') +
     (state.limit ? ' · 限时 ' + limitLabel(state.limit) : '');
 
-  diffHint.textContent = target
-    ? '「' + band.name + '」＝ ' + band.lo + '×' + band.lo + '–' + band.hi + '×' + band.hi + '，每局随机一档'
-    : '选好档位，点下面「换一局」生效';
+  diffHint.textContent = band
+    ? '「' + band.name + '」' + (band.min > 0 ? band.min.toFixed(1) + ' 分起 · ' : '') +
+      '挑好尺寸，点「换一局」生效'
+    : '选好档位，再挑一个尺寸，点下面「换一局」生效';
 
   var dbtns = diffOpts.querySelectorAll('.dbtn');
   for (var d = 0; d < dbtns.length; d++) {
@@ -144,13 +182,13 @@ export function syncSheet() {
 /* 换一局按钮下方的说明：有改动没落地就把改动列出来，顺带把按钮点亮 */
 export function syncShuffleRow() {
   var bits = [];
-  if (!pending.difficulty || pending.difficulty === 'any') {
+  var any = !pending.difficulty || pending.difficulty === 'any';
+  if (any) {
     if (pending.size !== state.size) bits.push(pending.size + '×' + pending.size);
-  }
-  if (pending.difficulty !== state.diffApplied) {
-    bits.push(pending.difficulty === 'any'
-      ? '不限难度'
-      : DIFF_BANDS[pending.difficulty].name);
+    if (state.diffApplied && state.diffApplied !== 'any') bits.push('不限难度');
+  } else if (pending.difficulty !== state.diffApplied || pending.size !== state.size) {
+    // 档位和尺寸现在是一起选的：哪一项变了都说清楚，别只报档位
+    bits.push(DIFF_BANDS[pending.difficulty].name + ' ' + pending.size + '×' + pending.size);
   }
   bits = bits.concat(challengeBits());
 
@@ -212,9 +250,19 @@ export function closeSheet() {
   if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
 }
 
+/* 从「没抽到够格的盘」那层跳过来时，面板要停在他刚才要的那一档上：
+ * openSheet 是从「这局实际是什么」起算的，可这时压根没装上盘，
+ * 照原样开出来会变成「不限」，看着像是他的选择没被记住。 */
+export function openSheetAt(difficulty, size) {
+  openSheet();
+  if (difficulty && difficulty !== 'any' && DIFF_BANDS[difficulty]) pending.difficulty = difficulty;
+  if (size) pending.size = size;
+  syncSheet();
+}
+
 export function setPendingSize(n) {
-  if (pending.difficulty && pending.difficulty !== 'any') return;  // 目标难度接管尺寸
-  n = clamp(n, SIZE_MIN, SIZE_MAX);
+  var rng = rangeOf(pending.difficulty);
+  n = clamp(n, rng[0], rng[1]);   // 只能落在这一档开放过的尺寸里
   if (n === pending.size) return;
   pending.size = n;
   syncSheet();

@@ -12,9 +12,9 @@ import { btnAgain, btnClear, btnClearRecs, btnCloseDiff, btnCloseLook, btnCloseR
   btnCloseSheet, btnCopyCode, btnDiffDone, btnHint, btnHud, btnInfoSetup, btnLoadCode, btnLook,
   btnLookDone, btnMoreOpts, btnMoreRecs, btnNew, btnPeek, btnRecords, btnReplay, btnSettings,
   btnShuffle, btnUndo, coachClose, coachNext, coachPrev, diffBackdrop, diffOpts, diffSheet,
-  gridEl, limChips, limitOpts, lookBackdrop, lookSheet, lvChips, quickRow, recBackdrop, recList,
-  boardList, regionsEl, resultEl, shareCode, shareStatus, sheet, sheetBackdrop, sizeMinus,
-  sizePlus, tabBoard, tabRecs } from './core/dom.js';
+  gridEl, limChips, limitOpts, lookBackdrop, lookSheet, lvChips, mismatchEl, quickRow,
+  recBackdrop, recList, boardList, regionsEl, resultEl, shareCode, shareStatus, sheet,
+  sheetBackdrop, sizeMinus, sizePlus, tabBoard, tabRecs } from './core/dom.js';
 import { guide, hasProgress, pending, settings, state, view } from './core/state.js';
 import { save, saveSettings } from './core/storage.js';
 import { announce, clamp } from './core/utils.js';
@@ -295,16 +295,22 @@ btnShuffle.addEventListener('click', function () {
   var challenge = challengeSummary();   // 落地前先记下来，好念给读屏
 
   settings.difficulty = lv;
-  if (!band) settings.size = clamp(pending.size, SIZE_MIN, SIZE_MAX);
+  /* 尺寸由玩家在这一档开放的区间里挑（见 ui/settings.js 的 syncSheet），
+   * 这里照抄就是；哪怕 pending 里残留了越界值，newGame 也会再夹一次。 */
+  settings.size = clamp(pending.size, SIZE_MIN, SIZE_MAX);
   commitChallenge();
   saveSettings();
 
   closeSheet();
   newGame(settings.size);
 
-  if (band) announce('已换局，目标难度：' + band.name + (challenge ? '，挑战：' + challenge : ''));
-  else announce('已换局：' + settings.size + '×' + settings.size +
-    (challenge ? '，挑战：' + challenge : ''));
+  if (band) {
+    announce('已换局：' + band.name + ' ' + settings.size + '×' + settings.size +
+      (challenge ? '，挑战：' + challenge : ''));
+  } else {
+    announce('已换局：' + settings.size + '×' + settings.size +
+      (challenge ? '，挑战：' + challenge : ''));
+  }
 });
 
 sizeMinus.addEventListener('click', function () {
@@ -330,7 +336,11 @@ diffOpts.addEventListener('click', function (e) {
 
   pending.difficulty = lv;
   syncSheet();
-  announce(lv === 'any' ? '目标难度：不限' : '目标难度：' + DIFF_BANDS[lv].name + '（换一局后生效）');
+  var band = lv !== 'any' ? DIFF_BANDS[lv] : null;
+  announce(band
+    ? '目标难度：' + band.name + '，开放 ' + band.lo + '×' + band.lo + '–' + band.hi + '×' + band.hi +
+      '，先按 ' + pending.size + '×' + pending.size + ' 出（换一局后生效）'
+    : '目标难度：不限（换一局后生效）');
 });
 
 /* 限时：跟尺寸 / 难度一样只记意向，点「换一局」才真的开始计时 */
@@ -481,6 +491,9 @@ document.addEventListener('visibilitychange', function () {
 
 document.addEventListener('keydown', function (e) {
   if (e.key === 'Escape') {
+    /* 「没抽到够格的盘」那一层必须做个选择，Esc 也不放行：
+     * 关掉之后既没新盘也没旧盘，只剩一块空棋盘，比玩错盘更莫名其妙。 */
+    if (view.mismatchOpen) { e.preventDefault(); return; }
     if (view.diffOpen) { e.preventDefault(); closeDiff(true); return; }
     if (view.recordsOpen) { e.preventDefault(); closeRecords(); return; }
     if (view.lookOpen) { e.preventDefault(); closeLook(); return; }
@@ -488,6 +501,11 @@ document.addEventListener('keydown', function (e) {
     if (view.resultOpen) { e.preventDefault(); dismissResult(); return; }
     if (guide.open) { e.preventDefault(); closeGuide(); return; }
     state.lastTap = null;
+  }
+
+  if (view.mismatchOpen) {
+    if (e.key === 'Tab') trapFocus(e, mismatchEl);
+    return;
   }
 
   if (view.diffOpen) {

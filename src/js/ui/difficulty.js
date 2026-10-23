@@ -136,8 +136,12 @@ export function renderDiff() {
   }
   diffSteps.innerHTML = html;
 
-  var n = v.metrics.n;
-  var lead = n + '×' + n + ' · 最大色块 ' + (s.areaMax || 0) + ' 格 · ';
+  /* 分数看的是「要做多少功」，色块面积跟难度没有相关性（实测 <0.31），
+   * 摆在这里只会误导玩家，所以这一行改成报「试推几次」——
+   * 这也是 v2 刻度里权重最大的那一项。 */
+  var n = v.metrics ? v.metrics.n : (v.steps && v.steps.n) || 0;
+  var probes = v.metrics ? (v.metrics.probes || 0) : 0;
+  var lead = n + '×' + n + ' · 试推 ' + probes + ' 次 · ';
   if (s.solved && s.openSingles >= n) {
     lead += '不猜不试，纯推理就能推完';
   } else if (!s.openSingles) {

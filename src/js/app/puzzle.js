@@ -1,6 +1,6 @@
 /* ============================================================================
  * puzzle.js
- * 出题与换盘：按目标难度选尺寸、调引擎生成、生成遮罩、把棋盘装上。
+ * 出题与换盘：按目标难度夹尺寸、挑出最难的一张、生成遮罩、把棋盘装上。
  * ========================================================================== */
 
 import { sfx } from '../core/audio.js';
@@ -17,11 +17,14 @@ import { flashHint } from '../ui/hint.js';
 import { relayout } from '../ui/layout.js';
 import { render, resetBad, updateStats } from '../ui/render.js';
 import { dismissResult } from '../ui/win.js';
+import { dismissMismatch, showMismatch } from '../ui/mismatch.js';
 
 /* ==========================================================
    新一局
    ----------------------------------------------------------
-   设了目标难度就按难度选尺寸（见 DIFF_BANDS）；没设就照旧用用户选的尺寸。
+   尺寸由玩家在「目标难度」开放的区间里挑（见 DIFF_BANDS），这里只负责夹一次；
+   然后 pickBoard 抽最多 3 张、取分数最高的那张。一批都没够到下限就不装盘，
+   反过来问玩家「再抽一局 / 更换设置」——见下面的 roll()。
    出题是同步的：算的时候主线程被占住，动画也会冻住，所以遮罩只是「告知」，
    不是「装饰」。快的时候根本不该出现——见 showVeil 的 delay。
    ========================================================== */
@@ -64,21 +67,57 @@ function targetBand() {
   return t && t !== 'any' && DIFF_BANDS[t] ? DIFF_BANDS[t] : null;
 }
 
-/* 在难度区间里随机取一个尺寸，尽量避开当前这盘，换局才有变化 */
-function pickBandSize(band, avoid) {
-  var span = band.hi - band.lo + 1;
-  var n = band.lo + Math.floor(Math.random() * span);
-  if (span > 1 && n === avoid) n = band.lo + ((n - band.lo + 1) % span);
-  return n;
+/* ------------------------------------------------------------ 挑盘
+ * 生成最多 tries 张，取难度分最高的一张；一旦够到档位下限就提前收手。
+ * 引擎本来每局就要抽 2~3 张（挑色块最均匀的那张），所以平均成本基本不变；
+ * 度量本身是 1ms 级，瓶颈始终在生成。
+ *
+ * 为什么不在引擎里挑：engine.js 是独立 UMD，引用 difficulty.js 会破坏分层、
+ * 也拖慢引擎。这里是 app 层，两边都看得见，正合适。
+ *
+ * wantMin 为 null（不限难度）时只生成一张就走。
+ * 一批都没够到 wantMin 不是「失败」——这时**不装盘**，交给 mismatch 层问玩家
+ * 要不要再抽一批（见 ui/mismatch.js）；装上去了，目标难度就名存实亡。
+ */
+var PICK_TRIES = 3;
+
+/* 玩家点了「再抽一局」就把这一批抽得更狠一点：3 → 4 → 5 → 6 封顶。
+ * 14×14 的单张命中率只有三成左右（一批三张仍有约三分之一不够格），
+ * 一路 3 张抽下去会变成「点半天不给盘」；而多抽的这点成本只在真卡住时才付，
+ * 16×16 抽满 6 张也在 1 秒内（有遮罩兜着）。 */
+function triesFor(tried) {
+  return PICK_TRIES + Math.min(Math.floor(tried / PICK_TRIES), 3);
 }
 
-export function newGame(size, seed) {
-  var band = targetBand();
-  var n = band
-    ? pickBandSize(band, state.size)
-    : clamp(size || state.size, SIZE_MIN, SIZE_MAX);
+function pickBoard(n, wantMin, tries) {
+  var best = null, bestV = null, made = 0;
+  for (var i = 0; i < tries; i++) {
+    var b = null;
+    try { b = window.QueensEngine.generate(n); } catch (e) { b = null; }
+    if (!b) continue;
+    made++;
+    var v = computeVibe(b.size, b.regions, b.solution);
+    if (!v) return { board: b, vibe: null, tries: made };
+    if (!bestV || v.score > bestV.score) { best = b; bestV = v; }
+    if (wantMin == null || v.score >= wantMin) break;   // 早退
+  }
+  return { board: best, vibe: bestV, tries: made };
+}
 
+export function newGame(size) {
+  var band = targetBand();
+  var n = clamp(size || state.size, SIZE_MIN, SIZE_MAX);
+  // 选了档位就只在这个档开放过的尺寸里出题（4×4 不可能难，16×16 也不会容易）
+  if (band) n = clamp(n, band.lo, band.hi);
+  roll(n, band, 0);
+}
+
+/* 出一盘：抽一批，够格就装，不够格就摆出两条路让玩家选。
+ * tried 是「这次换局一共已经抽掉多少张」——再抽时累加上去，
+ * 好让那一层照实说「13×13 抽了 6 张，最高 7.8」。 */
+function roll(n, band, tried) {
   if (view.resultOpen) dismissResult(true);
+  dismissMismatch();
   boardEl.classList.remove('is-won', 'is-lost');
 
   // 已知这一档会卡就立刻露遮罩，否则先等 90ms——算得快就当没这回事
@@ -87,44 +126,38 @@ export function newGame(size, seed) {
 
   var run = function () {
     var t0 = performance.now();
-    var board = null;
-    var vibe = null;
-    try {
-      board = window.QueensEngine && window.QueensEngine.generate(n, seed);
-    } catch (e) {
-      board = null;
-    }
+    var picked = pickBoard(n, band ? band.min : null, triesFor(tried));
+    var board = picked.board;
+    var vibe = picked.vibe;
     if (!board) {
       hideVeil();
       flashHint('生成失败，请再试一次');
       return;
     }
 
-    // 目标难度：万一这一盘没落进档位（尺寸映射被改动时才会发生），换个尺寸再来一次
-    if (band) {
-      vibe = computeVibe(board.size, board.regions, board.solution);
-      for (var retry = 0; retry < 2 && vibe && vibe.level !== band.name; retry++) {
-        var n2 = pickBandSize(band, board.size);
-        var b2 = null;
-        try { b2 = window.QueensEngine.generate(n2); } catch (e2) { b2 = null; }
-        if (!b2) break;
-        var v2 = computeVibe(b2.size, b2.regions, b2.solution);
-        if (!v2) break;
-        board = b2;
-        vibe = v2;
-        if (v2.level === band.name) break;
-      }
-    }
-
     // 记下这局真正占住主线程多久，下次同尺寸就知道要不要提前露遮罩
     var cost = Math.round(performance.now() - t0);
     blockCost[board.size] = Math.max(blockCost[board.size] || 0, cost);
 
+    /* 一批下来都没够到档位下限：这一盘不装。
+     * 尺寸和档位都在 allowed 范围内，只是这批手气不好——玩家说了算：
+     * 再抽一批，还是换个尺寸/档位。 */
+    if (band && band.min && vibe && vibe.score < band.min) {
+      hideVeil();
+      showMismatch({
+        size: n,
+        band: band,
+        difficulty: settings.difficulty,
+        vibe: vibe,
+        tried: tried + picked.tries,
+        onRetry: function () { roll(n, band, tried + picked.tries); }
+      });
+      return;
+    }
+
     applyBoard(board.size, board.regions, board.solution, board.seed, vibe);
 
-    if (band && vibe && vibe.level !== band.name) {
-      flashHint('这一盘最接近「' + band.name + '」：' + vibe.level + ' ' + vibe.score.toFixed(1), true, 1800);
-    } else if (n >= 13 && cost > 320) {
+    if (n >= 13 && cost > 320) {
       flashHint('这局生成用了 ' + (cost / 1000).toFixed(1) + ' 秒', true, 1400);
     }
     sfx('new');
@@ -144,6 +177,7 @@ export function newGame(size, seed) {
 /* 把一副已经确定的棋盘装上（新生成 / 载入分享码 / 恢复存档 / 重试共用） */
 export function applyBoard(n, regions, solution, seed, preVibe) {
   if (view.resultOpen) dismissResult(true);
+  dismissMismatch();   // 真装上了，那张「不够格」的卡就不该还挂着
   if (guide.open) closeGuide();
   paintGl(null);
   resetBad();          // 上局的红框 / 待提醒计时一起作废

@@ -15,6 +15,11 @@ import { DIFF_BANDS, RECORD_MAX, SIZE_MAX, SIZE_MIN, STORE_RECORDS, normalizeLim
 /** 难度档，和 DIFF_BANDS 的键、以及本局难度评估的 tone 是同一套。 */
 export var RECORD_TONES = ['easy', 'mid', 'hard', 'extreme'];
 
+/* 现在用的是第几版难度刻度（engine/difficulty.js 的 SCALE_VERSION）。
+ * 老记录的 lv / sc 是按旧刻度算的，13×13 当时还算「极难」，跟新记录没法比，
+ * 所以它们只在列表里留着看，不进排行榜（见 group / countOf）。 */
+export var RECORD_SCALE = 2;
+
 var HEX = '0123456789ABCDEF';
 
 /* 第一次读盘之后就把结果留住：面板每次重画都走缓存，不反复 JSON.parse。
@@ -66,7 +71,7 @@ export function toneOfSize(n) {
  *   at  结束时刻（Date.now）
  *   n   边长   sd 出题种子
  *   rg  色块（n*n 个十六进制字符）  so 解（每行皇后的列）
- *   lv  难度档（easy/mid/hard/extreme）  sc 难度体感分
+ *   lv  难度档（easy/mid/hard/extreme）  sc 难度体感分  sq 刻度版本
  *   lim 本局限时（0 = 不限）  ms 用时
  *   h   提示次数  mv 落子次数
  *   won 是否解开  nh 禁用提示  nu 禁用撤销
@@ -89,6 +94,8 @@ function tidy(raw) {
     so: raw.so,
     lv: RECORD_TONES.indexOf(raw.lv) >= 0 ? raw.lv : toneOfSize(n),
     sc: isFinite(raw.sc) && raw.sc > 0 ? Math.round(raw.sc * 10) / 10 : null,
+    // 没这个字段的都是 v2 之前的老记录（1 = 旧刻度）
+    sq: clampNum(raw.sq, 1, 99) || 1,
     lim: normalizeLimit(raw.lim),
     ms: clampNum(raw.ms, 0, 24 * 3600 * 1000),
     h: clampNum(raw.h, 0, 999),
@@ -138,6 +145,7 @@ export function add(f) {
     so: hexEncode(f.solution, f.n),
     lv: f.vib && DIFF_BANDS[f.vib.tone] ? f.vib.tone : toneOfSize(f.n),
     sc: f.vib ? f.vib.score : null,
+    sq: (f.vib && f.vib.scale) || RECORD_SCALE,
     lim: f.limit,
     ms: Math.round(f.ms || 0),
     h: f.hints,
@@ -208,6 +216,7 @@ export function group(lim, tone, wonOnly) {
   for (var i = 0; i < list.length; i++) {
     var r = list[i];
     if (r.lim !== lim || r.lv !== tone) continue;
+    if (r.sq !== RECORD_SCALE) continue;   // 旧刻度的成绩不进新榜（lv/sc 不是一回事）
     if (wonOnly && !r.won) continue;
     out.push(r);
   }
@@ -223,12 +232,24 @@ export function rankOf(rec) {
   return { rank: 0, total: g.length };
 }
 
-/** 某个「限时 × 难度」组合里有多少个解开的成绩（排行榜筛选项上的角标）。 */
+/** 某个「限时 × 难度」组合里有多少个解开的成绩（排行榜筛选项上的角标）。
+ *  跟 group() 一个口径：旧刻度的成绩不算，不然角标和榜上的条数对不上。 */
 export function countOf(lim, tone) {
   var list = all();
   var c = 0;
   for (var i = 0; i < list.length; i++) {
-    if (list[i].lim === lim && list[i].lv === tone && list[i].won) c++;
+    if (list[i].lim === lim && list[i].lv === tone && list[i].won &&
+        list[i].sq === RECORD_SCALE) c++;
+  }
+  return c;
+}
+
+/** 这个「限时 × 难度」组合里有没有旧刻度的成绩（列表里还留着，只是不进榜）。 */
+export function legacyOf(lim, tone) {
+  var list = all();
+  var c = 0;
+  for (var i = 0; i < list.length; i++) {
+    if (list[i].lim === lim && list[i].lv === tone && list[i].sq !== RECORD_SCALE) c++;
   }
   return c;
 }
