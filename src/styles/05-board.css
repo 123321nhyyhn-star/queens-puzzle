@@ -57,6 +57,37 @@
 .cell.edge-b { box-shadow: inset -1px 0 0 0 var(--hair); }
 .cell.edge-r.edge-b { box-shadow: none; }
 
+/* ---- 色块图案层 ----
+   一格一枚图形，压在自己的底色之上、× 与皇后之下，纯装饰、不吃点击。
+   图形本身来自外观插件（src/js/looks/），这里只管位置与颜色：
+   · --rc-ink 是这一块底色的「压暗一档」（见 palette.js 的 shadeOf），
+     图形永远比底色深一点点，所以它像是色块自己的纹路，不是贴上去的另一块颜色；
+   · 图形不带 fill，继承 .sk 上的 currentColor；
+   · 没有图案的时候（纯色）连节点都留着，只是 grid 上没有 .has-skin，直接不显示。 */
+.sk {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+  color: var(--rc-ink, rgba(58, 51, 53, .13));
+  pointer-events: none;
+}
+
+.grid:not(.has-skin) .sk { display: none; }
+
+/* 图案的 <defs> 容器：0×0，只用来挂 symbol，不参与布局 */
+.skin-defs {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
 /* ---- 色块描边层 ----
    以前粗边是画在各自格子上的（border-top / border-left），两格的边在高分屏上
    各画各的、各自抗锯齿，拐角处就漏出一像素的缝，看着像断线。

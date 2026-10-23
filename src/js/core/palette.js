@@ -120,6 +120,19 @@ export function assignRegionColors(n, regions) {
   return out;
 }
 
+/* 「这块的图案色」：同一个颜色按比例压暗一档（三个通道乘同一个系数）。
+   不走掺墨：掺墨会把色相往暖里拽，一块淡青的图案泛灰；乘系数只是「这块自己深了」，
+   色相不动，远看还是那一块颜色——色块上的图形才不会像贴上去的另一块。
+
+   k 是压暗多少（0–1）。0.13 左右是「看得见但不抢戏」；k = 0 就是原色（没有图案）。 */
+export function shadeOf(hex, k) {
+  var f = 1 - (isFinite(k) ? Math.max(0, Math.min(.9, k)) : .13);
+  var r = Math.round(parseInt(hex.substr(1, 2), 16) * f);
+  var g = Math.round(parseInt(hex.substr(3, 2), 16) * f);
+  var b = Math.round(parseInt(hex.substr(5, 2), 16) * f);
+  return 'rgb(' + r + ',' + g + ',' + b + ')';
+}
+
 /* 「这一格亮起来」用的光色：拿色块底色换个更饱和、略深一点的同色相版本。
    用同一块的颜色去发光，看起来才像它自己亮了一下，而不是糊上去一块别的颜色。 */
 export function glowOf(hex) {

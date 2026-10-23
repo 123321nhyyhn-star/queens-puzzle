@@ -252,7 +252,7 @@ sheetBackdrop.addEventListener('click', closeSheet);
 /* 「显示更多选项」：只改面板露出多少，不碰任何设置；展开状态留在这一次会话里 */
 btnMoreOpts.addEventListener('click', toggleMore);
 
-/* ---- 外观：叉 / 皇后的样式，选完立刻生效 ---- */
+/* ---- 外观：色块图案 / 叉 / 皇后的样式，选完立刻生效 ---- */
 btnLook.addEventListener('click', openLook);
 btnCloseLook.addEventListener('click', closeLook);
 btnLookDone.addEventListener('click', closeLook);
@@ -260,7 +260,9 @@ lookBackdrop.addEventListener('click', closeLook);
 lookSheet.addEventListener('click', function (e) {
   var b = e.target.closest ? e.target.closest('.showcase') : null;
   if (!b) return;
-  if (b.dataset.mark) pickLook('mark', b.dataset.mark);
+  // 三排的按钮都叫 .showcase，靠 data-surface / data-mark / data-piece 分派
+  if (b.dataset.surface) pickLook('surface', b.dataset.surface);
+  else if (b.dataset.mark) pickLook('mark', b.dataset.mark);
   else if (b.dataset.piece) pickLook('piece', b.dataset.piece);
 });
 

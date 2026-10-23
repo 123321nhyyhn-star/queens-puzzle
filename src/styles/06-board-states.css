@@ -219,6 +219,13 @@
   transition: background-color .3s ease;
 }
 
+/* 图案跟着格子一起退掉：淡下去的意思是「这格透了、后面就是纸」，
+   留着一层图形就成了纸上的水印，反而比纯色更吵。 */
+.cell.is-dim .sk {
+  opacity: 0;
+  transition: opacity .3s ease;
+}
+
 .cell.is-dim.is-x .mark,
 .cell.is-dim.is-auto .mark {
   opacity: .34;
@@ -250,10 +257,19 @@
   opacity: 1;
 }
 
+/* 图案也跟着回来：格子既然亮着，它就该是一整块的样子 */
+.cell.is-dim.is-conflict .sk,
+.cell.is-dim:focus-visible .sk {
+  opacity: 1;
+}
+
 /* 解开那一刻把皇后那几格亮回来：这盘棋就是奖品，不该还空着 */
 .board.is-won .cell.is-dim.is-q {
   background-color: var(--rc, #FFFFFF);
 }
 
 .board.is-won .cell.is-dim.is-q .piece { opacity: 1; }
+
+/* 解开那一刻图案也亮回来：这几格是这一盘的主角，不该还淡着 */
+.board.is-won .cell.is-dim.is-q .sk { opacity: 1; }
 

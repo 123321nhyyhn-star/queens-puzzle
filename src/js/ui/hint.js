@@ -3,7 +3,7 @@
  * 提示行文案：常态提示、临时提示（1.7s 后自动回到常态）。
  * ========================================================================== */
 
-import { MARK_STYLES } from '../core/config.js';
+import { listOf } from '../looks/index.js';
 import { hintEl } from '../core/dom.js';
 import { settings, state } from '../core/state.js';
 import { queenCount } from '../game/rules.js';
@@ -13,15 +13,18 @@ import { queenCount } from '../game/rules.js';
 var hintTimer = null;
 
 /* 常态那句「轻点标 ×」跟着外观走：换成「点」以后还念 × 会让人找不到东西。
- * 拖动方式（按行列对齐 / 随意涂）也是同一件事，一起在文案里说清楚。 */
+ * 拖动方式（按行列对齐 / 随意涂）也是同一件事，一起在文案里说清楚。
+ * 文案本身写在提供这套叉的插件里（looks/classic.js），这里只挑该怎么念。 */
 function idleHint() {
-  for (var i = 0; i < MARK_STYLES.length; i++) {
-    var st = MARK_STYLES[i];
+  var marks = listOf('mark');
+  for (var i = 0; i < marks.length; i++) {
+    var st = marks[i];
     if (st.id !== settings.markStyle) continue;
     if (!settings.alignDrag && st.hintFree) return st.hintFree;
-    return st.hint;
+    if (st.hint) return st.hint;
+    break;
   }
-  return MARK_STYLES[0].hint;
+  return (marks[0] && marks[0].hint) || '轻点标记，按住可以连涂';
 }
 
 export function updateHint() {

@@ -51,7 +51,8 @@ function boot() {
   }
 
   loadSettings();
-  // 外观要在建棋盘之前落地：buildBoard 会照 settings.pieceStyle 决定每格画什么
+  // 外观要在建棋盘之前落地：buildBoard 会照 settings.pieceStyle 画皇后，
+  // 也会照 settings.surfaceStyle 给每格挂图案（defs 由 applySurface 先建好）
   applyLook();
 
   // 链接里带了棋盘代码（#QNS1-...）就直接开那一盘，否则照常续玩
@@ -148,7 +149,13 @@ window.__QUEENS_DEBUG__ = {
   openRecords: openRecords,
   closeRecords: closeRecords,
   // 外观：面板开关 + 当前样式，只给 tools/ 里的自动化测试用
-  look: function () { return { mark: settings.markStyle, piece: settings.pieceStyle }; },
+  look: function () {
+    return {
+      surface: settings.surfaceStyle,
+      mark: settings.markStyle,
+      piece: settings.pieceStyle
+    };
+  },
   openLook: openLook,
   closeLook: closeLook
 };

@@ -48,6 +48,19 @@
   .regions { min-height: 18px; }
 }
 
+/* 矮屏上的外观面板：三排展柜加起来太高，罩子压矮一点、名牌收窄，
+   让「知道了」还能落在第一屏里（真要滚也滚得动，只是别默认就得滚）。 */
+@media (max-height: 720px) {
+  .look-sheet { padding-top: 10px; }
+  .case { margin-top: 8px; }
+  .sc-case { height: 66px; }
+  .sc-item { width: 38px; height: 38px; margin-bottom: 4px; }
+  .sc-plinth { bottom: 8px; height: 5px; }
+  .sc-plate { padding: 2px 6px; }
+  .sc-plate b { font-size: 12px; }
+  .pv-x i { height: 15%; }
+}
+
 /* 横屏（且矮）：引导面板压成一行，省下约 45px。
    只在横屏生效——竖屏手机高度也常常 < 620，压成一行会把文案挤成六行。 */
 @media (orientation: landscape) and (max-height: 470px) {

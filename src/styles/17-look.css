@@ -1,9 +1,11 @@
 /* 17-look.css — 外观：可换的棋子 / 标记样式，以及挑样式用的「展柜」面板。 */
 
 /* ============================================================
-   可换样式（<html data-mark / data-piece> 是开关）
+   外观插件（src/js/looks/）
    ------------------------------------------------------------
-   样式只改「怎么画」，不碰 state.marks：换完局面不动，存档也不变。
+   这一节只管**叉**在棋盘上的两种画法 + 面板长什么样。
+   色块的图案由插件自己给 SVG（game/skin.js 铺到格子上），
+   所以这里没有任何按图案 id 写的选择器 —— 加一套图案不用动这个文件。
    ============================================================ */
 
 /* ---- 叉 → 点 ----
@@ -102,6 +104,8 @@ html[data-piece="cat"] .piece svg { filter: none; }
 
 #markRow .sc-case { --sc-bg: #EAEAA4; }
 #pieceRow .sc-case { --sc-bg: #CFF1F4; }
+/* 色块那排的罩子用中性纸色：底下本身就是一块彩色的 3×3 小盘，再用彩色底托会打架 */
+#surfaceRow .sc-case { --sc-bg: #F1E8DA; }
 
 /* 顶灯：从罩子上方打下来的一团暖光 */
 .sc-lamp {
@@ -138,7 +142,7 @@ html[data-piece="cat"] .piece svg { filter: none; }
   pointer-events: none;
 }
 
-/* 摆件：方框尺寸定死，四个预览才一样大（52px ≈ 棋盘上 8×8 的一格） */
+/* 摆件：方框尺寸定死，几个预览才一样大（52px ≈ 棋盘上 8×8 的一格） */
 .sc-item {
   position: relative;
   display: grid;
@@ -153,6 +157,30 @@ html[data-piece="cat"] .piece svg { filter: none; }
   display: block;
   width: 100%;
   height: 100%;
+}
+
+/* 色块的预览：一小块 3×3 的盘，缩到这个尺寸还是看得出图形 */
+.pv-skin {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 9px;
+  overflow: hidden;
+  box-shadow: 0 1px 0 rgba(58, 51, 53, .18);
+}
+
+/* 插件名的小标签：只有一排里跨了多个插件时才出现，
+   说明「这套是哪家做的」，字号压到最小、透明度压到最低，不跟名牌抢。 */
+.sc-src {
+  position: absolute;
+  left: 7px;
+  top: 5px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .8px;
+  color: var(--ink);
+  opacity: .4;
+  pointer-events: none;
 }
 
 /* 叉的预览：跟棋盘上同一套比例（0.58 宽、0.075 粗） */

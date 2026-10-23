@@ -4,8 +4,9 @@
  * ========================================================================== */
 
 import { elapsedMs } from './clock.js';
-import { DEFAULT_SETTINGS, DIFF_ORDER, MARK_STYLES, PIECE_STYLES, normalizeLimit,
-  SETTINGS_VERSION, SIZE_MAX, SIZE_MIN, STORE_GAME, STORE_SETTINGS, styleId } from './config.js';
+import { DEFAULT_SETTINGS, DIFF_ORDER, normalizeLimit,
+  SETTINGS_VERSION, SIZE_MAX, SIZE_MIN, STORE_GAME, STORE_SETTINGS } from './config.js';
+import { styleId } from '../looks/index.js';
 import { settings, state } from './state.js';
 import { clamp } from './utils.js';
 
@@ -36,9 +37,10 @@ export function loadSettings() {
     settings.timeLimit = normalizeLimit(s.timeLimit);
     settings.noHint = s.noHint === true;
     settings.noUndo = s.noUndo === true;
-    // 外观：老存档没这两个字段，认不出来的 id 也退回默认，不至于把棋盘画空
-    settings.markStyle = styleId(MARK_STYLES, s.markStyle);
-    settings.pieceStyle = styleId(PIECE_STYLES, s.pieceStyle);
+    // 外观：老存档没这几个字段、认不出来的 id（插件被删了）也退回默认，不至于把棋盘画空
+    settings.surfaceStyle = styleId('surface', s.surfaceStyle);
+    settings.markStyle = styleId('mark', s.markStyle);
+    settings.pieceStyle = styleId('piece', s.pieceStyle);
     /* 淡化：v2 起「淡化 ×」默认关闭。老存档没法区分「用户自己开过」和
      * 「旧默认开着」，所以干脆统一按新默认来——想淡回去面板里一拨就有。 */
     settings.fadeMark = ver >= SETTINGS_VERSION ? s.fadeMark === true : DEFAULT_SETTINGS.fadeMark;

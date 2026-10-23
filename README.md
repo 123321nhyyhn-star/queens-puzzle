@@ -7,7 +7,8 @@
 设置面板默认只摊开「换一局」和它上面那几组，开关与分享折在「显示更多选项」里。
 顶栏的奖杯记战绩：每局留一张棋盘缩略图、分享码，排行榜按**限时 × 难度**分开排，
 全存在本机 localStorage 里。
-顶栏的调色盘是**外观**：叉可以换成点，皇后可以换成小猫——满盘 × 看得眼花时换一套就安静了。
+顶栏的调色盘是**外观**：色块可以换成几何纹样，叉可以换成点，皇后可以换成小猫——
+满盘 × 看得眼花时换一套就安静了。三排样式由 `src/js/looks/` 里的插件提供。
 
 ## 局内信息
 
@@ -51,10 +52,11 @@ npm start                # 同上，只是包了一层
 
 顶栏第一颗按钮（调色盘）打开，是一间小展柜：每个样式摆在玻璃罩里的台子上，
 下面一块名牌，选中的那间罩子亮着、名牌翻成墨底、右上角亮一枚勾。
-两排各一个开关：
+三排各一个开关：
 
 | 换什么 | 可选 | 说明 |
 | --- | --- | --- |
+| 色块 | **几何**（默认）/ **纯色** | 几何给每种颜色配一枚图形，压暗一档铺在格子上；纯色就是原来那块平色 |
 | 叉 | **叉**（默认）/ **点** | 点是一个小圆点。16×16 满盘时，一片 × 会糊成噪点，点就安静得多 |
 | 皇后 | **皇后**（默认）/ **小猫** | 小猫是同一套墨色剪影（没有底色，格子自己的色块色就是它的底），墨色脸上留一对白眼和 ω 嘴 |
 
@@ -64,9 +66,45 @@ npm start                # 同上，只是包了一层
 - 自动打的标记和你手标的用同一套样式（自动 / 手动本来就同款，见 `render.js`）。
   设置面板里的「自动打 ×」仍然只管**打不打**，不管长什么样。
 - 顶栏那颗按钮上挂一颗小黄点，表示「现在用的不是默认那套」——不然过几天会忘了原来长什么样。
-- 落地方式：`<html data-mark="x|dot" data-piece="queen|cat">` 是 CSS 钩子（`17-look.css`），
-  格子里的画由 `game/board.js` 的 `pieceSvg()` 决定，换样式只重画 `.piece` 里的 SVG。
-- 老存档没有这两个字段、或者存了认不出来的 id，一律退回默认（`styleId()`）。
+- 落地方式：`<html data-surface / data-mark / data-piece>` 是 CSS 钩子（`17-look.css`），
+  格子里的画由 `game/board.js` 的 `pieceSvg()` 决定，色块的图形由 `game/skin.js` 铺上去。
+- 老存档没有 `surfaceStyle` 字段、或者存了认不出来的 id（插件被删了），一律按 `styleId()`
+  退回各自那类的第一套（也就是几何 / 叉 / 皇后）。
+
+### 色块图案（几何）
+
+- **一块底色一枚图形**：图案不是另找颜色画上去，而是把这块自己的颜色乘一个系数压暗
+  （`palette.js` 的 `shadeOf`，tone = 0.045）。色相不动，远看还是那一块颜色，
+  凑近才认得出是一枚什么图形。这就是「融入」，也是它能和 × 抢不到眼睛的原因。
+- **每种颜色一枚**：18 个调色板下标各配一枚几何图形（圆 / 三角 / 菱形 / 十字 / 空心方 /
+  六边形 / 竖纹 / 半圆 / 心 / 圆环 / 斜纹 / 圆角方 / 拱门 / 对角双格 / 星 / 四叶 / 六芒 / 波浪）。
+  同一盘的色块本来颜色就拉得开，再加一层各不相同的纹样，色弱的人也认得出是两块。
+- **图形只有一层 `<defs>`**：`#skinDefs` 里每种颜色一枚 `<g>`，每格一个 `<use>` 指过去。
+  换图案只改 `href` 与一个 CSS 变量，不用把 256 个格子重画一遍。
+- 图形是**逐格重复**的：整块色块看过去是一片纹样。图形本身画在 20–80 之间、
+  周围留白，所以格子之间有呼吸；16×16（一格二十来像素）时它退成一层几乎看不见的肌理，
+  不跟棋子抢。想让图案再安分 / 再明显一点，只改插件里的 `tone`。
+- 淡化（`.is-dim`）时图案跟着整格一起退掉——淡下去的意思是「这格透了、后面就是纸」，
+  留一层图形就成了纸上的水印；冲突格与焦点格会连同图案一起还原。
+
+### 插件
+
+外观是插件化的，都在 `src/js/looks/`：
+
+```
+looks/
+├─ index.js      登记处：把插件摊平成「色块 / 叉 / 皇后」三张表，面板和棋盘都问它
+├─ classic.js    墨线：纯色、叉 / 点、皇后 / 小猫（出厂那套）
+└─ geometry.js   几何：每种颜色一枚图形
+```
+
+- 一个插件可以只提供一样东西，也可以三样都给；面板按登记顺序长出展位。
+- **一排里跨了多个插件时**，每个展位左上角挂一个小标签写插件名（现在就色块那排有：
+  几何 / 墨线）。只有一个插件提供的排不标——自己不用标自己。
+- 加一个插件：在 `looks/` 里新建一个文件（导出一个对象），然后在 `looks/index.js`
+  的 `PLUGINS` 里加一行 `import`。面板、存档兜底、CSS 都不用动。
+- 插件里能写什么、三类各自的字段，`looks/index.js` 开头有一段完整说明；
+  图形一律 `viewBox 0 0 100 100`、只给形状不给颜色（填色继承外面）。
 
 ## 填写与拖动
 
@@ -200,6 +238,7 @@ npm start                # 同上，只是包了一层
 │     ├─ events.js         事件接线：所有 DOM 事件都绑在这里
 │     ├─ engine/           出题 / 难度 / 提示三套引擎（经典脚本，双端通用）
 │     ├─ core/             基础设施
+│     ├─ looks/            外观插件：色块图案 / 叉 / 皇后的画法都在这儿（没有依赖，最底层）
 │     ├─ game/             棋局逻辑
 │     ├─ ui/               界面
 │     └─ app/              流程编排
@@ -210,11 +249,13 @@ npm start                # 同上，只是包了一层
 ### 分层与依赖方向
 
 ```
-core  ←  game  ←  ui  ←  app
-（基础设施）（棋局逻辑）（界面）（流程编排）
+looks  ←  core  ←  game  ←  ui  ←  app
+（画法） （基础设施）（棋局逻辑）（界面）（流程编排）
 ```
 
-- **只能向下依赖**：`core` 不引用 `game / ui / app`，`game` 只引用 `core`，`ui` 引用 `core / game`。
+- **只能向下依赖**：`looks` 谁也不引用（纯数据与画法），`core` 不引用 `game / ui / app`，
+  `game` 只引用 `core / looks`，`ui` 引用 `core / game / looks`。
+  `core/config.js` 只向 `looks` 要一个「默认选哪一套」，别反过来让 `looks` 认识设置。
 - `events.js` 与 `main.js` 在最上层，可以引用任何模块。
 - 有几处刻意保留的互相依赖，别硬拆（拆了反而更绕）：
   `ui/layout ↔ ui/guide`（重排要重画圈画层，引导翻页要重排）、
@@ -227,7 +268,10 @@ core  ←  game  ←  ui  ←  app
 
 | 文件 | 职责 |
 | --- | --- |
-| `core/config.js` | 尺寸范围、存储键、难度档位、限时挡位（`LIMIT_OPTIONS`）、默认设置、皇后 / 小猫两套 SVG、外观样式表（`MARK_STYLES` / `PIECE_STYLES`） |
+| `core/config.js` | 尺寸范围、存储键、难度档位、限时挡位（`LIMIT_OPTIONS`）、默认设置（外观的三项默认值取自 `looks` 的 `DEFAULT_LOOK`） |
+| `looks/index.js` | 外观插件登记处：把插件摊平成色块 / 叉 / 皇后三张表，认 id、取画法、给默认值 |
+| `looks/classic.js` | 「墨线」插件：纯色 / 叉 / 点 / 皇后 / 小猫（出厂那套，SVG 也在这儿） |
+| `looks/geometry.js` | 「几何」插件：18 枚按调色板下标排的图形 + `tone`（压暗多少） |
 | `core/state.js` | 全局状态：`state`（局面）/ `settings`（设置）/ `pending`（面板里未生效的意向）/ `guide`（引导进度）/ `view`（视图层可变引用） |
 | `core/dom.js` | 所有 DOM 元素引用，**只在这里取一次** |
 | `core/utils.js` | `clamp`、读屏播报、时间格式化、脉冲动画、`svgEl` |
@@ -239,6 +283,7 @@ core  ←  game  ←  ui  ←  app
 | `game/rules.js` | 自动打叉、被逼定位、冲突对、色块计数、填错的色块 |
 | `game/geometry.js` | 格子边长、色块轮廓 path |
 | `game/board.js` | 棋盘 DOM 构建 + 色块长按高亮 + `pieceSvg()` 按外观决定每格画什么 |
+| `game/skin.js` | 色块图案：建 `#skinDefs`、给每格挂 `--rc-ink` 与 `<use>`，换图案只改 href |
 | `game/share-code.js` | 分享码编解码（纯函数，可单测） |
 | `game/preview.js` | 战绩里的棋盘缩略图：把一盘棋画成 SVG 字符串（塞进 `<img src="data:...">`） |
 | `game/vibe.js` | 本局难度评估（转调 `engine/difficulty.js`） |
@@ -248,7 +293,7 @@ core  ←  game  ←  ui  ←  app
 | `ui/guide.js` | 提示引导面板 + 棋盘圈画层 |
 | `ui/hint.js` | 顶部提示行文案 |
 | `ui/settings.js` | 设置面板（尺寸/难度/挑战只写 `pending`，点「换一局」才落地） |
-| `ui/look.js` | 外观面板：展柜生成、样式切换（即时生效）、`<html data-*>` 落地 |
+| `ui/look.js` | 外观面板：按插件生成三排展柜、样式切换（即时生效）、`<html data-*>` 落地 |
 | `ui/difficulty.js` | 信息条上的难度段 + 本局信息页（四张读数卡片 + 难度构成） |
 | `ui/share.js` | 分享面板：复制 / 粘贴载入 / `#QNS1-...` 链接开局 |
 | `ui/records.js` | 战绩面板：记录列表（缩略图 / 分享码）、排行榜筛选与名次、删除与清空 |
@@ -273,7 +318,8 @@ core  ←  game  ←  ui  ←  app
 | 改唯一位置提示的强度 / 节奏 | `06-board-states.css` 的 `.cell.is-forced`（`forcedGlow` 的峰值亮度与 2.8s 呼吸周期；这里刻意不描边） |
 | 改拖动标 × 的对齐方式 | `events.js` 的 `pointermove`（`settings.alignDrag` 一开一关两条路）、默认值在 `core/config.js` |
 | 改淡化淡成什么样 / 等多久 | `06-board-states.css` 的 `.is-dim`（底色与画的透明度）、`ui/fade.js` 的 `DIM_DELAY`（防抖） |
-| 加一套棋子 / 叉的样式 | `core/config.js` 的 `MARK_STYLES` / `PIECE_STYLES` 加一条（面板会自己长出新的展位）+ `17-look.css` 补对应画法 + `ui/look.js` 的 `preview()` 补一个缩略画法 |
+| 加一套外观（色块 / 叉 / 皇后） | 在 `src/js/looks/` 新建一个插件文件，再在 `looks/index.js` 的 `PLUGINS` 里加一行 import。字段见 `looks/index.js` 开头；叉如果要在棋盘上换笔画，才需要在 `17-look.css` 补一条 `html[data-mark="…"]` |
+| 改色块图案的浓淡 / 换一套图形 | `looks/geometry.js` 的 `tone` 与 `MOTIFS`（纯色那套在 `looks/classic.js`） |
 | 改限时挡位 | `core/config.js` 的 `LIMIT_OPTIONS`（面板按钮是按它生成的） |
 | 加一项挑战 | 照「限时 / 禁用提示 / 禁用撤销」三件套：`DEFAULT_SETTINGS` + `pending`（`core/state.js`）+ `index.html` 的 `.challenge` 块 + `ui/settings.js` 的 `syncSheet`/`commitChallenge` + 动作入口里 `settings.xxx` 一拦 |
 | 改超时判负的时机 | `core/clock.js` 的 `limitExpired`、`ui/win.js` 的 `checkTimeout`（由 `main.js` 的 250ms 心跳调用） |
@@ -300,7 +346,7 @@ node tools/test-engine.mjs   # 出题引擎（唯一解、连通性）
 node tools/test-hint.mjs     # 提示引擎
 node tools/check-challenge.mjs   # 挑战：限时 / 禁用提示 / 禁用撤销（60 项）
 node tools/check-records.mjs     # 战绩：记录写入 / 缩略图 / 分享码 / 排行榜分组 / 删除清空
-node tools/check-look.mjs        # 外观：展柜面板 / 两套样式落地 / 存盘与兜底（50 项）
+node tools/check-look.mjs        # 外观：三排展柜 / 色块图案 / 叉与皇后落地 / 存盘与兜底（69 项）
 node tools/check-fade.mjs        # 淡化：默认关 / 透成纸色 / 边线不动 / 0.5 秒防抖（38 项）
 node tools/check-misc.mjs        # 面板折叠 / 无滚动条 / 拖动对齐与逐格震动 / 重来这局（18 项）
 ```
@@ -325,7 +371,7 @@ node tools/check-misc.mjs        # 面板折叠 / 无滚动条 / 拖动对齐与
 - 键盘：`X` 标叉、`Q`/`Enter` 放皇后、`Z` 撤销、`Shift+Z` 重做、`H` 提示、`N` 新局、`Esc` 关浮层。
   挑战里禁用撤销 / 提示时，`Z` 与 `H` 只会换一句「挑战模式：这局不能…」。
 - 存档键：`queens.settings.v1` / `queens.game.v1` / `queens.records.v1`（改结构要升版本号）。
-- 外观存在 `settings.markStyle` / `settings.pieceStyle`，页面上表现为 `<html data-mark / data-piece>`；
+- 外观存在 `settings.surfaceStyle` / `markStyle` / `pieceStyle`，页面上表现为 `<html data-surface / data-mark / data-piece>`；
   它只改画法，别往里塞会影响规则的东西（那属于「挑战」）。
 - 面板类浮层（设置 / 本局信息 / 战绩 / 外观）打开时 `app` 会被设成 `inert`，`canPlay()` 也要一起拦——
   键盘事件挂在 `document` 上，不拦的话面板背后还能落子。

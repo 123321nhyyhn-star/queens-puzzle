@@ -118,6 +118,9 @@
     </div>
 
     <div class="board" id="board">
+      <!-- 色块图案的 <defs>：外观插件提供的图形，每套图案每种颜色一枚 symbol，
+           格子里的 .sk > use 指向它（见 game/skin.js）。0×0，不占地方。 -->
+      <svg class="skin-defs" id="skinDefs" aria-hidden="true" focusable="false"></svg>
       <div class="grid" id="grid" role="grid" aria-label="皇后棋盘"></div>
       <svg class="rb" id="rb" aria-hidden="true"></svg>
       <svg class="rl" id="rl" aria-hidden="true">
@@ -388,9 +391,15 @@
         </svg>
       </button>
     </div>
-    <p class="sheet-note">挑一套顺眼的摆上棋盘。选完立刻生效，自动打的标记也一起换。</p>
+    <p class="sheet-note">色块的纹样、叉和皇后各挑一样。选完立刻生效，自动打的标记也一起换。</p>
 
-    <!-- 两排展柜：选项按钮按 core/config.js 的 MARK_STYLES / PIECE_STYLES 生成 -->
+    <!-- 三排展柜：选项按钮由 src/js/looks/ 里登记的外观插件现场生成。
+         一排里跨了多个插件时，展位左上角会挂一个插件名的小标签。 -->
+    <div class="case">
+      <div class="case-head"><b>色块</b><span id="surfaceNow">当前：几何</span></div>
+      <div class="case-row" id="surfaceRow" role="radiogroup" aria-label="色块的样式"></div>
+    </div>
+
     <div class="case">
       <div class="case-head"><b>叉</b><span id="markNow">当前：叉</span></div>
       <div class="case-row" id="markRow" role="radiogroup" aria-label="叉的样式"></div>

@@ -3,17 +3,19 @@
  * 棋盘 DOM 构建与色块长按高亮。
  * ========================================================================== */
 
-import { CAT_SVG, QUEEN_SVG, REDUCE_MOTION } from '../core/config.js';
+import { REDUCE_MOTION } from '../core/config.js';
 import { gridEl, regionsEl, rlEl, rlPeek } from '../core/dom.js';
 import { REGION_COLORS, assignRegionColors, glowOf } from '../core/palette.js';
 import { settings, state, view } from '../core/state.js';
 import { svgEl } from '../core/utils.js';
+import { pieceSvg as pieceArt } from '../looks/index.js';
 import { cellSize, regionCellsPath, regionPath } from './geometry.js';
+import { paintSkin, skinMarkup } from './skin.js';
 
-/* 皇后那一格画什么：默认是皇后，外观面板里可以换成小猫。
+/* 皇后那一格画什么：外观插件说了算（默认是皇后，也可以是小猫）。
  * 两套画都塞进同一个 .piece 里，动画（落下 / 胜利小跳）都挂在 .piece 上，不用另写。 */
 export function pieceSvg() {
-  return settings.pieceStyle === 'cat' ? CAT_SVG : QUEEN_SVG;
+  return pieceArt(settings.pieceStyle);
 }
 
 /** 换皇后样式：只换 .piece 里的画，格子、事件、动画都不动。 */
@@ -63,10 +65,13 @@ export function buildBoard(deal) {
         cell.style.setProperty('--deal-delay', ((r + c) * 13) + 'ms');
       }
 
-      cell.innerHTML =
+      // 图案层在最底下：底色之上、× 与皇后之下，纯装饰、不吃点击
+      // （窗口与图形由 skin.js 按「整块一枚图形」算，这里只放个空壳）
+      cell.innerHTML = skinMarkup() +
         '<span class="mark"><i></i><i></i></span>' +
         '<span class="piece">' + pieceSvg() + '</span>' +
         '<span class="ring"></span>';
+      paintSkin(cell, state.regionColors[g]);
 
       gridEl.appendChild(cell);
       view.cells.push(cell);

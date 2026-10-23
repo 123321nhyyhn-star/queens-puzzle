@@ -16,6 +16,8 @@ export var rbEl = $('rb');
 export var rlEl = $('rl');
 export var rlBad = $('rlBad');
 export var rlPeek = $('rlPeek');
+/* 色块图案的 <defs>：每套图案每种颜色一枚 symbol，格子里的 <use> 指向它 */
+export var skinDefsEl = $('skinDefs');
 export var linksEl = $('links');
 export var hintEl = $('hint');
 export var hintRowEl = $('hintRow');
@@ -158,14 +160,16 @@ export var boardEmpty = $('boardEmpty');
 export var recStatus = $('recStatus');
 export var btnClearRecs = $('btnClearRecs');
 
-/* 外观面板：两排展柜（叉 / 皇后），选项按钮按 core/config.js 的样式表现场生成，
+/* 外观面板：三排展柜（色块 / 叉 / 皇后），选项按钮按 looks/ 里登记的插件现场生成，
  * 所以这里只取容器与「当前是什么」这两个标题。 */
 export var lookWrap = $('lookWrap');
 export var lookSheet = $('lookSheet');
 export var lookBackdrop = $('lookBackdrop');
 export var btnCloseLook = $('btnCloseLook');
 export var btnLookDone = $('btnLookDone');
+export var surfaceRow = $('surfaceRow');
 export var markRow = $('markRow');
 export var pieceRow = $('pieceRow');
+export var surfaceNow = $('surfaceNow');
 export var markNow = $('markNow');
 export var pieceNow = $('pieceNow');
