@@ -1,0 +1,31 @@
+/* panels/mismatch.css — 没抽到够格的盘：结果卡上的琥珀色变体。
+   同一张卡（.result），只换配色与两个读数，所以直接压在 panels/result.css 后面。 */
+
+/* 没抽到够格的盘：同一张卡，琥珀色，两个读数只说「要多少 / 抽到多少」。
+ * 它不是「输赢」，所以不用红色；也不能靠点背景关掉（见 ui/panels/mismatch.js）。 */
+.result.is-mismatch {
+  z-index: 62;
+  background: rgba(254, 243, 226, .9);
+}
+
+.result.is-mismatch .result-kicker,
+.result.is-mismatch .result-title { color: #B26A00; }
+
+.result.is-mismatch .btn-hint {
+  background: #FFF0CE;
+  border-color: #B26A00;
+  box-shadow: 0 3px 0 #B26A00;
+}
+
+.result.is-mismatch .result-stats {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+/* 按钮下面那句建议：同一档里盘越大越容易够格 */
+.result.is-mismatch .mm-note {
+  margin: 8px -4px 0;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.5;
+  color: var(--ink-mute);
+}

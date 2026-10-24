@@ -1,8 +1,6 @@
-/* 13-result.css — 通关结果层与礼花。 */
+/* panels/result.css — 结果层（通关 / 超时判负）与礼花。
+   没抽到够格的盘是同一张卡的另一个变体，在 panels/mismatch.css。 */
 
-/* ============================================================
-   10. 结果层
-   ============================================================ */
 .result {
   position: fixed;
   inset: 0;
@@ -100,51 +98,7 @@
   box-shadow: 0 3px 0 #C62828;
 }
 
-/* 没抽到够格的盘：同一张卡，琥珀色，两个读数只说「要多少 / 抽到多少」。
- * 它不是「输赢」，所以不用红色；也不能靠点背景关掉（见 ui/mismatch.js）。 */
-.result.is-mismatch {
-  z-index: 62;
-  background: rgba(254, 243, 226, .9);
-}
-
-.result.is-mismatch .result-kicker,
-.result.is-mismatch .result-title { color: #B26A00; }
-
-.result.is-mismatch .btn-hint {
-  background: #FFF0CE;
-  border-color: #B26A00;
-  box-shadow: 0 3px 0 #B26A00;
-}
-
-.result.is-mismatch .result-stats {
-  grid-template-columns: repeat(2, 1fr);
-}
-
-/* 按钮下面那句建议：同一档里盘越大越容易够格 */
-.result.is-mismatch .mm-note {
-  margin: 8px -4px 0;
-  font-size: 11.5px;
-  font-weight: 700;
-  line-height: 1.5;
-  color: var(--ink-mute);
-}
-
-.btn-text {
-  margin-top: 10px;
-  padding: 6px;
-  border: 0;
-  background: none;
-  color: var(--ink-mute);
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-/* ============================================================
-   11. 礼花
-   ============================================================ */
+/* ---- 礼花 ---- */
 .fx {
   position: fixed;
   inset: 0;

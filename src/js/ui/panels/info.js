@@ -229,7 +229,7 @@ export function renderDiff() {
    技巧说明（每行的问号）
    ----------------------------------------------------------
    点一下展开，再点收起；点同一处之外的地方也收起。
-   桌面端还有 :hover（见 11-sheet-difficulty.css），触屏只有点击这一路。
+   桌面端还有 :hover（见 styles/panels/info.css），触屏只有点击这一路。
    ========================================================== */
 export function clearDiffTips() {
   var on = diffSteps.querySelectorAll('.diff-step.is-on');
@@ -310,7 +310,7 @@ export function mount(host) {
   diffBackdrop.addEventListener('click', closeDiff);
 
   /* 难度构成每行右端的问号：点开那一行的说明，点面板别处收起。
-   * 桌面端另有 :hover（11-sheet-difficulty.css），这里是触屏的唯一一路。 */
+   * 桌面端另有 :hover（styles/panels/info.css），这里是触屏的唯一一路。 */
   diffSheet.addEventListener('click', function (e) { toggleDiffTip(e.target); });
 
   /* 信息页底部那句「改棋盘大小与难度」：看完信息想动手改，直接去设置面板——

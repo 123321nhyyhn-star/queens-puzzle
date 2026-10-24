@@ -31,7 +31,7 @@
  *
  *   叉 mark —— { id, name, hint, hintFree, preview }
  *     hint / hintFree  提示行文案（按行列对齐 / 随意涂两种说法），可省。
- *     preview  'x' | 'dot'：展柜里那个小预览怎么画（棋盘上的画法在 17-look.css，
+ *     preview  'x' | 'dot'：展柜里那个小预览怎么画（棋盘上的画法在 styles/panels/look.css，
  *              按 <html data-mark> 切换）。
  *
  *   皇后 piece —— { id, name, svg }

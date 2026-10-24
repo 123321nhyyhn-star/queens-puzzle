@@ -51,7 +51,7 @@ export function render(anim) {
     cell.classList.toggle('is-forced', forced[i] !== 0);
 
     /* 淡化：刚变过的这一格先亮着，手停下来 0.5 秒后才整盘一起淡
-     * （见 ui/fade.js；淡成什么样在 06-board-states.css 里） */
+     * （见 ui/fade.js；淡成什么样在 styles/base/board-states.css 里） */
     fadeCell(cell, i, s !== prev);
 
     if (anim) {

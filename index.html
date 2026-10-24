@@ -12,25 +12,8 @@
 <!-- 图标内联成 data URI，不额外发请求 -->
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23FEF3E2'/%3E%3Cpath d='M16 5l3 5 4.6-3-1.3 7H9.7L8.4 7l4.6 3 3-5z' fill='%233A3335'/%3E%3Cpath d='M9.5 15h13l2.2 8.5H7.3L9.5 15z' fill='%233A3335'/%3E%3Crect x='7' y='24' width='18' height='3' rx='1.5' fill='%233A3335'/%3E%3C/svg%3E">
 
-<!-- 样式按顺序加载：令牌 → 基础 → 各部件 → 动画 → 引导 → 小屏适配 -->
-<link rel="stylesheet" href="src/styles/01-tokens.css">
-<link rel="stylesheet" href="src/styles/02-base.css">
-<link rel="stylesheet" href="src/styles/03-topbar.css">
-<link rel="stylesheet" href="src/styles/04-stage.css">
-<link rel="stylesheet" href="src/styles/05-board.css">
-<link rel="stylesheet" href="src/styles/06-board-states.css">
-<link rel="stylesheet" href="src/styles/07-regions.css">
-<link rel="stylesheet" href="src/styles/08-toolbar.css">
-<link rel="stylesheet" href="src/styles/09-veil.css">
-<link rel="stylesheet" href="src/styles/10-sheet.css">
-<link rel="stylesheet" href="src/styles/11-sheet-difficulty.css">
-<link rel="stylesheet" href="src/styles/12-sheet-share.css">
-<link rel="stylesheet" href="src/styles/13-result.css">
-<link rel="stylesheet" href="src/styles/14-animations.css">
-<link rel="stylesheet" href="src/styles/15-guide.css">
-<link rel="stylesheet" href="src/styles/16-records.css">
-<link rel="stylesheet" href="src/styles/17-look.css">
-<link rel="stylesheet" href="src/styles/18-responsive.css">
+<!-- 样式只有一个入口：顺序（以及「加一个面板要加哪一行」）都在 src/styles/all.css 里 -->
+<link rel="stylesheet" href="src/styles/all.css">
 </head>
 
 <body>

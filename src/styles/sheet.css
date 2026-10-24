@@ -1,0 +1,63 @@
+/* sheet.css — 浮层外壳。六个面板共用这一层，谁也各自带一份「壳」。
+   结构见 src/js/core/sheet.js：.sheet-wrap > .sheet-backdrop + .sheet。
+   面板自己的样式在 src/styles/panels/<面板>.css。 */
+
+.sheet-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(58, 51, 53, .42);
+  animation: fadeIn .18s ease both;
+}
+
+.sheet {
+  position: relative;
+  width: min(100%, 560px);
+  max-height: 92svh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* 面板自己滚，但不画滚动条：内容超了照样能滑（手指 / 滚轮都行），
+     少一根灰条，卡片两侧的圆角与描边才是干净的。 */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding: 16px 18px calc(18px + env(safe-area-inset-bottom, 0px));
+  background: var(--bg-card);
+  border: 2px solid var(--ink);
+  border-bottom: 0;
+  border-radius: 22px 22px 0 0;
+  animation: slideUp .26s var(--spring) both;
+}
+
+.sheet::-webkit-scrollbar { width: 0; height: 0; display: none; }
+
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+.sheet-head h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+
+.sheet-note {
+  margin: 0 0 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink-faint);
+}
+
+/* 「知道了」：面板底下那颗整宽按钮，信息页与外观面板都在用 */
+.sheet-done { width: 100%; margin-top: 10px; }

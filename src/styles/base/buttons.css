@@ -1,8 +1,8 @@
-/* 08-toolbar.css — 底部工具栏：撤销 / 提示 / 清空。 */
+/* buttons.css — 底部工具栏，以及两个通用按钮：
+   .btn       主按钮（工具栏 / 换一局 / 分享 / 结果卡都在用）
+   .btn-text  面板底部的小字按钮（结果层 / 战绩 / 信息页 / 未抽到盘）
+   共用的小件写在这里，面板文件里只写自己那个面板的布局。 */
 
-/* ============================================================
-   07. 工具栏
-   ============================================================ */
 .toolbar {
   flex: 0 0 auto;
   display: flex;
@@ -45,4 +45,18 @@
   opacity: .55;
   background-image: repeating-linear-gradient(-45deg,
     transparent 0 5px, rgba(58, 51, 53, .07) 5px 10px);
+}
+
+/* 小字按钮：没有边框、没有底色，靠下划线表示「还能点」 */
+.btn-text {
+  margin-top: 10px;
+  padding: 6px;
+  border: 0;
+  background: none;
+  color: var(--ink-mute);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }

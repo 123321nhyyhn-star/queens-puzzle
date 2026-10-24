@@ -55,7 +55,7 @@
 - 落地：`#btnHud`（整条）→ `ui/difficulty.js` 的 `openDiff()`；
   各段是 `#hudSize` / `#timePill` / `#stepPill` / `#queenPill` / `#diffSeg`，
   读数由 `ui/render.js`（棋盘 / 步数 / 皇后）、`core/clock.js`（用时）与
-  `ui/difficulty.js`（难度）写，样式在 `03-topbar.css`。
+  `ui/difficulty.js`（难度）写，样式在 `styles/base/topbar.css`。
 
 
 ## 快速开始
@@ -90,7 +90,7 @@ npm start                # 同上，只是包了一层
 - 自动打的标记和你手标的用同一套样式（自动 / 手动本来就同款，见 `render.js`）。
   设置面板里的「自动打 ×」仍然只管**打不打**，不管长什么样。
 - 顶栏那颗按钮上挂一颗小黄点，表示「现在用的不是默认那套」——不然过几天会忘了原来长什么样。
-- 落地方式：`<html data-surface / data-mark / data-piece>` 是 CSS 钩子（`17-look.css`），
+- 落地方式：`<html data-surface / data-mark / data-piece>` 是 CSS 钩子（`styles/panels/look.css`），
   格子里的画由 `game/board.js` 的 `pieceSvg()` 决定，色块的图形由 `game/skin.js` 铺上去。
 - 老存档没有 `surfaceStyle` 字段、或者存了认不出来的 id（插件被删了），一律按 `styleId()`
   退回各自那类的第一套（也就是几何 / 叉 / 皇后）。
@@ -161,8 +161,8 @@ looks/
 - 加一个插件：在 `looks/` 里新建一个文件（导出一个对象），然后在 `looks/index.js`
   的 `PLUGINS` 里加一行 `import`。面板、存档兜底、CSS 都不用动。
 - 色块那排是 3 列网格，现在 5 套排成两行。再加就要么排到第 3 行、要么在
-  `17-look.css` 里调 `#surfaceRow` 的列数——注意它用的是 id 选择器，
-  `18-responsive.css` 里要压它的尺寸也得带 `#surfaceRow` 前缀。
+  `styles/panels/look.css` 里调 `#surfaceRow` 的列数——注意它用的是 id 选择器，
+  `styles/responsive.css` 里要压它的尺寸也得带 `#surfaceRow` 前缀。
 - 插件里能写什么、三类各自的字段，`looks/index.js` 开头有一段完整说明；
   图形一律 `viewBox 0 0 100 100`、只给形状不给颜色（填色继承外面）。
 
@@ -212,7 +212,7 @@ looks/
   所以这条捷径没法把一盘没解开的棋判成解开。
 - 挑战里勾了「禁用提示」就不露——那一档的意思就是「全自己来」。
 - 落地：判据 `game/rules.js` 的 `pendingQueens()` → 露不露 `ui/hint.js` 的 `setNudge()` →
-  点击 `app/actions.js` 的 `fillQueens()`；样式在 `04-stage.css`（`.finish-nudge`）。
+  点击 `app/actions.js` 的 `fillQueens()`；样式在 `styles/base/stage.css`（`.finish-nudge`）。
 
 ## 淡化
 
@@ -233,7 +233,7 @@ looks/
   再退到一档透明度。**不是把颜色掺白**——掺白只会得到一层更浅的彩色，凑近看还是一坨颜色；
   换成纸色才是「这一格透了、后面就是纸」。经纬细线留着，所以它还看得出是一格，
   只是这一格已经没有颜色了。
-- **色块边线不淡**：它画在棋盘的另一层（`#rb` 那张 SVG，见 `05-board.css`），
+- **色块边线不淡**：它画在棋盘的另一层（`#rb` 那张 SVG，见 `styles/base/board.css`），
   根本不在这套 `.cell` 里。块与块的界线是解题信息，格子里填过什么是「做过的活」，
   两件事本来就该分开对待，所以格子怎么退，块界都照样清楚。
 - 冲突的格子不淡（底色还原成色块色），键盘焦点落在哪一格就把哪一格还原。
@@ -242,7 +242,7 @@ looks/
   等待期间已经淡着的格子不动：新的一笔只点亮刚变的那几格，整盘不会闪一下。
 - 判断只看 `state.marks` / `state.auto`（这格有没有 ×、有没有皇后），
   跟外观面板选的是哪种画法无关——以后加新外观不用动 `ui/fade.js`。
-- 落地：`settings.fadeMark` / `settings.fadeQueen` + `.cell.is-dim`（`06-board-states.css` 管淡成什么样，
+- 落地：`settings.fadeMark` / `settings.fadeQueen` + `.cell.is-dim`（`styles/base/board-states.css` 管淡成什么样，
   `DIM_DELAY` 管等多久）。续玩恢复出来的盘直接就淡着，不会先整盘亮半秒。
 - 解开那一刻皇后那几格亮回来（`.board.is-won` 里那一条）：这盘棋就是奖品，不该还灰着。
 
@@ -355,11 +355,16 @@ looks/
 ```
 .
 ├─ index.html              只有骨架：顶栏 / 棋盘 / 信息条 / 工具栏 + 一个 #sheets 挂载点
-│                          （约 200 行；浮层的 markup 不在这个文件里）
+│                          （约 180 行；浮层的 markup 不在这个文件里）
 ├─ serve.py                局域网静态服务器（零依赖）
 ├─ 启动局域网游戏.bat / start-lan.sh
 ├─ src/
-│  ├─ styles/              按加载顺序编号的样式片段
+│  ├─ styles/
+│  │  ├─ all.css           唯一入口：加载顺序全在这里（index.html 只引这一个）
+│  │  ├─ base/             骨架与棋盘：令牌 / 页面 / 顶栏 / 舞台 / 棋盘 / 按钮 / 遮罩 / 动画 / 引导
+│  │  ├─ sheet.css         浮层外壳（.sheet-wrap / .sheet / .sheet-done）
+│  │  ├─ panels/           每个面板一个文件，跟 src/js/ui/panels/ 同名
+│  │  └─ responsive.css    小屏适配，必须最后
 │  └─ js/
 │     ├─ main.js           入口：挂载浮层 + 启动流程 + 尺寸监听 + 调试探针
 │     ├─ events.js         棋盘指针 / 键盘 / 工具栏 / 全局监听
@@ -445,8 +450,21 @@ ui/panels/index.js 是这些面板唯一的清单
 
 ### 样式
 
-`src/styles/` 里的文件**按编号顺序加载**（`index.html` 里逐个 `<link>`），
-`01-tokens.css` 放设计令牌，`18-responsive.css` 必须最后。新增片段时按顺序插号即可。
+`index.html` 只有一行 `<link href="src/styles/all.css">`，顺序全在 `all.css` 的 `@import` 里排：
+
+```
+base/tokens → page → topbar → stage → board → board-states → regions → buttons → veil
+→ base/animations → sheet.css → panels/(settings → info → result → mismatch)
+→ base/guide → panels/(records → look) → responsive.css
+```
+
+三条规矩：`base/` 是骨架，浮层与面板在后；**在同一元素上叠加的样式要排在它覆盖的那个后面**
+（`mismatch` 压在 `result` 之后、`records` 压在 `responsive` 之前，都是这个道理）；
+`responsive.css` 必须最后——它就是靠「后来居上」压前面那些固定尺寸的。
+
+新增一段样式：属于哪个面板就写进 `panels/<面板>.css`；跨面板的小件（`.btn` / `.btn-text` /
+`.sheet-done`）才放进 `base/buttons.css` 与 `sheet.css`。顺序默认不用管，
+只有「同一元素上后写的要覆盖先写的」时才需要在 `all.css` 里调整两行 import 的先后。
 
 ### 加一个浮层面板
 
@@ -458,7 +476,9 @@ markup、元素引用、事件、开关全在 `src/js/ui/panels/xxx.js` 里。�
    `createSheet({ id, wrap, panel, opener, ... })`；
 2. 在 `ui/panels/index.js` 的 `PANELS` 里加一行 import 和一项。
 
-**不用动** `index.html`、`core/dom.js`、`events.js`、`app/actions.js`、`core/state.js`：
+样式另外两条：在 `src/styles/panels/` 建个同名文件写自己那份，再在 `src/styles/all.css`
+加一行 `@import`。**不用动** `index.html`、`core/dom.js`、`events.js`、`app/actions.js`、
+`core/state.js`：
 - `index.html` 只有一行 `<div id="sheets"></div>` 当挂载点；
 - `canPlay()` 只看 `view.sheet`（字符串），浮层基座负责维护它；
 - Esc / Tab / `inert` / `aria-expanded` / 互斥都在 `createSheet` 里，面板只声明行为。
@@ -479,14 +499,14 @@ markup、元素引用、事件、开关全在 `src/js/ui/panels/xxx.js` 里。�
 
 | 想做的事 | 改哪里 |
 | --- | --- |
-| 改配色 / 圆角 / 阴影 | `src/styles/01-tokens.css` |
+| 改配色 / 圆角 / 阴影 | `src/styles/base/tokens.css` |
 | 改色块底色池 | `src/js/core/palette.js`（用 `node tools/gen-palette.mjs` 生成候选） |
-| 改顶栏 / 信息条 / 棋盘 / 面板外观 | 对应编号的 CSS 片段（信息条在 `03-topbar.css`） |
+| 改顶栏 / 信息条 / 棋盘 / 面板外观 | 对应模块的 CSS 文件（信息条在 `styles/base/topbar.css`） |
 | 加一个设置开关 | `core/config.js` 的 `DEFAULT_SETTINGS` + `loadSettings`（老存档给个兜底），然后**全在 `ui/panels/settings.js` 一个文件里**：`HTML` 里加一行 `.switch-row`（放进 `#sheetMore`，默认折在「显示更多选项」里）、`syncSheet()` 里 `setSwitch('swXxx', settings.xxx)`、`mount()` 里那个 `sheet` 的 click 分支加一支。别的文件一个字都不用改 |
-| 改唯一位置提示的强度 / 节奏 | `06-board-states.css` 的 `.cell.is-forced`（`forcedGlow` 的峰值亮度与 2.8s 呼吸周期；这里刻意不描边） |
+| 改唯一位置提示的强度 / 节奏 | `styles/base/board-states.css` 的 `.cell.is-forced`（`forcedGlow` 的峰值亮度与 2.8s 呼吸周期；这里刻意不描边） |
 | 改拖动标 × 的对齐方式 | `events.js` 的 `pointermove`（`settings.alignDrag` 一开一关两条路）、默认值在 `core/config.js` |
-| 改淡化淡成什么样 / 等多久 | `06-board-states.css` 的 `.is-dim`（底色与画的透明度）、`ui/fade.js` 的 `DIM_DELAY`（防抖） |
-| 加一套外观（色块 / 叉 / 皇后） | 在 `src/js/looks/` 新建一个插件文件，再在 `looks/index.js` 的 `PLUGINS` 里加一行 import。字段见 `looks/index.js` 开头；叉如果要在棋盘上换笔画，才需要在 `17-look.css` 补一条 `html[data-mark="…"]` |
+| 改淡化淡成什么样 / 等多久 | `styles/base/board-states.css` 的 `.is-dim`（底色与画的透明度）、`ui/fade.js` 的 `DIM_DELAY`（防抖） |
+| 加一套外观（色块 / 叉 / 皇后） | 在 `src/js/looks/` 新建一个插件文件，再在 `looks/index.js` 的 `PLUGINS` 里加一行 import。字段见 `looks/index.js` 开头；叉如果要在棋盘上换笔画，才需要在 `styles/panels/look.css` 补一条 `html[data-mark="…"]` |
 | 改色块图案的浓淡 / 换一套图形 | 对应主题插件里的 `tone` 与 `MOTIFS`（几何 `geometry.js`、自然 `nature.js`、天空 `sky.js`、贴纸 `sticker.js`；纯色在 `classic.js`） |
 | 新加一整套色块主题 | 照 `looks/nature.js` 抄结构：18 枚 `MOTIFS` + 一个 `tone`，要提亮加 `ink: 'tint'`、要整层压淡加 `veil`。面板会自己长出第 6 个展位 |
 | 改限时挡位 | `core/config.js` 的 `LIMIT_OPTIONS`（面板按钮是按它生成的） |
@@ -496,13 +516,13 @@ markup、元素引用、事件、开关全在 `src/js/ui/panels/xxx.js` 里。�
 | 改出题规则 | `src/js/engine/engine.js`（改动后跑 `node tools/test-engine.mjs`） |
 | 改提示措辞 / 推理等级 | `src/js/engine/hint.js`（`node tools/test-hint.mjs`；L4 那套话看 `check-probe-guide.mjs`） |
 | 改难度评分 | `src/js/engine/difficulty.js` + `game/vibe.js` |
-| 改信息条有哪几段 / 什么顺序 | `index.html` 的 `.hud`（每段一个 `.hud-seg`，样式在 `03-topbar.css`），读数由 `ui/render.js` 与 `ui/difficulty.js` 写 |
-| 改信息页的卡片 / 文案 | `ui/panels/info.js` 的 `HTML`（`.info-grid`）+ `paintInfo()` / `renderDiff()`，样式在 `11-sheet-difficulty.css` |
+| 改信息条有哪几段 / 什么顺序 | `index.html` 的 `.hud`（每段一个 `.hud-seg`，样式在 `styles/base/topbar.css`），读数由 `ui/render.js` 与 `ui/difficulty.js` 写 |
+| 改信息页的卡片 / 文案 | `ui/panels/info.js` 的 `HTML`（`.info-grid`）+ `paintInfo()` / `renderDiff()`，样式在 `styles/panels/info.css` |
 | 改「补齐」什么时候露 / 补哪几格 | `game/rules.js` 的 `pendingQueens()`（三条判据都在这儿）；露不露的文案在 `ui/hint.js` 的 `setNudge()`，落子节奏在 `app/actions.js` 的 `fillQueens()` |
 | 改步数的上限 / 读法 | `core/state.js` 的 `UNDO_MAX`（同时管入栈与显示）；`60+` 的写法在 `core/utils.js` 的 `stepText()` |
 | 改战绩记什么 | `core/records.js` 的 `add()` / `tidy()`（加字段记得兼容老数据） |
 | 改排行榜怎么分组 / 排序 | `core/records.js` 的 `group()`；筛选项在 `ui/panels/records.js` 的 `renderBoard()` |
-| 改战绩行 / 排行榜长什么样 | `ui/panels/records.js` 的 `rowHtml()` / `lbRow()` + `16-records.css` |
+| 改战绩行 / 排行榜长什么样 | `ui/panels/records.js` 的 `rowHtml()` / `lbRow()` + `styles/panels/records.css` |
 | 改棋盘缩略图 | `game/preview.js`（纯字符串，改完看 `tools/check-records.mjs`） |
 | 加键位 / 手势 | `src/js/events.js` |
 
@@ -542,7 +562,8 @@ node tools/check-diff-ui.mjs     # 信息条 + 本局信息页：读数 / 难度
    （浮层的 markup 已经是 JS 里的模板字符串，不用 `?raw` 再引一次）；
 2. `src/js/engine/` 三个文件是「经典脚本 + CJS 双模」，浏览器里挂在 `window.Queens*`、
    Node 里用 `require`（`tools/` 大量依赖）。要转成纯 ESM 时，记得同步改 `tools/` 的 `require`；
-3. `index.html` 里的 17 个 `<link>` 会被打包器自动合并，不用手工合并 CSS。
+3. `index.html` 里只剩一个 `<link>`（`src/styles/all.css`），打包器会把那串 `@import`
+   自动合成一份，不用手工合并 CSS。
 
 ## 约定
 

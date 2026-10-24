@@ -1,0 +1,395 @@
+/* panels/settings.css — 设置面板：棋盘尺寸、常用尺寸、挑战（限时 / 禁提示 / 禁撤销）、
+   「显示更多选项」里的开关、目标难度、换一局、分享棋盘。
+   开关与难度的落地时机同一条规矩：改了点「换一局」才生效。 */
+
+/* ---- 棋盘尺寸：步进器 + 常用尺寸 ---- */
+.stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 0;
+  border-bottom: 1px dashed rgba(58, 51, 53, .14);
+}
+
+.stepper-label {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.stepper-label small {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-mute);
+}
+
+.stepper-ctl {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+}
+
+.step-btn {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  background: var(--bg-card);
+  box-shadow: 0 2px 0 var(--ink);
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform var(--t-fast), box-shadow var(--t-fast), opacity var(--t-fast);
+}
+
+.step-btn:active:not(:disabled) { transform: translateY(2px); box-shadow: none; }
+.step-btn:disabled { opacity: .28; box-shadow: none; cursor: not-allowed; }
+
+.step-val {
+  min-width: 34px;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.quick-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 0 2px;
+  border-bottom: 1px dashed rgba(58, 51, 53, .14);
+}
+
+/* ============================================================
+   挑战：限时 / 禁用提示 / 禁用撤销
+   ------------------------------------------------------------
+   用虚线框 + 米色底围成一小组，跟上下那些常规开关分开：
+   这一组是「给这局加难度」，不是偏好设置。
+   ============================================================ */
+.group-title {
+  margin: 14px 0 6px;
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: 2.6px;
+  color: var(--ink-faint);
+}
+
+/* 挑战这一组跟尺寸 / 难度同一个规矩：改了点「换一局」才落地，
+ * 所以有未落地的改动时标题直接说出来，别让人以为已经生效。 */
+.group-title.is-pending {
+  color: #C25A12;
+  letter-spacing: 1.4px;
+}
+
+.challenge {
+  margin-bottom: 10px;
+  padding: 0 12px;
+  border: 2px dashed rgba(58, 51, 53, .24);
+  border-radius: 14px;
+  background: var(--bg-body);
+}
+
+.challenge .limit-row { padding: 10px 0 4px; }
+.challenge .switch-row { padding: 9px 0; border-bottom: 0; }
+.challenge .switch-row:last-child { padding-bottom: 11px; }
+.challenge .switch-row + .switch-row { border-top: 1px dashed rgba(58, 51, 53, .14); }
+
+.limit-opts {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.lbtn {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 30px;
+  padding: 2px;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  background: var(--bg-card);
+  box-shadow: 0 2px 0 var(--ink);
+  font-size: 11.5px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform var(--t-fast), box-shadow var(--t-fast), background var(--t-fast), color var(--t-fast);
+}
+
+.lbtn:active:not(.is-on) { transform: translateY(2px); box-shadow: none; }
+
+/* 「不限」选中还是素色；选了具体分钟数就用橙底——挑战是真开着的 */
+.lbtn.is-on { background: var(--bg-neutral); color: var(--ink); }
+.lbtn.is-on:not([data-limit="0"]) { background: #F2762E; color: #FFFFFF; }
+
+/* ============================================================
+   「显示更多选项」
+   ------------------------------------------------------------
+   换一局以下的那一坨（开关 + 分享）默认收起来：打开设置多半只是想换局，
+   一屏塞满开关反而找不到那个最大的按钮。点一下展开，状态不写盘。
+   ============================================================ */
+.more-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin: 10px 0 2px;
+  padding: 8px 10px;
+  border: 2px dashed rgba(58, 51, 53, .3);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--ink-mute);
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: .4px;
+  cursor: pointer;
+  transition: background var(--t-fast), color var(--t-fast), border-color var(--t-fast);
+}
+
+.more-btn:hover { background: var(--bg-body); color: var(--ink); }
+
+.more-btn:active { transform: translateY(1px); }
+
+.more-caret {
+  flex: 0 0 auto;
+  transition: transform .18s var(--spring);
+}
+
+.more-btn[aria-expanded="true"] .more-caret { transform: rotate(180deg); }
+
+/* 展开的那一叠：从按钮底下淡进来，别一下子把面板顶高一大截 */
+.sheet-more {
+  animation: fadeIn .18s ease both;
+}
+
+.sheet-more .switch-row:first-child { padding-top: 12px; }
+
+.diff-row {
+  padding: 12px 0 10px;
+  border-bottom: 1px dashed rgba(58, 51, 53, .14);
+}
+
+.diff-opts {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.dbtn {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 30px;
+  padding: 2px 4px;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  background: var(--bg-card);
+  box-shadow: 0 2px 0 var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .02em;
+  cursor: pointer;
+  transition: transform var(--t-fast), box-shadow var(--t-fast), background var(--t-fast), color var(--t-fast);
+}
+
+.dbtn:active:not(.is-on) { transform: translateY(2px); box-shadow: none; }
+.dbtn.is-on { background: var(--ink); color: var(--bg-body); }
+
+.dbtn[data-level="easy"].is-on { background: #22B573; color: #fff; }
+.dbtn[data-level="mid"].is-on { background: var(--accent); color: var(--ink); }
+.dbtn[data-level="hard"].is-on { background: #F2762E; color: #fff; }
+.dbtn[data-level="extreme"].is-on { background: #E23B3B; color: #fff; }
+
+/* 档位不再「接管」尺寸控件：它只开放一段可选区间（见 ui/panels/settings.js 的 rangeOf）。
+ * 越界的尺寸根本不会出现在快捷行里，步进器也在区间两端禁用。 */
+
+.quick-row .q-label {
+  align-self: center;
+  margin-right: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-faint);
+}
+
+.qbtn {
+  min-height: 28px;
+  padding: 2px 9px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--bg-card);
+  box-shadow: 0 2px 0 var(--ink);
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform var(--t-fast), box-shadow var(--t-fast), background var(--t-fast);
+}
+
+.qbtn:active { transform: translateY(2px); box-shadow: none; }
+.qbtn.is-on { background: var(--accent); }
+
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 0;
+  border-bottom: 1px dashed rgba(58, 51, 53, .14);
+}
+
+.switch-row:last-of-type { border-bottom: 0; }
+
+.switch {
+  position: relative;
+  flex: 0 0 auto;
+  width: 52px;
+  height: 30px;
+  padding: 0;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--bg-neutral);
+  cursor: pointer;
+  transition: background .18s ease;
+}
+
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  border: 2px solid var(--ink);
+  transition: transform .18s var(--spring);
+}
+
+.switch[aria-checked="true"] { background: var(--ok); }
+.switch[aria-checked="true"]::after { transform: translateX(22px); }
+
+/* ---- 换一局（分隔线以上：改了要点这里才生效） ---- */
+.shuffle-row {
+  padding: 12px 0 10px;
+  border-bottom: 1px dashed rgba(58, 51, 53, .14);
+}
+
+.shuffle-row .btn {
+  width: 100%;
+  min-height: 42px;
+  letter-spacing: 1px;
+}
+
+.shuffle-row .btn.is-pending {
+  animation: pendingNudge 2.4s ease-in-out infinite;
+}
+
+@keyframes pendingNudge {
+  0%, 100% { box-shadow: var(--shadow-btn); }
+  50% { box-shadow: 0 3px 0 var(--ink), 0 0 0 3px rgba(255, 217, 61, .55); }
+}
+
+.shuffle-hint {
+  margin: 7px 0 0;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--ink-faint);
+  transition: color var(--t-fast);
+}
+
+.shuffle-hint.is-pending { color: var(--ink); }
+
+.share {
+  margin-top: 4px;
+  padding-top: 12px;
+}
+
+.share-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.share-tag {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  padding: 1px 8px;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  background: var(--bg-neutral);
+  font-size: 10px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .5px;
+}
+
+.share-code {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  background: var(--bg-neutral);
+  box-shadow: inset 0 2px 0 rgba(58, 51, 53, .05);
+  color: var(--ink);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  letter-spacing: .5px;
+  word-break: break-all;
+  resize: none;
+  outline: none;
+  overflow-y: auto;
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: default;
+  transition: background var(--t-fast), box-shadow var(--t-fast);
+}
+
+.share-code::placeholder {
+  color: var(--ink-faint);
+  font-family: inherit;
+  letter-spacing: 0;
+}
+
+.share-code:focus {
+  background: var(--bg-card);
+  box-shadow: 0 0 0 3px rgba(255, 217, 61, .6);
+}
+
+.share-btns {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.share-btns .btn {
+  min-height: 38px;
+  font-size: 12.5px;
+  letter-spacing: .3px;
+}
+
+.share-status {
+  margin: 6px 0 0;
+  min-height: 15px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--ink-faint);
+  transition: color var(--t-fast);
+}
+
+.share-status.is-good { color: #17945B; }
+.share-status.is-bad { color: #D8382F; }
