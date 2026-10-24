@@ -46,7 +46,6 @@ export function render(anim) {
     cell.classList.toggle('is-q', s === 'q');
     cell.classList.toggle('is-x', s === 'x');
     cell.classList.toggle('is-auto', s === 'a');
-    cell.classList.toggle('r-ok', counts[g] === 1);
     cell.classList.toggle('r-over', counts[g] > 1);
     cell.classList.toggle('is-conflict', showConflict && cf.cells.has(i));
     cell.classList.toggle('is-forced', forced[i] !== 0);

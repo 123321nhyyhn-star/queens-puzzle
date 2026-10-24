@@ -235,7 +235,12 @@
   z-index: 4;
 }
 
-.cell.r-ok { background-image: linear-gradient(rgba(255, 255, 255, .22), rgba(255, 255, 255, .22)); }
+/* 这里**故意没有「这块放好了」的底色处理**（以前是给整块 r-ok 洗一层白 22%）。
+   色块图案的墨色是照原始底色算死的（见 game/skin.js 的 tintOf / shadeOf）：
+   底色一变白，图案跟底色的差就没了 —— 天空那套本来是朝纸白提亮的，
+   一洗白直接跟底色贴成一片，整块的图案凭空消失；就算压暗的那几套，
+   整块也会突然浅一档，看着像这块掉色了。
+   一块放没放好，色卡上有 ✓、棋盘上有皇后，两处都说过了，不必再动底色。 */
 .cell.r-over {
   background-image: repeating-linear-gradient(
     45deg,
