@@ -30,6 +30,9 @@ export function paintHudLabel() {
     '走了 ' + (state.steps || 0) + ' 步' +
       (state.stepLimit ? '，限步 ' + state.stepLimit : '')
   ];
+  /* 命数不在信息条里（它自己一排，见 ui/lives.js），但读屏器念这一条时
+   * 得把它带上：那是这一局最要紧的一条限制。 */
+  if (state.lifeLimit) parts.splice(2, 0, '还剩 ' + (state.lives || 0) + ' 条命');
   if (state.vibe) parts.push('难度 ' + state.vibe.level + ' ' + state.vibe.score.toFixed(1) + ' 分');
   btnHud.setAttribute('aria-label', '本局信息：' + parts.join('，'));
 }

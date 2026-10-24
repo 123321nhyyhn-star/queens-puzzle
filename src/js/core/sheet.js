@@ -87,8 +87,15 @@ export function openSheet(id, opt) {
   opt = opt || {};
 
   /* 互斥：开一个新的就把旧的收掉。swap 让旧的那个别把焦点抢回去，
-   * 否则「从信息页跳去设置」会在两帧之间闪一下焦点。 */
-  if (current) closeSheet(current, { swap: true });
+   * 否则「从信息页跳去设置」会在两帧之间闪一下焦点。
+   *
+   * 旧的那层可能声明「不许关」（输掉的结果层 / 没抽到够格的盘）。这时候玩家
+   * 已经点了别的入口，就是选了「离开这一屏」，按 swap 强收一次 —— 否则它会被
+   * 留在 DOM 里亮着，而 current 已经换成了新的那层，之后再没人能把它收掉
+   * （表现为：输了之后点顶栏「新的一局」，换完盘那张失败卡还浮在新棋盘上）。 */
+  if (current && !closeSheet(current, { swap: true })) {
+    closeSheet(current, { swap: true, force: true });
+  }
 
   current = id;
   view.sheet = id;

@@ -2,9 +2,9 @@
  * looks/index.js
  * 外观插件登记处。
  * ----------------------------------------------------------------------------
- * 外观（色块图案 / 叉 / 皇后）不再写死在 core/config.js 里，而是一批插件：
+ * 外观（色块图案 / 叉 / 皇后 / 生命）不再写死在 core/config.js 里，而是一批插件：
  * `src/js/looks/` 下每个文件导出一个插件，一个插件可以只提供一样东西，
- * 也可以三样都给。面板（ui/panels/look.js）按这里登记的顺序现场生成展柜，
+ * 也可以几样都给。面板（ui/panels/look.js）按这里登记的顺序现场生成展柜，
  * 棋盘（game/skin.js、game/board.js）按存档里的 id 去取画法。
  *
  * 一个插件长这样：
@@ -15,10 +15,11 @@
  *     note: '一句话说明',
  *     surfaces: [ ... ],    // 色块：可以没有
  *     marks:    [ ... ],    // 叉：可以没有
- *     pieces:   [ ... ]     // 皇后：可以没有
+ *     pieces:   [ ... ],    // 皇后：可以没有
+ *     lifes:    [ ... ]     // 生命：可以没有（键名按 `<名字>s` 的规矩，所以是 lifes）
  *   };
  *
- * 三类样式各自的字段：
+ * 几类样式各自的字段：
  *
  *   色块 surface —— { id, name, tone, motifs, desc, ink?, veil? }
  *     tone    图形跟底色差多少（0–1）。0 = 没有图案（纯色）。
@@ -37,39 +38,46 @@
  *   皇后 piece —— { id, name, svg }
  *     svg  整段 SVG 源码，剪影走 currentColor（跟格子的墨色同步）。
  *
+ *   生命 life —— { id, name, desc }
+ *     只给名字与说明：画法在 styles/base/lives.css，按 <html data-life> 切换。
+ *     这一条不在棋盘上（挑战「标错惩罚」的命数指示），打完名册就是一套能用的样式。
+ *
  * 加一个插件：在 looks/ 里新建一个文件，然后在下面 PLUGINS 里加一行 import。
  * 别处都不用动 —— 面板会自己长出新的展位，存档认不出来的 id 也会退回默认。
  * ========================================================================== */
 
 import classic from './classic.js';
 import geometry from './geometry.js';
+import life from './life.js';
 import nature from './nature.js';
 import sky from './sky.js';
 import sticker from './sticker.js';
 
-/* 三类外观。key 是它存在 settings 里的字段，attr 是落到 <html> 上的钩子。 */
+/* 四类外观。key 是它存在 settings 里的字段，attr 是落到 <html> 上的钩子。 */
 export var KIND = {
   surface: { key: 'surfaceStyle', attr: 'data-surface', label: '色块' },
   mark: { key: 'markStyle', attr: 'data-mark', label: '叉' },
-  piece: { key: 'pieceStyle', attr: 'data-piece', label: '皇后' }
+  piece: { key: 'pieceStyle', attr: 'data-piece', label: '皇后' },
+  life: { key: 'lifeStyle', attr: 'data-life', label: '生命' }
 };
 
 /* 顺序就是面板里从上到下的顺序，也是每一类里第一项「默认」的意思。 */
-export var KINDS = ['surface', 'mark', 'piece'];
+export var KINDS = ['surface', 'mark', 'piece', 'life'];
 
 /* ---- 插件清单 ----
  * 色块图案的几套主题排在前面（面板里是同一排），墨线那套垫底：
- * 它提供的「纯色」就是没有图案的那一档。 */
-var PLUGINS = [geometry, nature, sky, sticker, classic];
+ * 它提供的「纯色」就是没有图案的那一档。生命单独一个插件——它不在棋盘上，
+ * 跟哪套纹样都没关系。 */
+var PLUGINS = [geometry, nature, sky, sticker, classic, life];
 
 /* ==========================================================
-   登记：把插件摊平成三张表
+   登记：把插件摊平成四张表
    ----------------------------------------------------------
    每一项都带上 plugin / pluginName，面板据此分组、按钮上挂小标签。
    ========================================================== */
 export var PLUGIN_LIST = [];
-var LISTS = { surface: [], mark: [], piece: [] };
-var GROUPS = { surface: [], mark: [], piece: [] };
+var LISTS = { surface: [], mark: [], piece: [], life: [] };
+var GROUPS = { surface: [], mark: [], piece: [], life: [] };
 
 (function collect() {
   for (var p = 0; p < PLUGINS.length; p++) {
@@ -133,7 +141,8 @@ export function styleName(kind, id) {
 export var DEFAULT_LOOK = {
   surface: ((LISTS.surface || [])[0] || {}).id || '',
   mark: ((LISTS.mark || [])[0] || {}).id || '',
-  piece: ((LISTS.piece || [])[0] || {}).id || ''
+  piece: ((LISTS.piece || [])[0] || {}).id || '',
+  life: ((LISTS.life || [])[0] || {}).id || ''
 };
 
 /** 皇后那一格画什么。认不出来就画第一套，不至于让格子空着。 */

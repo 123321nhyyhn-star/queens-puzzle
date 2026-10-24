@@ -26,11 +26,16 @@ export const state = {
    * 挑战的「步数限制」看 stepLimit，用完还没解开就判负。 */
   steps: 0,
   stepLimit: 0,
+  /* 挑战「标错惩罚」：这一局一共给几条命（0 = 不惩罚）与还剩几条。
+   * 放错一次扣一条（见 app/actions.js 的 rejectQueen），扣到 0 判负。
+   * 两条都跟着存档走，重试这一局时一起回到满格（puzzle.js 的 applyBoard）。 */
+  lives: 0,
+  lifeLimit: 0,
   elapsed: 0,
   runningSince: 0,
   status: 'playing',
-  /* 输掉的原因：'time'（超时）或 'steps'（步数用尽），没输时为 null。
-   * 结果层与战绩都靠它挑文案——同样是 lost，说的话不一样。 */
+  /* 输掉的原因：'time'（超时）/ 'steps'（步数用尽）/ 'lives'（命用完了），
+   * 没输时为 null。结果层与战绩都靠它挑文案——同样是 lost，说的话不一样。 */
   lostBy: null,
   auto: null,
   conflicts: null,
@@ -57,6 +62,7 @@ export const pending = {
   difficulty: 'any',
   timeLimit: 0,
   stepLimit: 0,
+  lifeLimit: 0,
   noHint: false,
   noUndo: false
 };

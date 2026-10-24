@@ -23,13 +23,28 @@ html[data-mark="dot"] .mark i + i { display: none; }
 html[data-piece="cat"] .piece svg { filter: none; }
 
 /* ============================================================
-   外观面板：两排展柜
+   外观面板：四排展柜
    ------------------------------------------------------------
    一个展位 = 玻璃罩（顶灯 + 台面 + 反光）+ 下方的名牌。
    罩子里的底色用两种淡彩，跟棋盘上的格子同一种调子：
    这样看到的就是它摆在棋盘上的样子，不用来回关面板对照。
+   最后一排「生命」不在棋盘上（挑战「标错惩罚」的命数读数），
+   所以它那块罩子用另一种底色，跟前三排分开。
    ============================================================ */
 .look-sheet { padding-top: 14px; }
+
+/* 「知道了」钉在面板下沿：四排展柜加起来在 390×844 上已经超过一屏（.sheet 的 92svh），
+   面板自己滚，滚到哪都点得到这一颗。
+   这条以前只开在矮屏（responsive.css 的 max-height: 720px）上——加了「生命」那一排
+   之后普通手机也得滚，所以挪到这里常开；矮屏那一份只留压尺寸的活。 */
+.look-sheet .sheet-done {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  margin-top: 8px;
+  background: var(--bg-card);
+  box-shadow: 0 -12px 16px -10px rgba(58, 51, 53, .28);
+}
 
 .case { margin-top: 12px; }
 
@@ -110,6 +125,8 @@ html[data-piece="cat"] .piece svg { filter: none; }
 
 #markRow .sc-case { --sc-bg: #EAEAA4; }
 #pieceRow .sc-case { --sc-bg: #CFF1F4; }
+/* 生命那一排用一块淡红：跟上面三排的暖黄 / 淡蓝分开，一眼知道这一排说的不是棋盘上的东西 */
+#lifeRow .sc-case { --sc-bg: #FADCD8; }
 /* 色块那排的罩子用中性纸色：底下本身就是一块彩色的 3×3 小盘，再用彩色底托会打架 */
 #surfaceRow .sc-case { --sc-bg: #F1E8DA; }
 
@@ -217,8 +234,7 @@ html[data-piece="cat"] .piece svg { filter: none; }
   background: var(--x-ink);
 }
 
-/* ---- 名牌 ---- */
-.sc-plate {
+/* ---- 名牌 ---- */.sc-plate {
   display: flex;
   align-items: baseline;
   justify-content: center;

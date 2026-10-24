@@ -96,7 +96,8 @@ const ui = await page.evaluate(() => {
   const rows = {
     surface: [...document.querySelectorAll('#surfaceRow .showcase')],
     mark: [...document.querySelectorAll('#markRow .showcase')],
-    piece: [...document.querySelectorAll('#pieceRow .showcase')]
+    piece: [...document.querySelectorAll('#pieceRow .showcase')],
+    life: [...document.querySelectorAll('#lifeRow .showcase')]
   };
   const first = rows.surface[0];
   const on = [...document.querySelectorAll('.showcase.is-on')];
@@ -106,7 +107,8 @@ const ui = await page.evaluate(() => {
     surfaceIds: rows.surface.map(b => b.dataset.surface),
     markIds: rows.mark.map(b => b.dataset.mark),
     pieceIds: rows.piece.map(b => b.dataset.piece),
-    checked: on.map(b => b.dataset.surface || b.dataset.mark || b.dataset.piece),
+    lifeIds: rows.life.map(b => b.dataset.life),
+    checked: on.map(b => b.dataset.surface || b.dataset.mark || b.dataset.piece || b.dataset.life),
     plugins: rows.surface.map(b => b.dataset.plugin),
     // 一排里跨了几个插件 → 才挂插件小标签
     srcs: rows.surface.map(b => (b.querySelector('.sc-src') || {}).textContent || ''),
@@ -128,7 +130,8 @@ const ui = await page.evaluate(() => {
       return r1.left > r0.left + 20 && Math.abs(r1.top - r0.top) < 2;
     })(),
     overflow: document.getElementById('lookSheet').scrollHeight >
-      document.getElementById('lookSheet').clientHeight + 4
+      document.getElementById('lookSheet').clientHeight + 4,
+    done: getComputedStyle(document.getElementById('lookSheet').querySelector('.sheet-done')).position
   };
 });
 ok('面板打开', ui.open);
@@ -137,14 +140,17 @@ ok('色块的展位有五套：几何 / 自然 / 天空 / 贴纸 / 纯色',
   ui.surfaceIds.join() === 'geo,nature,sky,sticker,plain', ui.surfaceIds);
 ok('叉的展位有两个：叉 / 点', ui.markIds.join() === 'x,dot', ui.markIds);
 ok('皇后的展位有两个：皇后 / 小猫', ui.pieceIds.join() === 'queen,cat', ui.pieceIds);
-ok('默认选中几何 + 叉 + 皇后', ui.checked.join() === 'geo,x,queen', ui.checked);
+ok('生命的展位有两个：红心 / 血条', ui.lifeIds.join() === 'heart,bar', ui.lifeIds);
+ok('默认选中几何 + 叉 + 皇后 + 红心',
+  ui.checked.join() === 'geo,x,queen,heart', ui.checked);
 ok('每个展位都记得自己出自哪个插件',
   ui.plugins.join() === 'geometry,nature,sky,sticker,classic', ui.plugins);
 ok('插件名和样式名一样时不挂小标签，只有「纯色」挂「墨线」',
   ui.srcs.join() === ',,,,墨线', JSON.stringify(ui.srcs));
 ok('单插件的排不挂插件标签', ui.markSrcs.every(v => v === false));
 ok('展位有玻璃罩 / 顶灯 / 台面 / 反光 / 名牌 / 勾', ui.parts.every(Boolean), ui.parts);
-ok('名牌只写名字，没有描述', ui.plates.join() === '几何,自然,天空,贴纸,纯色,叉,点,皇后,小猫',
+ok('名牌只写名字，没有描述',
+  ui.plates.join() === '几何,自然,天空,贴纸,纯色,叉,点,皇后,小猫,红心,血条',
   ui.plates.join());
 ok('标题写着当前用的样式',
   /几何/.test(ui.nows[0]) && /叉/.test(ui.nows[1]) && /皇后/.test(ui.nows[2]),
@@ -153,7 +159,10 @@ ok('色块的预览是 2×2 的带图小盘', ui.surfacePrev === 4 && ui.surface
   `${ui.surfacePrev} 底 / ${ui.surfaceMotifs} 图`);
 ok('两个皇后展位都有画', ui.svgs.every(n => n === 1), ui.svgs);
 ok('展位并排', ui.cols);
-ok('面板内容不溢出', !ui.overflow);
+/* 四排展柜（色块两行 + 叉 + 皇后 + 生命）在 390×844 上比一屏高：
+ * 面板自己滚，「知道了」常开 sticky 钉在下沿 —— 滚到哪都点得到。 */
+ok('内容比一屏高，面板自己滚，「知道了」钉在面板下沿',
+  ui.overflow && ui.done === 'sticky', `${ui.overflow}/${ui.done}`);
 await page.screenshot({ path: SHOTS + '20-look-sheet.png' });
 
 // 面板开着时棋盘锁住

@@ -67,9 +67,11 @@ export function buildBoard(deal) {
 
       // 图案层在最底下：底色之上、× 与皇后之下，纯装饰、不吃点击
       // （窗口与图形由 skin.js 按「整块一枚图形」算，这里只放个空壳）
+      // .miss 是挑战「标错惩罚」的红 X：放错那一下拍上来，自己缩掉（见 ui/lives.js）
       cell.innerHTML = skinMarkup() +
         '<span class="mark"><i></i><i></i></span>' +
         '<span class="piece">' + pieceSvg() + '</span>' +
+        '<span class="miss"><i></i><i></i></span>' +
         '<span class="ring"></span>';
       paintSkin(cell, state.regionColors[g]);
 

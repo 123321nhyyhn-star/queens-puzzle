@@ -4,7 +4,7 @@
  * index.html 与其它样式都不用动（跟 src/js/ui/panels/ 一个规矩）。
  *
  * 顺序的几条规矩（改之前先看）：
- *   - base/ 是骨架：令牌 → 页面 → 顶栏 → 舞台 → 棋盘 → 工具栏 → 遮罩。
+ *   - base/ 是骨架：令牌 → 页面 → 顶栏 → 舞台（含命数）→ 棋盘 → 工具栏 → 遮罩。
  *   - 浮层外壳（sheet.css）在前面，panels/ 里的面板只写壳里的内容。
  *   - 平级规则打架时后面的赢，所以「在同一元素上叠加」的样式要排在它覆盖的后面：
  *     mismatch 压在 result 后面、records 压在 responsive 前面，都是这个道理。
@@ -15,6 +15,7 @@
 @import url("./base/page.css");
 @import url("./base/topbar.css");
 @import url("./base/stage.css");
+@import url("./base/lives.css");
 @import url("./base/board.css");
 @import url("./base/board-states.css");
 @import url("./base/regions.css");

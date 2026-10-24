@@ -13,6 +13,7 @@ import { cellSize, regionPath } from '../game/geometry.js';
 import { FORCED_COL, FORCED_REGION, FORCED_ROW, badRegions, computeAuto, computeConflicts,
   computeForced, queenCount, regionCounts } from '../game/rules.js';
 import { updateHint } from './hint.js';
+import { syncLives } from './lives.js';
 import { paintHudLabel } from './difficulty.js';
 import { fadeCell, settleFade } from './fade.js';
 
@@ -338,6 +339,10 @@ export function updateStats() {
   btnHint.classList.toggle('is-locked', !!settings.noHint);
   btnHint.setAttribute('title', settings.noHint ? '挑战模式：这局不能用提示' : '提示（H）');
   btnClear.disabled = !playing;
+
+  /* 命数（挑战「标错惩罚」）：惩罚没开时这一条整块收起来，棋盘一像素都不挪。
+   * 这里只负责「画成什么样」，碎心那一下由 ui/lives.js 自己在扣命时点名播。 */
+  syncLives();
 
   paintClock();
 }

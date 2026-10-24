@@ -140,6 +140,19 @@ export function queenCount() {
   return n;
 }
 
+/* ---- 这一格是不是解位 ----
+ * 挑战「标错惩罚」（settings.lifeLimit > 0）用它判「放错了」。
+ * 判据只有一条：解里这一行的皇后列 == 这一格的列。每盘唯一解，所以
+ * 「不是解位」就是「放了必输」，不用等冲突——一只皇后独自待着也不会亮冲突线，
+ * 但这一盘它一定是错的。
+ *
+ * 没有解（引擎没加载 / 盘没装上）时一律算对：宁可不罚，也不能把正常的落子判成错。 */
+export function isSolutionCell(i) {
+  var n = state.size;
+  if (!state.solution || !(i >= 0) || i >= n * n) return true;
+  return state.solution[(i / n) | 0] === i % n;
+}
+
 /* ---- 只差皇后 ----
  * 判定「把剩下的空格补成皇后就能赢」，返回那几格的下标；不满足就返回 null。
  * 提示行拿它决定要不要露出「补齐」那颗按钮（见 ui/hint.js），

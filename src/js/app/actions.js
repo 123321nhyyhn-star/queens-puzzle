@@ -11,10 +11,11 @@ import { save } from '../core/storage.js';
 import { announce } from '../core/utils.js';
 import { closeGuide } from '../ui/guide.js';
 import { clearHintTimer, flashHint, updateHint } from '../ui/hint.js';
-import { pendingQueens } from '../game/rules.js';
+import { loseLife } from '../ui/lives.js';
+import { isSolutionCell, pendingQueens } from '../game/rules.js';
 import { pushHistory } from './history.js';
 import { render } from '../ui/render.js';
-import { checkSteps, checkWin } from '../ui/win.js';
+import { checkSteps, checkWin, failByLives } from '../ui/win.js';
 
 /* ==========================================================
    落子 / 标记
@@ -50,6 +51,10 @@ export function onCell(i) {
   if (last && last.i === i && (now - last.t) < 340) {
     state.lastTap = null;
     state.marks[i] = last.prev;
+    /* 标错惩罚：这一格放不了皇后。第一下那笔也算这个手势的一部分，一起作废——
+     * 不压撤销点、不涨步数（别的入口都走 placeQueen 里那道检查，这里先拦一道，
+     * 是因为双击这条路已经把 marks 改回去了）。last.pushed 就是「第一下压过撤销点」。 */
+    if (state.lifeLimit > 0 && !isSolutionCell(i)) { rejectQueen(i, last.pushed); return; }
     if (!last.pushed) pushHistory();
     placeQueen(i, true);
     return;
@@ -95,6 +100,10 @@ export function onCell(i) {
 
 export function placeQueen(i, skipHistory) {
   if (!canPlay()) return;     // 赢了 / 超时封盘的局，键盘也别想再落子
+  /* 标错惩罚（挑战）：这一格不是解位就别落子 —— 红 X 闪一下、格子还原成空的、
+   * 扣一条命，扣光判负（见下面的 rejectQueen）。
+   * 判在 pushHistory 之前：这一手压根没发生，不该进撤销栈、也不该涨步数。 */
+  if (state.lifeLimit > 0 && !isSolutionCell(i)) { rejectQueen(i); return; }
   if (!skipHistory) pushHistory();
   if (guide.open) closeGuide();
   clearHintTimer();
@@ -105,6 +114,31 @@ export function placeQueen(i, skipHistory) {
   buzz([10, 24, 14]);
   setMarks(state.marks, { from: i });
   announce('已放置皇后');
+}
+
+/* ==========================================================
+   标错惩罚
+   ----------------------------------------------------------
+   棋盘上一个字都不改：这一手没落成，格子该是什么样还是什么样（多半是空的）。
+   红 X、碎心、震动、播报全在 ui/lives.js 里，这里只负责「这一手算不算它的最后一下」。
+   ========================================================== */
+/* rejectQueen(i, tapped)
+ *   tapped = 双击那条路上，第一下（标 ×）已经压过撤销点、也涨过一步。
+ *            这一手既然没发生，那一笔也得跟着作废：撤销点弹掉、步数退回去。
+ *            别的入口（键盘 Q / Enter、单击后落子）都还没压过，传 false。 */
+function rejectQueen(i, tapped) {
+  if (guide.open) closeGuide();
+  state.lastTap = null;
+  if (tapped && view.undo.length) {
+    view.undo.pop();
+    if (state.steps > 0) state.steps--;
+  }
+  /* 双击那条路会先把第一下那笔撤回去（state.marks 变了、DOM 还没重画），
+   * 这里统一画一遍，保证棋盘就是 state 的样子：这手没落成，格子该是空的。 */
+  render();
+  var left = loseLife(i);
+  // 命扣到 0：这一局封盘（文案与结果卡在 ui/win.js / panels/result.js）
+  if (left <= 0) failByLives();
 }
 
 export function clearBoard(silent) {

@@ -113,6 +113,12 @@ export function sfx(name, detail) {
     case 'remove':
       audio.tone('sine', 300, 190, 0.09, 0, 0.4);
       break;
+    case 'miss':
+      /* 标错惩罚：放错的那一下。一声闷响 + 一点低频噪声，比 'remove' 沉得多，
+       * 一听就知道「这不是我自己撤的」。跟震动一起出现（见 ui/lives.js）。 */
+      audio.noise(0.11, 340, 0.9, 0, 0.42);
+      audio.tone('square', 208, 92, 0.17, 0, 0.26);
+      break;
     case 'auto':
       audio.tone('sine', 1250, 1320, 0.025, 0, 0.1);
       break;

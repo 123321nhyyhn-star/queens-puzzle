@@ -103,6 +103,33 @@ export function stepLimitLabel(n) {
   return n ? n + ' 步' : '不限步数';
 }
 
+/* 挑战：标错惩罚 —— 这一局一共给几条命（0 = 不惩罚）。
+ * 判错的口径是「这一格是不是解位」：每盘唯一解，所以不是解位就是错的
+ * （见 game/rules.js 的 isSolutionCell）。放错一次红 X 闪一下、格子还原成空的、
+ * 扣一条命；扣到 0 就判负（ui/win.js 的 failGame('lives')）。
+ *
+ * 挡位从「1 条」起步：一条命等于「一次都不许错」，是这里最狠的一档。 */
+export var LIFE_OPTIONS = [
+  { lives: 0, label: '不惩罚' },
+  { lives: 1, label: '1 条' },
+  { lives: 3, label: '3 条' },
+  { lives: 5, label: '5 条' },
+  { lives: 8, label: '8 条' }
+];
+
+export var LIFE_MAX = 20;
+
+export function normalizeLives(v) {
+  v = parseInt(v, 10);
+  if (!v || v < 0) return 0;
+  return Math.min(v, LIFE_MAX);
+}
+
+/** 命数的人话说法：「3 条命」/「不惩罚」。 */
+export function lifeLabel(n) {
+  return n ? n + ' 条命' : '不惩罚';
+}
+
 export var DEFAULT_SETTINGS = {
   size: 8,
   difficulty: 'any',
@@ -117,13 +144,15 @@ export var DEFAULT_SETTINGS = {
   // 挑战（即时生效，也跟着存盘）
   timeLimit: 0,     // 本局限时（毫秒），0 = 不限时
   stepLimit: 0,     // 本局步数限制（0 = 不限），用完还没解开就算输
+  lifeLimit: 0,     // 本局命数（0 = 不惩罚），放错一次扣一条，扣光判负
   noHint: false,    // 禁用提示
   noUndo: false,    // 禁用撤销
-  // 外观（即时生效，跟着存盘）：色块的图案、叉的样式、皇后样式
+  // 外观（即时生效，跟着存盘）：色块的图案、叉的样式、皇后样式、生命的画法
   // 默认就是各自那一类里的第一套（见 looks/index.js 的 DEFAULT_LOOK）
   surfaceStyle: DEFAULT_LOOK.surface,
   markStyle: DEFAULT_LOOK.mark,
   pieceStyle: DEFAULT_LOOK.piece,
+  lifeStyle: DEFAULT_LOOK.life,
   /* 淡化（即时生效）：填过的格子退到后面去，别跟空格抢眼睛。
    * 默认都关着——淡下去以后「这格处理过了」的分量也跟着没了，
    * 想要安静的棋盘再自己开。 */

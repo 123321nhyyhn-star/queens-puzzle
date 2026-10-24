@@ -76,7 +76,7 @@ export function toneOfSize(n) {
  *   lim 本局限时（0 = 不限）  ms 用时
  *   sl  本局步数限制（0 = 不限）  st 这一局走了几步
  *   h   提示次数  mv 落子次数（放了几只皇后，不是步数）
- *   won 是否解开  lr 输的原因（time / steps，解开时为空）
+ *   won 是否解开  lr 输的原因（time / steps / lives，解开时为空）
  *   nh 禁用提示  nu 禁用撤销
  *
  *   st 与 mv 都留着：老记录没有 st（那时还没记真步数），列表里退回用 mv；
@@ -110,7 +110,7 @@ function tidy(raw) {
     h: clampNum(raw.h, 0, 999),
     mv: clampNum(raw.mv, 0, 99999),
     won: raw.won === true || raw.won === 1,
-    lr: raw.lr === 'time' || raw.lr === 'steps' ? raw.lr : '',
+    lr: raw.lr === 'time' || raw.lr === 'steps' || raw.lr === 'lives' ? raw.lr : '',
     nh: raw.nh === true,
     nu: raw.nu === true
   };

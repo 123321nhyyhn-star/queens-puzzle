@@ -22,8 +22,9 @@
 import { newGame } from '../../app/puzzle.js';
 import { buzz, sfx } from '../../core/audio.js';
 import {
-  DIFF_BANDS, DIFF_ORDER, LIMIT_OPTIONS, SIZE_MAX, SIZE_MIN, STEP_OPTIONS,
-  bandRangeLabel, limitLabel, normalizeLimit, normalizeSteps, stepLimitLabel
+  DIFF_BANDS, DIFF_ORDER, LIFE_OPTIONS, LIMIT_OPTIONS, SIZE_MAX, SIZE_MIN, STEP_OPTIONS,
+  bandRangeLabel, lifeLabel, limitLabel, normalizeLives, normalizeLimit, normalizeSteps,
+  stepLimitLabel
 } from '../../core/config.js';
 import { btnNew } from '../../core/dom.js';
 import { createSheet } from '../../core/sheet.js';
@@ -99,6 +100,12 @@ export var HTML = /* html */ `
         <div class="limit-opts" id="stepOpts" role="group" aria-label="步数限制"></div>
       </div>
 
+      <div class="limit-row">
+        <div class="stepper-label">标错惩罚<small id="lifeHint">皇后放到错的格子上会扣一条命，扣光判负</small></div>
+        <!-- 挡位按钮按 core/config.js 的 LIFE_OPTIONS 生成，见 buildLifeOpts -->
+        <div class="limit-opts" id="lifeOpts" role="group" aria-label="标错惩罚"></div>
+      </div>
+
       <div class="switch-row">
         <div class="stepper-label">禁用提示<small>这局的「提示」按钮不可用，只能自己推</small></div>
         <button class="switch" id="swNoHint" type="button" role="switch" aria-checked="false" aria-label="禁用提示"></button>
@@ -120,7 +127,7 @@ export var HTML = /* html */ `
 var wrap = null, sheet = null, backdrop = null, note = null;
 var sizeHint = null, sizeMinus = null, sizePlus = null, sizeVal = null, quickRow = null;
 var diffOpts = null, diffHint = null, limitOpts = null, limitHint = null;
-var stepOpts = null, stepHint = null;
+var stepOpts = null, stepHint = null, lifeOpts = null, lifeHint = null;
 var challengeTitle = null, btnShuffle = null, shuffleHint = null;
 
 var ctl = null;
@@ -177,6 +184,30 @@ export function setPendingSteps(n) {
   announce('步数限制：' + (n ? stepLimitLabel(n) : '不限') + '（换一局后生效）');
 }
 
+/* 标错惩罚：这一局给几条命。跟限时 / 步数一样只写 pending。
+ * 0 是「不惩罚」（默认），不是「0 条命」——写文案时别把这两件事混起来。 */
+function buildLifeOpts() {
+  if (!lifeOpts || lifeOpts.childNodes.length) return;
+  for (var i = 0; i < LIFE_OPTIONS.length; i++) {
+    var o = LIFE_OPTIONS[i];
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'lbtn';
+    b.dataset.lives = String(o.lives);
+    b.textContent = o.label;
+    b.setAttribute('aria-pressed', 'false');
+    lifeOpts.appendChild(b);
+  }
+}
+
+export function setPendingLives(n) {
+  n = normalizeLives(n);
+  if (n === pending.lifeLimit) return;
+  pending.lifeLimit = n;
+  syncNew();
+  announce('标错惩罚：' + (n ? lifeLabel(n) : '不惩罚') + '（换一局后生效）');
+}
+
 /* 这一组里有哪些还没落地的改动，给「换一局」下方的说明与读屏播报共用 */
 function challengeBits() {
   var bits = [];
@@ -185,6 +216,9 @@ function challengeBits() {
   }
   if ((pending.stepLimit || 0) !== (settings.stepLimit || 0)) {
     bits.push(pending.stepLimit ? '限步 ' + stepLimitLabel(pending.stepLimit) : '不限步数');
+  }
+  if ((pending.lifeLimit || 0) !== (settings.lifeLimit || 0)) {
+    bits.push(pending.lifeLimit ? '标错扣命 ' + pending.lifeLimit + ' 条' : '不惩罚');
   }
   if (!!pending.noHint !== !!settings.noHint) {
     bits.push(pending.noHint ? '禁用提示' : '提示可用');
@@ -203,6 +237,7 @@ export function challengeSummary() {
 export function commitChallenge() {
   settings.timeLimit = normalizeLimit(pending.timeLimit);
   settings.stepLimit = normalizeSteps(pending.stepLimit);
+  settings.lifeLimit = normalizeLives(pending.lifeLimit);
   settings.noHint = !!pending.noHint;
   settings.noUndo = !!pending.noUndo;
   saveSettings();
@@ -264,7 +299,8 @@ export function syncNew() {
   note.textContent = '当前这局：' + state.size + '×' + state.size +
     (state.vibe ? ' · ' + state.vibe.level + ' ' + state.vibe.score.toFixed(1) : '') +
     (state.limit ? ' · 限时 ' + limitLabel(state.limit) : '') +
-    (state.stepLimit ? ' · 限步 ' + stepLimitLabel(state.stepLimit) : '');
+    (state.stepLimit ? ' · 限步 ' + stepLimitLabel(state.stepLimit) : '') +
+    (state.lifeLimit ? ' · 标错 ' + state.lifeLimit + ' 条命' : '');
 
   /* 区间两头都写出来：只写「7.0 分起」会让人以为越难越好，抽到 8.6 的极难盘也算数 */
   diffHint.textContent = band
@@ -305,6 +341,21 @@ export function syncNew() {
     ? '换一局后生效：' + stepLimitLabel(sl)
     : (sl ? '本局限步 ' + stepLimitLabel(sl) + '，用完判负，可以重试这一局'
         : '用完还没解开就算输；拖动连涂一整行只算一步');
+
+  /* 标错惩罚：同一个读法，也只写 pending */
+  var lv = pending.lifeLimit || 0;
+  var lvApplied = settings.lifeLimit || 0;
+  var lbts = lifeOpts.querySelectorAll('.lbtn');
+  for (var q = 0; q < lbts.length; q++) {
+    var qon = parseInt(lbts[q].dataset.lives, 10) === lv;
+    lbts[q].classList.toggle('is-on', qon);
+    lbts[q].setAttribute('aria-pressed', qon ? 'true' : 'false');
+  }
+  lifeHint.textContent = lv !== lvApplied
+    ? '换一局后生效：' + (lv ? lifeLabel(lv) : '不惩罚')
+    : (lv ? '本局 ' + lifeLabel(lv) + '，放错一次扣一条，可以重试这一局'
+        : '皇后放到错的格子上会扣一条命，扣光判负');
+
   setSwitch('swNoHint', pending.noHint);
   setSwitch('swNoUndo', pending.noUndo);
 
@@ -395,12 +446,15 @@ export function mount(host) {
   limitHint = document.getElementById('limitHint');
   stepOpts = document.getElementById('stepOpts');
   stepHint = document.getElementById('stepHint');
+  lifeOpts = document.getElementById('lifeOpts');
+  lifeHint = document.getElementById('lifeHint');
   challengeTitle = document.getElementById('challengeTitle');
   btnShuffle = document.getElementById('btnShuffle');
   shuffleHint = document.getElementById('shuffleHint');
 
   buildLimitOpts();
   buildStepOpts();
+  buildLifeOpts();
 
   ctl = createSheet({
     id: 'newgame',
@@ -415,6 +469,7 @@ export function mount(host) {
       pending.difficulty = state.diffApplied || settings.difficulty;
       pending.timeLimit = settings.timeLimit || 0;
       pending.stepLimit = settings.stepLimit || 0;
+      pending.lifeLimit = settings.lifeLimit || 0;
       pending.noHint = !!settings.noHint;
       pending.noUndo = !!settings.noUndo;
       syncNew();
@@ -473,6 +528,15 @@ export function mount(host) {
     var btn = e.target.closest ? e.target.closest('.lbtn') : null;
     if (!btn) return;
     setPendingSteps(parseInt(btn.dataset.steps, 10));
+    sfx('x');
+    buzz(5);
+  });
+
+  /* 标错惩罚：同一套规矩，只记意向 */
+  lifeOpts.addEventListener('click', function (e) {
+    var btn = e.target.closest ? e.target.closest('.lbtn') : null;
+    if (!btn) return;
+    setPendingLives(parseInt(btn.dataset.lives, 10));
     sfx('x');
     buzz(5);
   });

@@ -1,7 +1,7 @@
 /* ============================================================================
  * panels/look.js · 外观面板
  * ----------------------------------------------------------------------------
- * 三排「展柜」：色块的花样、叉、皇后长什么样。
+ * 四排「展柜」：色块的花样、叉、皇后、生命（挑战「标错惩罚」的命数）长什么样。
  * 选项不写在这个文件里：按钮是按 looks/index.js 登记的外观插件现场生成的，
  * 一排里跨了好几个插件时，每个展位左上角会挂一个插件名的小标签。
  *
@@ -35,7 +35,7 @@ export var HTML = /* html */ `
         </svg>
       </button>
     </div>
-    <p class="sheet-note">色块的纹样、叉和皇后各挑一样。选完立刻生效，自动打的标记也一起换。</p>
+    <p class="sheet-note">色块的纹样、叉、皇后和命数各挑一样。选完立刻生效，自动打的标记也一起换。</p>
 
     <!-- 三排展柜：选项按钮由 src/js/looks/ 里登记的外观插件现场生成。
          一排里跨了多个插件时，展位左上角会挂一个插件名的小标签。 -->
@@ -54,6 +54,13 @@ export var HTML = /* html */ `
       <div class="case-row" id="pieceRow" role="radiogroup" aria-label="皇后样式"></div>
     </div>
 
+    <!-- 生命的画法只影响挑战「标错惩罚」那一排命（信息条下面，见 base/lives.css）：
+         惩罚没开的时候是收起来的，所以这一排平时看不出来。 -->
+    <div class="case">
+      <div class="case-head"><b>生命</b><span id="lifeNow">当前：红心</span></div>
+      <div class="case-row" id="lifeRow" role="radiogroup" aria-label="生命的样式"></div>
+    </div>
+
     <button class="btn sheet-done" id="btnLookDone" type="button">知道了</button>
   </div>
 </div>`;
@@ -62,6 +69,8 @@ var lookWrap = null, lookSheet = null, lookBackdrop = null;
 var surfaceRow = null, surfaceNow = null;
 var markRow = null, markNow = null;
 var pieceRow = null, pieceNow = null;
+/* 注意：lifeRow 是这一排展位，跟舞台上方那条命数读数（#livesRow）不是一回事 */
+var lifeRow = null, lifeNow = null;
 
 var sheet = null;
 
@@ -166,11 +175,13 @@ function buildCase(kind) {
 /* 色块：<html data-surface> + 重建图案 defs + 逐格换 href（game/skin.js）。
  * 叉：只改 <html data-mark>，CSS 自己会换画法（不需要重画格子）。
  * 皇后：<html data-piece> 管占位，格子里的画由 board.js 换。
- * 三样都只是「画法」，不碰 state.marks，也不影响存档里的局面。 */
+ * 生命：只改 <html data-life>，命数那一排的两套画法都在 DOM 里，CSS 决定露哪套。
+ * 四样都只是「画法」，不碰 state.marks，也不影响存档里的局面。 */
 export function applyLook() {
   var root = document.documentElement;
   root.setAttribute('data-mark', settings.markStyle);
   root.setAttribute('data-piece', settings.pieceStyle);
+  root.setAttribute('data-life', settings.lifeStyle);
   applySurface();   // 顺带写 data-surface、建 defs、给每格上墨色
   // 只在真的换了样式时重画格子里的画：新棋盘本来是照当前样式建的，不用再刷一遍
   if (view.lookPiece !== settings.pieceStyle) applyPieceStyle();
@@ -236,11 +247,14 @@ export function mount(host) {
   markNow = document.getElementById('markNow');
   pieceRow = document.getElementById('pieceRow');
   pieceNow = document.getElementById('pieceNow');
+  lifeRow = document.getElementById('lifeRow');
+  lifeNow = document.getElementById('lifeNow');
 
   ROW_ELS = {
     surface: { row: surfaceRow, now: surfaceNow },
     mark: { row: markRow, now: markNow },
-    piece: { row: pieceRow, now: pieceNow }
+    piece: { row: pieceRow, now: pieceNow },
+    life: { row: lifeRow, now: lifeNow }
   };
   for (var kk = 0; kk < KINDS.length; kk++) buildCase(KINDS[kk]);
 
@@ -263,9 +277,10 @@ export function mount(host) {
   lookSheet.addEventListener('click', function (e) {
     var b = e.target.closest ? e.target.closest('.showcase') : null;
     if (!b) return;
-    // 三排的按钮都叫 .showcase，靠 data-surface / data-mark / data-piece 分派
+    // 四排的按钮都叫 .showcase，靠 data-surface / data-mark / data-piece / data-life 分派
     if (b.dataset.surface) pickLook('surface', b.dataset.surface);
     else if (b.dataset.mark) pickLook('mark', b.dataset.mark);
     else if (b.dataset.piece) pickLook('piece', b.dataset.piece);
+    else if (b.dataset.life) pickLook('life', b.dataset.life);
   });
 }

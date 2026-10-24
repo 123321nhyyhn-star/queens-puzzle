@@ -1,5 +1,5 @@
 /* ============================================================================
- * win.js · 胜利判定、礼花、判负（超时 / 步数用尽）
+ * win.js · 胜利判定、礼花、判负（超时 / 步数用尽 / 命用尽）
  * ----------------------------------------------------------------------------
  * 「这一局结束了」这件事在这里发生：判赢、判负、记战绩、放礼花。
  * 结束之后那张卡在 ui/panels/result.js（它自己管开关），这里只负责叫它出来。
@@ -91,7 +91,7 @@ function recordFinish(won) {
 /* ==========================================================
    判负
    ----------------------------------------------------------
-   两种挑战都会把这一局封盘：时间到（超时）与步数用尽。
+   三种挑战都会把这一局封盘：时间到（超时）、步数用尽、命用尽。
    封盘后棋盘只读（canPlay 看 status），但「重试这一局」能把同一盘棋
    原样重开一遍，不用重新出题。文案只有结果层那一张卡在分叉，这里只记下原因。
    ========================================================== */
@@ -107,7 +107,9 @@ function failGame(reason) {
   boardEl.classList.remove('is-won');
   sfx('fail');
   buzz([30, 60, 30]);
-  announce(reason === 'steps' ? '步数用尽，这局没解开' : '时间到，这局没解开');
+  announce(reason === 'steps' ? '步数用尽，这局没解开'
+    : reason === 'lives' ? '命用完了，这局没解开'
+      : '时间到，这局没解开');
   save();
   recordFinish(false);
   showResult();
@@ -134,6 +136,19 @@ export function checkSteps() {
 }
 
 export function failBySteps() { failGame('steps'); }
+
+/* 命用完了：放错那一下由 app/actions.js 的 rejectQueen 直接判（扣到 0 才叫）；
+ * 这里这个检查是给**读档**用的——存档里剩 0 条命的那局恢复成 playing 之后，
+ * 得由 main.js 在启动时再判一次负，刷新页面不能把已经输掉的局救回来。 */
+export function checkLives() {
+  if (state.status !== 'playing') return false;
+  if (!state.lifeLimit) return false;
+  if ((state.lives || 0) > 0) return false;
+  failByLives();
+  return true;
+}
+
+export function failByLives() { failGame('lives'); }
 
 export function burstConfetti() {
   if (REDUCE_MOTION) return;

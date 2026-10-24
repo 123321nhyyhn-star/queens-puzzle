@@ -223,10 +223,13 @@ export function applyBoard(n, regions, solution, seed, preVibe) {
   // 记下这盘实际用到的难度档，用来判断设置面板里选的东西「是否还没生效」
   state.diffApplied = settings.difficulty;
   /* 挑战：限时从这一局的第一笔操作起算（新局 / 重试都把起算点归零）；
-   * 步数限制看的是这一局走了几步，也一并从设置里取。 */
+   * 步数限制看的是这一局走了几步，也一并从设置里取；
+   * 命数同理——重试这一局就是把命补满，不是接着上回剩下的往下扣。 */
   state.limit = settings.timeLimit || 0;
   state.limitFrom = 0;
   state.stepLimit = settings.stepLimit || 0;
+  state.lifeLimit = settings.lifeLimit || 0;
+  state.lives = state.lifeLimit;
   view.lastConflictCount = 0;
   view.undo = [];
   view.redo = [];

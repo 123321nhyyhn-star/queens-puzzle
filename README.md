@@ -5,13 +5,14 @@
 棋盘上方是一条**局内信息条**（棋盘 / 用时 / 步数 / 皇后 / 难度），点哪儿都进同一个「本局信息」页。
 剩最后几只皇后时，提示行会换成一个「补齐」按钮，点一下挨个落子、一段快动画收尾。
 设置里是一列「拨了立刻生效」的开关；顶栏那颗回旋箭头是**新的一局**——
-棋盘大小、目标难度、挑战（限时 / 步数限制 / 禁用提示 / 禁用撤销）都在那一层里挑，
+棋盘大小、目标难度、挑战（限时 / 步数限制 / 标错惩罚 / 禁用提示 / 禁用撤销）都在那一层里挑，
 点面板底下的「换一局」才落地；右上角那颗下载图标是**载入代码**，读剪贴板里朋友发来的
 那一串，直接开那一盘。分享这一局在本局信息页里（只负责复制）。
 顶栏的奖杯记战绩：每局留一张棋盘缩略图、分享码，排行榜按**限时 × 难度**分开排，
 全存在本机 localStorage 里。
 顶栏的调色盘是**外观**：色块可以换成几何 / 自然 / 天空 / 贴纸四套纹样，叉可以换成点，
-皇后可以换成小猫——满盘 × 看得眼花时换一套就安静了。三排样式由 `src/js/looks/` 里的插件提供。
+皇后可以换成小猫，命数可以换成血条——满盘 × 看得眼花时换一套就安静了。
+四类样式都由 `src/js/looks/` 里的插件提供。
 
 ## 局内信息
 
@@ -34,6 +35,8 @@
   但步数照涨——`60+` 那套读法在 2026-10-24 去掉了，它把「走了多少」和「能退多少」混成了一件事。
 - 开了步数限制时，尾缀变成 `/100`（还剩几步一眼可见）；320px 窄屏上「步」这个字会让出去，
   但 `/60` 这种上限留着。信息条与信息页读的是同一个数。
+- 开了「标错惩罚」的局，信息条下面还多出一条**命数**（红心或血条，画法在外观面板里换）。
+  它不属于信息条那一个按钮：只是读数，不接点击；不惩罚的局整排 `hidden`，一点位置都不占。
 - **整条是一个按钮**，点哪一段都打开同一个「本局信息」页。以前是三个胶囊
   （只有尺寸那个能点、还开到设置面板里）加提示行右侧一个难度标签：
   四种样子、三种去向，全靠记忆分辨，所以并成一条、一个入口。
@@ -83,24 +86,32 @@ npm start                # 同上，只是包了一层
 
 顶栏第一颗按钮（调色盘）打开，是一间小展柜：每个样式摆在玻璃罩里的台子上，
 下面一块名牌，选中的那间罩子亮着、名牌翻成墨底、右上角亮一枚勾。
-三排各一个开关：
+四排各一个开关：
 
 | 换什么 | 可选 | 说明 |
 | --- | --- | --- |
 | 色块 | **几何**（默认）/ **自然** / **天空** / **贴纸** / **纯色** | 前四套给每种颜色配一枚图形，压暗一档铺在格子上；纯色就是原来那块平色 |
 | 叉 | **叉**（默认）/ **点** | 点是一个小圆点。16×16 满盘时，一片 × 会糊成噪点，点就安静得多 |
 | 皇后 | **皇后**（默认）/ **小猫** | 小猫是同一套墨色剪影（没有底色，格子自己的色块色就是它的底），墨色脸上留一对白眼和 ω 嘴 |
+| 生命 | **红心**（默认）/ **血条** | 挑战「标错惩罚」的那排命。红心是一条命一颗、失去的那颗当场碎开；血条是一条带刻度的血槽，扣命时整条缩回去 |
 
+- 四排展柜加起来在 390×844 上比一屏高了：面板自己滚，「知道了」常开
+  `position: sticky; bottom: 0` 钉在下沿——滚到哪儿都点得到它，滚到底也不会压住「生命」那排。
+- 生命那排不铺在棋盘上（它是信息条下面那条读数，只有开了「标错惩罚」才露），
+  所以它那块罩子用另一种底色，跟前三排分开。
 - **即时生效**，跟音效 / 冲突高亮一个规矩：选完立刻写 `settings`、存盘、重画，不等「换一局」。
   跟棋盘大小 / 难度 / 挑战那套 `pending` 不是一回事。
 - 换的只是**画法**，不碰 `state.marks`：局面、撤销栈、存档里的棋局都不动。
 - 自动打的标记和你手标的用同一套样式（自动 / 手动本来就同款，见 `render.js`）。
   设置面板里的「自动打 ×」仍然只管**打不打**，不管长什么样。
 - 顶栏那颗按钮上挂一颗小黄点，表示「现在用的不是默认那套」——不然过几天会忘了原来长什么样。
-- 落地方式：`<html data-surface / data-mark / data-piece>` 是 CSS 钩子（`styles/panels/look.css`），
-  格子里的画由 `game/board.js` 的 `pieceSvg()` 决定，色块的图形由 `game/skin.js` 铺上去。
+- 落地方式：`<html data-surface / data-mark / data-piece / data-life>` 是 CSS 钩子
+  （`styles/panels/look.css`），格子里的画由 `game/board.js` 的 `pieceSvg()` 决定，
+  色块的图形由 `game/skin.js` 铺上去，命数那条由 `ui/lives.js` 画。
+- 红心与血条**两套节点同时在 DOM 里**，只由 `data-life` 切 CSS 显示——换样式不重建节点，
+  正在播的碎心动画不会被换样式打断。
 - 老存档没有 `surfaceStyle` 字段、或者存了认不出来的 id（插件被删了），一律按 `styleId()`
-  退回各自那类的第一套（也就是几何 / 叉 / 皇后）。
+  退回各自那类的第一套（也就是几何 / 叉 / 皇后 / 红心）。
 
 ### 色块图案（四套主题）
 
@@ -153,24 +164,26 @@ npm start                # 同上，只是包了一层
 
 ```
 looks/
-├─ index.js      登记处：把插件摊平成「色块 / 叉 / 皇后」三张表，面板和棋盘都问它
+├─ index.js      登记处：把插件摊平成「色块 / 叉 / 皇后 / 生命」四张表，面板和棋盘都问它
 ├─ classic.js    墨线：纯色、叉 / 点、皇后 / 小猫（出厂那套）
 ├─ geometry.js   几何：每种颜色一枚几何图形
 ├─ nature.js     自然：叶、花、蘑菇、麦穗、蕨、蝴蝶……
 ├─ sky.js        天空：云、太阳、月牙、彩虹、闪电、风筝……（唯一走提亮的）
-└─ sticker.js    贴纸：心、星、笑脸、皇冠、音符、爪印……（带白边）
+├─ sticker.js    贴纸：心、星、笑脸、皇冠、音符、爪印……（带白边）
+└─ life.js       生命：红心 / 血条（`lifes` 表；心形笔画也在这里导出，面板预览与棋盘上方共用）
 ```
 
-- 一个插件可以只提供一样东西，也可以三样都给；面板按登记顺序长出展位。
+- 一个插件可以只提供一样东西，也可以几样都给；面板按登记顺序长出展位。
+  生命这类插件的字段叫 `lifes`（跟 `surfaces` / `marks` / `pieces` 一样是复数）。
 - **插件名和样式名不一样时**，展位左上角挂一个小标签写插件名。现在只有「纯色」会挂
-  「墨线」——另外四套的主题名就是插件名，再标一遍是重复；叉和皇后两排各自只有一个插件，
-  更不标。
+  「墨线」——另外四套的主题名就是插件名，再标一遍是重复；叉、皇后、生命三排各自
+  只有一个插件，更不标。
 - 加一个插件：在 `looks/` 里新建一个文件（导出一个对象），然后在 `looks/index.js`
   的 `PLUGINS` 里加一行 `import`。面板、存档兜底、CSS 都不用动。
 - 色块那排是 3 列网格，现在 5 套排成两行。再加就要么排到第 3 行、要么在
   `styles/panels/look.css` 里调 `#surfaceRow` 的列数——注意它用的是 id 选择器，
   `styles/responsive.css` 里要压它的尺寸也得带 `#surfaceRow` 前缀。
-- 插件里能写什么、三类各自的字段，`looks/index.js` 开头有一段完整说明；
+- 插件里能写什么、四类各自的字段，`looks/index.js` 开头有一段完整说明；
   图形一律 `viewBox 0 0 100 100`、只给形状不给颜色（填色继承外面）。
 
 ## 填写与拖动
@@ -188,6 +201,8 @@ looks/
 - 音效仍然是 40ms 一次（`paintTick`）：一整笔几十格，逐格响会糊成一片噪音；
   触觉那边本来就只有一格一下这么细，不需要节流。
 - 一笔结束时才写一次盘（`endStroke` → `save()`），拖动途中不碰 localStorage。
+- 开了挑战「标错惩罚」时，放到**不是解位**的格子上不算落子：格子还原成空的（那一手不
+  进撤销栈、不涨步数）、红 X 拍一下、扣一条命、震一下；命扣光这局就结束了。
 
 
 ## 只差皇后时的一键补齐
@@ -298,7 +313,7 @@ looks/
 
 ## 挑战
 
-「新的一局」面板里「换一局」上面那一组，目前有四项。**跟棋盘大小、目标难度同一个规矩：
+「新的一局」面板里「换一局」上面那一组，目前有五项。**跟棋盘大小、目标难度同一个规矩：
 只写 `pending`，点「换一局」才落地**——中途改完不换局就等于没改，
 开了限时又反悔也不用担心这局被倒计时追着跑（面板标题会变成「挑战 · 待换一局生效」）。
 
@@ -306,6 +321,7 @@ looks/
 | --- | --- |
 | 限时 | 3 / 5 / 10 / 20 分钟挡位，本局第一次操作后开始倒计时；超时判负，结果层第一按钮是「重试这一局」（同一盘棋重开，限时不换） |
 | 步数限制 | 60 / 100 / 150 / 250 步挡位（`STEP_OPTIONS`），**第 N 步落下还没解开就判负**；结果层标题「步数用尽」，中间那格读数换成「限步」 |
+| 标错惩罚 | 不惩罚 / 1 / 3 / 5 / 8 条命（`LIFE_OPTIONS`）。**皇后放到不是解位的格子上**：那一手不落成（格子还原成空的、不进撤销栈、不涨步数）、红 X 拍一下、扣一条命、震一下；扣到 0 判负，结果层标题「命用完了」 |
 | 禁用提示 | 「提示」按钮灰掉，键盘 `H` 也被拦住；只剩皇后时的「补齐」也不露 |
 | 禁用撤销 | 「撤销」按钮灰掉，`Z` / `Ctrl+Z` 也撤不动（「清空」不受影响） |
 
@@ -313,32 +329,48 @@ looks/
 
 - 挑战的落地时机就是 `btnShuffle`：`commitChallenge()` 把 `pending.*` 写进 `settings.*`，
   紧接着 `newGame()` → `applyBoard()` 再把 `settings.timeLimit` 落到 `state.limit`（起算点归零）、
-  `settings.stepLimit` 落到 `state.stepLimit`。
+  `settings.stepLimit` 落到 `state.stepLimit`、`settings.lifeLimit` 落到
+  `state.lifeLimit` 并把 `state.lives` 补满。
 - 剩余时间 = `限时 - (已用 - state.limitFrom)`。正常开局的 `limitFrom` 是 0，
   这个偏移量只是给「同一盘重试 / 特殊情况下补开限时」留的余地。
 - **切后台不扣时间**：倒计时跟着 `elapsed` 走，`elapsed` 只在页面前台时增长，跟普通计时一致。
 - **步数限制靠的是「只增不减」的步数**（`state.steps`）：撤销不会把额度还回来，
   否则来回撤销就能无限刷步数，这条限制等于没开。所以那两个数是一件事的两面：
   信息条上读什么，挑战就按什么算。
-- 步数用尽与超时共用一条封盘路径（`ui/win.js` 的 `failGame(reason)`），
-  只有文案不同；`state.lostBy`（`'time'` / `'steps'`）留着给结果层与战绩挑说法。
-- 判负检查在 `setMarks()` 里、**判胜之后**：最后一步既摆满皇后又正好用完步数，那是解开。
-- 超时 / 步数用尽后 `state.status = 'lost'`：棋盘只读、按钮全灰、结果层不能 Esc 掉，
-  必须选「重试这一局」或「换一局新的」。
-- 限时、起算点、步数与步数限制一起写进对局存档，刷新之后接着算（步数用尽的那局
-  恢复成 `playing` 后会被心跳再判一次负，刷新救不回来）。
+- **标错的口径是「这一格是不是解位」**（`game/rules.js` 的 `isSolutionCell()`，跟
+  `state.solution` 比），不是「有没有撞上冲突线」。这样判得早、判得准，而且
+  「还原成空格子」不会回头被自动打叉画脏。整盘唯一解，所以这个判据是确定的。
+- 放错的判定在 `app/actions.js` 的 `pushHistory()` **之前**，所以那一手压根没发生：
+  不进撤销栈、不涨 `state.steps`、不涨 `moves`。双击那条路（第一下已经把 × 压进了撤销栈）
+  由 `rejectQueen(i, tapped)` 把第一下那笔一起作废（弹掉撤销点、步数退回去）。
+- 命数靠**记「剩几条」而不是「错了几个」**：`state.lives` 是与局面一起进存档的数，
+  刷新回来还剩几条就是几条；`state.lifeLimit` 一并存，两数都在 `ui/lives.js` 里画。
+- 三种判负共用一条封盘路径（`ui/win.js` 的 `failGame(reason)`），只有文案不同；
+  `state.lostBy`（`'time'` / `'steps'` / `'lives'`）留着给结果层、战绩与信息页挑说法。
+- 判胜之后的检查：`setMarks()` 里判完胜再判步数，最后一步既摆满皇后又正好用完步数，那是解开。
+  命数则不同一侧：它在**落子之前**就判（放错那一下），所以不存在「又赢了又扣光」。
+- 输掉后 `state.status = 'lost'`：棋盘只读、按钮全灰、结果层不能 Esc 掉，
+  必须选「重试这一局」或「换一局新的」。想从顶栏点别的入口也行——那是主动离开这一屏，
+  基座会把它强制收掉，不会留一张亮着但没人管的卡压在新棋盘上（`core/sheet.js` 的 swap）。
+- 限时、起算点、步数与步数限制、命数与命数上限一起写进对局存档，刷新之后接着算
+  （步数用尽 / 命用尽的那局恢复成 `playing` 后会被 `checkSteps()` / `checkLives()`
+  再判一次负，刷新救不回来）。
 
 ## 结果层
 
-解开、超时、步数用尽共用一张卡（`.result`），按钮按结局换：
+解开、超时、步数用尽、命用尽共用一张卡（`.result`），按钮按结局换：
 
 | 结局 | 主按钮 | 次按钮 |
 | --- | --- | --- |
 | 解开 | 再来一局（换新盘） | **重来这局**（同一盘从零再下一遍） / 看看棋盘（只收面板） |
 | 超时 | 重试这一局（同一盘重开） | 换一局新的 |
 | 步数用尽 | 重试这一局（同一盘重开） | 换一局新的 |
+| 命用尽 | 重试这一局（同一盘重开） | 换一局新的 |
 
-超时与步数用尽只差标题、kicker 与中间那格读数（「限时 3 分钟」/「限步 60」）。
+超时、步数用尽与命用尽只差标题、kicker 与中间那格读数
+（`TIME UP` /「限时 3 分钟」、`OUT OF MOVES` /「限步 60」、`OUT OF LIVES` /「3 条命」）；
+副标题跟着挑说法：命用尽那屏写「· 标错 3 次 · 还差 N 只皇后」，解开那屏在开了惩罚的局
+也会补一句「· 标错 N 次」。
 
 「重来这局」走的是 `retryGame()`：不重新出题，`regions` / `solution` / `seed` 原样复用，
 用时、标记、撤销栈、提示计数一起归零；同一盘的战绩会再记一条。
@@ -356,7 +388,7 @@ looks/
   不留抗锯齿的细缝）
 - 用时、尺寸、难度档与体感分；小字里是限时 / 限步、挑战标记、步数与结束时间
   （步数取 `st`；v3 之前的老记录没这一项，退回当时记的落子次数 `mv`；输掉的还会挂
-  「超时」或「步数用尽」，靠 `lr` 分）
+  「超时」/「步数用尽」/「命用完了」，靠 `lr` 分）
 - 点开展开：完整分享码 + 复制代码 / 复制链接 / 玩这盘 / 删除
 
 **排行榜** —— 先按限时、再按难度分组，组内只比用时：
@@ -399,7 +431,7 @@ looks/
 ├─ src/
 │  ├─ styles/
 │  │  ├─ all.css           唯一入口：加载顺序全在这里（index.html 只引这一个）
-│  │  ├─ base/             骨架与棋盘：令牌 / 页面 / 顶栏 / 舞台 / 棋盘 / 按钮 / 遮罩 / 动画 / 引导
+│  │  ├─ base/             骨架与棋盘：令牌 / 页面 / 顶栏 / 舞台 / 命数 / 棋盘 / 按钮 / 遮罩 / 动画 / 引导
 │  │  ├─ sheet.css         浮层外壳（.sheet-wrap / .sheet / .sheet-note / .group-title / .sheet-done）
 │  │  ├─ panels/           每个面板一个文件，跟 src/js/ui/panels/ 同名
 │  │  └─ responsive.css    小屏适配，必须最后
@@ -408,7 +440,7 @@ looks/
 │     ├─ events.js         棋盘指针 / 键盘 / 工具栏 / 全局监听
 │     ├─ engine/           出题 / 难度 / 提示三套引擎（经典脚本，双端通用）
 │     ├─ core/             基础设施（含浮层基座 sheet.js）
-│     ├─ looks/            外观插件：色块图案 / 叉 / 皇后的画法都在这儿（没有依赖，最底层）
+│     ├─ looks/            外观插件：色块图案 / 叉 / 皇后 / 生命的画法都在这儿（没有依赖，最底层）
 │     ├─ game/             棋局逻辑
 │     ├─ ui/
 │     │  ├─ panels/        每个浮层一个文件：markup + 引用 + 事件 + 开关都在里面
@@ -446,46 +478,48 @@ ui/panels/index.js 是这些面板唯一的清单
 
 | 文件 | 职责 |
 | --- | --- |
-| `core/config.js` | 尺寸范围、存储键、难度档位、限时挡位（`LIMIT_OPTIONS`）、默认设置（外观的三项默认值取自 `looks` 的 `DEFAULT_LOOK`） |
-| `looks/index.js` | 外观插件登记处：把插件摊平成色块 / 叉 / 皇后三张表，认 id、取画法、给默认值 |
+| `core/config.js` | 尺寸范围、存储键、难度档位、限时挡位（`LIMIT_OPTIONS`）、步数挡位（`STEP_OPTIONS`）、命数挡位（`LIFE_OPTIONS`）、默认设置（外观四项默认值取自 `looks` 的 `DEFAULT_LOOK`） |
+| `looks/index.js` | 外观插件登记处：把插件摊平成色块 / 叉 / 皇后 / 生命四张表，认 id、取画法、给默认值 |
 | `looks/classic.js` | 「墨线」插件：纯色 / 叉 / 点 / 皇后 / 小猫（出厂那套，SVG 也在这儿） |
 | `looks/geometry.js` | 「几何」插件：18 枚按调色板下标排的图形 + `tone`（压暗多少） |
 | `looks/nature.js` | 「自然」插件：18 枚有机形（叶 / 花 / 蘑菇 / 蕨 / 蝴蝶 / 仙人掌……） |
 | `looks/sky.js` | 「天空」插件：18 枚天象（云 / 太阳 / 月牙 / 彩虹 / 闪电 / 风筝……），`ink: 'tint'` 走提亮 |
 | `looks/sticker.js` | 「贴纸」插件：18 枚图标（心 / 星 / 笑脸 / 皇冠 / 音符 / 爪印……），形状先垫一遍半透明白当裁边，整层 `veil: .45` |
-| `core/state.js` | 全局状态：`state`（局面，含只增不减的 `steps`、`stepLimit`、`lostBy`）/ `settings`（设置）/ `pending`（面板里未生效的意向）/ `guide`（引导进度）/ `view`（视图层可变引用）；撤销栈深度上限 `UNDO_MAX` 也在这里 |
-| `core/dom.js` | **骨架**上的 DOM 引用（顶栏 / 棋盘 / 信息条 / 工具栏 / 提示行 / 遮罩）。浮层里的元素不在这里，各面板自己取 |
+| `looks/life.js` | 「生命」插件：红心（一条命一颗，带碎裂动画）/ 血条（带刻度，扣命时缩回去）；心形笔画（`HEART_PATHS`）也在这里导出，面板预览与信息条下那排共用同一份 |
+| `core/state.js` | 全局状态：`state`（局面，含只增不减的 `steps`、`stepLimit`、`lifeLimit` / `lives`、`lostBy`）/ `settings`（设置）/ `pending`（面板里未生效的意向）/ `guide`（引导进度）/ `view`（视图层可变引用）；撤销栈深度上限 `UNDO_MAX` 也在这里 |
+| `core/dom.js` | **骨架**上的 DOM 引用（顶栏 / 棋盘 / 信息条 / 命数条 / 工具栏 / 提示行 / 遮罩）。浮层里的元素不在这里，各面板自己取（外观面板里那排叫 `#lifeRow`，别跟舞台的 `#livesRow` 混） |
 | `core/sheet.js` | 浮层基座：显隐、互斥、`inert`、Esc、Tab 锁焦、层内快捷键、`aria-expanded`。`view.sheet` 由它维护，`canPlay()` 只看这一个字段 |
 | `core/utils.js` | `clamp`、读屏播报、时间格式化、脉冲动画、`svgEl` |
 | `core/palette.js` | 18 色淡彩池 + 按邻接图做 Lab 色差分配 |
 | `core/audio.js` | WebAudio 实时合成音效 + 震动 |
-| `core/storage.js` | 设置与当前这局的存档（写盘 160ms 防抖），含限时 / 起算点 / 步数 / 步数限制 |
+| `core/storage.js` | 设置与当前这局的存档（写盘 160ms 防抖），含限时 / 起算点 / 步数 / 步数限制 / 命数与命数上限（缺 `lives` 字段的老存档按满格算——编个 0 出来等于一读盘就判负） |
 | `core/records.js` | 每局战绩：数据结构、localStorage 读写、按「限时 × 难度」分组排名（不碰 DOM）；带刻度版本 `sq`，旧刻度的成绩不进榜；步数与步数限制记 `st` / `sl`，输的原因记 `lr` |
 | `core/clock.js` | 计时（只在有动作后起表）+ 限时剩余时间 `limitRemaining()` / 信息条上的计时段 `paintClock()` |
-| `game/rules.js` | 自动打叉、被逼定位、冲突对、色块计数、填错的色块、`pendingQueens()`（只剩皇后没标） |
+| `game/rules.js` | 自动打叉、被逼定位、冲突对、色块计数、填错的色块、`pendingQueens()`（只剩皇后没标）、`isSolutionCell()`（标错惩罚的判据：这一格是不是解位） |
 | `game/geometry.js` | 格子边长、色块轮廓 path |
 | `game/board.js` | 棋盘 DOM 构建 + 色块长按高亮 + `pieceSvg()` 按外观决定每格画什么 |
 | `game/skin.js` | 色块图案：建 `#skinDefs`、给每格挂 `--rc-ink` 与 `<use>`，换图案只改 href |
 | `game/share-code.js` | 分享码编解码（纯函数，可单测） |
 | `game/preview.js` | 战绩里的棋盘缩略图：把一盘棋画成 SVG 字符串（塞进 `<img src="data:...">`） |
 | `game/vibe.js` | 本局难度评估（转调 `engine/difficulty.js`） |
-| `ui/render.js` | 把 state 画到 DOM：格子状态、描边、连线、红框防抖；信息条上的棋盘 / 步数（`12 步` 或 `12/100`）/ 皇后与工具栏按钮的可用状态 |
+| `ui/render.js` | 把 state 画到 DOM：格子状态、描边、连线、红框防抖；信息条上的棋盘 / 步数（`12 步` 或 `12/100`）/ 皇后与工具栏按钮的可用状态；末尾顺手调 `syncLives()`（只画命数，不播动画） |
+| `ui/lives.js` | 命数（挑战「标错惩罚」）的唯一实现：`build()` 画红心与血条刻度、`syncLives()` 按 `state.lives` 打类名与 `--life-ratio`、`loseLife(i)` 扣一条命（红 X 闪一下 + 碎心 + `sfx('miss')` + 震动 + 播报 + 存盘）。红心与血条两套节点同时在 DOM 里，只由 `data-life` 切显示 |
 | `ui/fade.js` | 淡化：整格透成背景色 + 0.5 秒防抖，拨开关时 `applyFadeNow()` 立刻落地 |
 | `ui/layout.js` | 棋盘尺寸计算（提示行 + 信息条算一块，浮层开关不许挪动棋盘） |
 | `ui/guide.js` | 提示引导面板 + 棋盘圈画层 |
 | `ui/hint.js` | 顶部提示行文案 + 提示行上的「补齐」按钮（露不露、差几只） |
 | `ui/difficulty.js` | 只有信息条上的难度段（骨架上的东西，面板关着也得更新） |
 | `ui/share.js` | 分享码的数据侧：`currentShareCode`（现算这一局的码）/ `copyText`（含局域网 http 的临时 textarea 兜底）/ `tryLoadShare` / `loadShareFromClipboard` / `#QNS1-...` 开局。信息页只交进来一个状态行元素（`bindShareUI`），载入那颗图标在「新的一局」面板右上角 |
-| `ui/win.js` | 胜利判定、礼花、判负（`failGame(reason)`：超时 / 步数用尽）、记战绩；结果层那张卡在 `ui/panels/result.js` |
+| `ui/win.js` | 胜利判定、礼花、判负（`failGame(reason)`：超时 / 步数用尽 / 命用尽）、记战绩；`checkSteps()` 与 `checkLives()` 是给读档用的（刷新不能把已输的局救回来）。结果层那张卡在 `ui/panels/result.js` |
 | `ui/panels/index.js` | **浮层清单**：`PANELS` 数组 + `mountAll()`。加面板只改这里一行 |
 | `ui/panels/settings.js` | 设置面板：一列即时生效的偏好开关（自动打 × / 拖动对齐 / 两个淡化 / 冲突 / 唯一位置 / 音效 / 震动），不折叠 |
 | `ui/panels/newgame.js` | 换一局面板（顶栏那颗回旋箭头）：棋盘大小 / 目标难度 / 挑战只写 `pending`，点面板里的「换一局」才落地。右上角那颗下载图标 = 载入代码（读剪贴板，拿不到就弹原生输入框） |
 | `ui/panels/info.js` | 本局信息页：五张读数卡片 + 分享这一局（一说明 + 一颗复制钮 + 一行状态字，没有代码框）+ 难度构成（`DIFF_ROWS` 的文案出处）。底下不挂按钮，整页没有输入框 |
 | `ui/panels/records.js` | 战绩面板：记录列表（缩略图 / 分享码）、排行榜筛选与名次、删除与清空 |
-| `ui/panels/look.js` | 外观面板：三排展柜 + `applyLook` / `pickLook`（开一局时也要用） |
-| `ui/panels/result.js` | 结果层（解开 / 时间到 / 步数用尽共用一张卡），输掉时 Esc 关不掉 |
+| `ui/panels/look.js` | 外观面板：四排展柜（色块 / 叉 / 皇后 / 生命）+ `applyLook` / `pickLook`（开一局时也要用） |
+| `ui/panels/result.js` | 结果层（解开 / 时间到 / 步数用尽 / 命用尽共用一张卡），输掉时 Esc 关不掉 |
 | `ui/panels/mismatch.js` | 「没抽到够格的盘」那一层：不装盘，只给「再抽一局 / 更换设置」（Esc 关不掉）。`dir='low'` 说不够、`'high'` 说超了，标题/读数/建议都跟着翻 |
-| `app/actions.js` | 玩家动作：点格语义、落子、清空、一键补齐 `fillQueens()` |
+| `app/actions.js` | 玩家动作：点格语义、落子、清空、一键补齐 `fillQueens()`；标错惩罚的拦截在 `rejectQueen()`（判在 `pushHistory()` 之前，双击那条路把第一下那笔也一起作废） |
 | `app/history.js` | 撤销 / 重做（整盘快照，最多 `UNDO_MAX` 步；挑战里禁用时直接拦下）。**步数的唯一计数点**也在这（`pushHistory()` 里 `state.steps++`） |
 | `app/puzzle.js` | 出题与换盘：按档位夹尺寸 → `roll()` 里 `pickBoard()` 抽最多 4 张、取第一张落进 `[min, max)` 的，一张都没落进去就交给 `ui/panels/mismatch.js` 问玩家 → 生成遮罩 → 装上棋盘；`retryGame()` 原盘重开 |
 
@@ -494,7 +528,7 @@ ui/panels/index.js 是这些面板唯一的清单
 `index.html` 只有一行 `<link href="src/styles/all.css">`，顺序全在 `all.css` 的 `@import` 里排：
 
 ```
-base/tokens → page → topbar → stage → board → board-states → regions → buttons → veil
+base/tokens → page → topbar → stage → lives → board → board-states → regions → buttons → veil
 → base/animations → sheet.css → panels/(settings → newgame → info → result → mismatch)
 → base/guide → panels/(records → look) → responsive.css
 ```
@@ -554,12 +588,13 @@ markup、元素引用、事件、开关全在 `src/js/ui/panels/xxx.js` 里。�
 | 改唯一位置提示的强度 / 节奏 | `styles/base/board-states.css` 的 `.cell.is-forced`（`forcedGlow` 的峰值亮度与 2.8s 呼吸周期；这里刻意不描边） |
 | 改拖动标 × 的对齐方式 | `events.js` 的 `pointermove`（`settings.alignDrag` 一开一关两条路）、默认值在 `core/config.js` |
 | 改淡化淡成什么样 / 等多久 | `styles/base/board-states.css` 的 `.is-dim`（底色与画的透明度）、`ui/fade.js` 的 `DIM_DELAY`（防抖） |
-| 加一套外观（色块 / 叉 / 皇后） | 在 `src/js/looks/` 新建一个插件文件，再在 `looks/index.js` 的 `PLUGINS` 里加一行 import。字段见 `looks/index.js` 开头；叉如果要在棋盘上换笔画，才需要在 `styles/panels/look.css` 补一条 `html[data-mark="…"]` |
+| 加一套外观（色块 / 叉 / 皇后 / 生命） | 在 `src/js/looks/` 新建一个插件文件，再在 `looks/index.js` 的 `PLUGINS` 里加一行 import。字段见 `looks/index.js` 开头；叉如果要在棋盘上换笔画，才需要在 `styles/panels/look.css` 补一条 `html[data-mark="…"]` |
 | 改色块图案的浓淡 / 换一套图形 | 对应主题插件里的 `tone` 与 `MOTIFS`（几何 `geometry.js`、自然 `nature.js`、天空 `sky.js`、贴纸 `sticker.js`；纯色在 `classic.js`） |
 | 新加一整套色块主题 | 照 `looks/nature.js` 抄结构：18 枚 `MOTIFS` + 一个 `tone`，要提亮加 `ink: 'tint'`、要整层压淡加 `veil`。面板会自己长出第 6 个展位 |
 | 改限时挡位 | `core/config.js` 的 `LIMIT_OPTIONS`（面板按钮是按它生成的） |
 | 改步数限制挡位 | `core/config.js` 的 `STEP_OPTIONS`（面板按钮是按它生成的） |
-| 加一项挑战 | 照「限时 / 步数限制 / 禁用提示 / 禁用撤销」四件套：`DEFAULT_SETTINGS` + `pending`（`core/state.js`）+ `ui/panels/newgame.js` 的 `.challenge` 块 / `syncNew` / `commitChallenge` + 动作入口里 `settings.xxx` 一拦（要判负就走 `ui/win.js` 的 `failGame(reason)`，别另起一条封盘路径） |
+| 改命数挡位 | `core/config.js` 的 `LIFE_OPTIONS`（上限 `LIFE_MAX`，面板按钮是按它生成的） |
+| 加一项挑战 | 照「限时 / 步数限制 / 标错惩罚 / 禁用提示 / 禁用撤销」五件套：`DEFAULT_SETTINGS` + `pending`（`core/state.js`）+ `ui/panels/newgame.js` 的 `.challenge` 块 / `syncNew` / `commitChallenge` + 动作入口里 `settings.xxx` 一拦（要判负就走 `ui/win.js` 的 `failGame(reason)`，别另起一条封盘路径） |
 | 改超时判负的时机 | `core/clock.js` 的 `limitExpired`、`ui/win.js` 的 `checkTimeout`（由 `main.js` 的 250ms 心跳调用） |
 | 改结果层文案 / 按钮 | `ui/panels/result.js` 的 `HTML` + `paint()`；Esc 关不关得掉由 `canClose` 决定 |
 | 改出题规则 | `src/js/engine/engine.js`（改动后跑 `node tools/test-engine.mjs`） |
@@ -588,8 +623,9 @@ node tools/test-engine.mjs   # 出题引擎（唯一解、连通性）
 node tools/test-hint.mjs     # 提示引擎
 node tools/check-probe-guide.mjs # 试推（L4）那套话：5–8 步 / 假设与结论之间必须讲清 / 玩家的 × 也算约束（不许圈到画过叉的格）/ 盘上有错的 × 先纠错 / 面板高度
 node tools/check-challenge.mjs   # 挑战：限时 / 步数限制 / 禁用提示 / 禁用撤销（94 项）
+node tools/check-lives.mjs       # 标错惩罚：命数挡位 / 放错不落子只扣命 / 扣光判负 / 存档续命 / 红心与血条 / 320 窄屏（83 项）
 node tools/check-records.mjs     # 战绩：记录写入 / 缩略图 / 分享码 / 排行榜分组 / 删除清空
-node tools/check-look.mjs        # 外观：五套色块 / 三排展柜 / 图案落地 / 纱 / 叉与皇后 / 存盘兜底 / 矮屏（76 项）
+node tools/check-look.mjs        # 外观：五套色块 / 四排展柜 / 图案落地 / 纱 / 叉与皇后 / 存盘兜底 / 矮屏（77 项）
 node tools/check-fade.mjs        # 淡化：默认关 / 透成纸色 / 边线不动 / 0.5 秒防抖（38 项）
 node tools/check-region-wash.mjs # 摆皇后不许动底色：五套主题逐格比对底色 / 图案色 / 图案 / Δ，色卡照旧 ✓（52 项）
 node tools/check-misc.mjs        # 设置只剩一列开关 / 换一局面板 / 分享在信息页（只有复制、没有代码框与输入框、页脚无按钮）/ 拖动对齐与逐格震动 / 重来这局（26 项）
@@ -619,13 +655,15 @@ node tools/check-diff-ui.mjs     # 信息条 + 本局信息页：读数 / 难度
 - 键盘：`X` 标叉、`Q`/`Enter` 放皇后、`Z` 撤销、`Shift+Z` 重做、`H` 提示、`N` 新局、`Esc` 关浮层。
   挑战里禁用撤销 / 提示时，`Z` 与 `H` 只会换一句「挑战模式：这局不能…」。
 - 存档键：`queens.settings.v1` / `queens.game.v1` / `queens.records.v1`（改结构要升版本号）。
-- 外观存在 `settings.surfaceStyle` / `markStyle` / `pieceStyle`，页面上表现为 `<html data-surface / data-mark / data-piece>`；
+- 外观存在 `settings.surfaceStyle` / `markStyle` / `pieceStyle` / `lifeStyle`，页面上表现为
+  `<html data-surface / data-mark / data-piece / data-life>`；
   它只改画法，别往里塞会影响规则的东西（那属于「挑战」）。
 - 面板类浮层（设置 / 本局信息 / 战绩 / 外观）打开时 `app` 会被设成 `inert`，`canPlay()` 也要一起拦——
   键盘事件挂在 `document` 上，不拦的话面板背后还能落子。
 - 对局存档里的 `limit` / `limitFrom` 是挑战的限时与倒计时起点，`steps` / `stepLimit` 是
-  这一局的步数与步数限制，`lostBy` 记的是输在哪一项上；老存档没有这些字段也照样读
-  （步数按 0 起，那时没记过，编一个数比 0 更糟）。
+  这一局的步数与步数限制，`lifeLimit` / `lives` 是命数上限与还剩几条，`lostBy` 记的是输在哪一项上；
+  老存档没有这些字段也照样读（步数按 0 起，那时没记过，编一个数比 0 更糟；
+  但 `lives` 缺字段时按**满格**算——那个数编小了等于一读盘就判负）。
 - 战绩每条都自带一份色块与解（`rg` / `so` 十六进制串），所以删掉最后一局的存档也不会让
   记录里的缩略图和分享码失效；读盘时逐条校验，坏掉的那条丢掉、不连累整份。
 - 分享码格式：`QNS1-<边长>-<色块>-<解>-<校验>`，见 `game/share-code.js`。

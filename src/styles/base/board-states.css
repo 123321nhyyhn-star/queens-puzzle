@@ -135,6 +135,54 @@
   100% { opacity: 1; transform: scale(1) rotate(0); }
 }
 
+/* ---- 标错的那一格：红 X 拍上来，再自己缩掉 ----
+   挑战「标错惩罚」专用（见 app/actions.js 的 rejectQueen 与 ui/lives.js）。
+   这一手根本没落成：格子里的 marks 没动过，所以它只是「一闪而过的一层」——
+   拍上去（一笔红叉 + 一层红洗）→ 停两拍让人看清 → 缩掉。
+   动作刻意比 .stamp 重：这是惩罚，不是「我划掉了一格」。 */
+.miss {
+  position: absolute;
+  inset: 0;
+  display: block;
+  opacity: 0;
+  background: rgba(255, 92, 92, .22);
+  pointer-events: none;
+}
+
+.miss i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  /* 跟 × 同一个口径：尺寸吃 --cell，最小 / 最大各兜一档 */
+  width: calc(var(--cell, 40px) * .66);
+  height: calc(var(--cell, 40px) * .1);
+  min-height: 2px;
+  max-height: 4px;
+  border-radius: 2px;
+  background: var(--danger);
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, .55);
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.miss i + i { transform: translate(-50%, -50%) rotate(-45deg); }
+
+.cell.is-miss .miss { animation: missX .8s cubic-bezier(.2, 1.2, .4, 1) both; }
+
+@keyframes missX {
+  0% { opacity: 0; transform: scale(1.85) rotate(-10deg); }
+  14% { opacity: 1; transform: scale(1.02) rotate(0); }
+  22% { transform: scale(1.08) rotate(-2deg); }
+  32% { transform: scale(.97) rotate(1.6deg); }
+  42% { transform: scale(1.02) rotate(-.8deg); }
+  56%, 76% { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: scale(.7); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cell.is-miss .miss { animation-duration: .46s; }
+  .cell.is-miss .miss i { box-shadow: none; }
+}
+
 .cell.shake { animation: cellShake .3s ease; }
 
 @keyframes cellShake {

@@ -70,7 +70,7 @@
 }
 
 .challenge {
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   padding: 0 12px;
   border: 2px dashed rgba(58, 51, 53, .24);
   border-radius: 14px;
@@ -78,10 +78,11 @@
 }
 
 .challenge .limit-row { padding: 10px 0 4px; }
-/* 限时与步数限制是两件事，中间用一条虚线分开，别读成一组按钮 */
+/* 限时 / 步数限制 / 标错惩罚是三件事，中间用一条虚线分开，别读成一组按钮。
+ * 间隔从 12 收到 9：加了第三排之后，390×844 上面板正好差这十来像素才不用滚。 */
 .challenge .limit-row + .limit-row {
   border-top: 1px dashed rgba(58, 51, 53, .14);
-  padding-top: 12px;
+  padding-top: 9px;
 }
 .challenge .switch-row { padding: 9px 0; border-bottom: 0; }
 .challenge .switch-row:last-child { padding-bottom: 11px; }
@@ -111,10 +112,13 @@
 
 .lbtn:active:not(.is-on) { transform: translateY(2px); box-shadow: none; }
 
-/* 「不限」选中还是素色；选了具体的分钟数 / 步数就用橙底——挑战是真开着的。
- * 限时那排带 data-limit，步数那排带 data-steps，两个「不限」都得排除掉。 */
+/* 「不限」选中还是素色；选了具体的分钟数 / 步数 / 命数就用橙底——挑战是真开着的。
+ * 三排按钮各带 data-limit / data-steps / data-lives，三个「不限」都得排除掉。 */
 .lbtn.is-on { background: var(--bg-neutral); color: var(--ink); }
-.lbtn.is-on:not([data-limit="0"]):not([data-steps="0"]) { background: #F2762E; color: #FFFFFF; }
+.lbtn.is-on:not([data-limit="0"]):not([data-steps="0"]):not([data-lives="0"]) {
+  background: #F2762E;
+  color: #FFFFFF;
+}
 
 /* ---- 目标难度 ---- */
 .diff-row {
@@ -181,7 +185,7 @@
 
 /* ---- 换一局（面板底下那颗：上面那三组都在这里落地） ---- */
 .shuffle-row {
-  padding: 12px 0 10px;
+  padding: 10px 0 8px;
 }
 
 .shuffle-row .btn {

@@ -15,6 +15,9 @@
   .sc-item { width: 44px; height: 44px; }
   .sc-plate { padding: 3px 6px; }
   .sc-plate b { font-size: 12px; }
+  /* 命数：8 条命也不能顶到屏幕边上 */
+  .heart { width: 14px; height: 14px; }
+  .life-track { width: 92px; }
 }
 
 @media (max-width: 350px) {
@@ -31,6 +34,10 @@
   .sc-case { height: 74px; }
   .sc-item { width: 38px; height: 38px; margin-bottom: 6px; }
   .sc-plinth { bottom: 9px; height: 6px; }
+  /* 320 上「8 条命」是这一排最宽的形态：心再小一档、槽再短一点 */
+  .heart { width: 12px; height: 12px; }
+  .life-hearts { gap: 2px; }
+  .life-track { width: 80px; height: 10px; }
 }
 
 /* 宽一点就把四张读数卡片摊成一行 */
@@ -48,9 +55,9 @@
   .regions { min-height: 18px; }
 }
 
-/* 矮屏上的外观面板：三排展柜加起来太高，罩子压矮一点、名牌收窄，
-   让「知道了」还能落在第一屏里（真要滚也滚得动，只是别默认就得滚）。
-   色块那排在 17-look.css 里是用 id 选择器定尺寸的，这里必须带上同样的
+/* 矮屏上的外观面板：四排展柜加起来太高，罩子压矮一点、名牌收窄，
+   少滚一屏是一屏（「知道了」早就钉在面板下沿了，见 panels/look.css）。
+   色块那排在 panels/look.css 里是用 id 选择器定尺寸的，这里必须带上同样的
    #surfaceRow 前缀才压得动——光写 .sc-case 会被 specificity 挡回去。 */
 @media (max-height: 720px) {
   .look-sheet { padding-top: 10px; }
@@ -66,16 +73,6 @@
   #surfaceRow .sc-case { height: 54px; }
   #surfaceRow .sc-item { width: 40px; height: 40px; margin-bottom: 4px; }
   #surfaceRow .sc-plate { padding: 2px 4px; }
-  /* 5 套主题排两行，再矮就真放不下了：把「知道了」钉在面板下沿，
-     滚到任何位置都点得到，不用一路滑到底。.sheet 自己滚，sticky 贴它的下沿。 */
-  .look-sheet .sheet-done {
-    position: sticky;
-    bottom: 0;
-    z-index: 3;
-    margin-top: 8px;
-    background: var(--bg-card);
-    box-shadow: 0 -12px 16px -10px rgba(58, 51, 53, .28);
-  }
 }
 
 /* 横屏（且矮）：引导面板压成一行，省下约 45px。

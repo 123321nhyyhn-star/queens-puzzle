@@ -183,7 +183,12 @@ export function paintInfo() {
   }
 
   infoQueens.textContent = q + '/' + n;
-  if (state.status === 'lost') infoQueensSub.textContent = '时间到，这局没解开';
+  if (state.status === 'lost') {
+    /* 输的原因不同，说法也不同（lostBy）：命用尽 / 步数用尽 / 超时 */
+    infoQueensSub.textContent = state.lostBy === 'lives' ? '命用完了，这局没解开'
+      : state.lostBy === 'steps' ? '步数用完了，这局没解开'
+        : '时间到，这局没解开';
+  }
   else if (q >= n) infoQueensSub.textContent = '放满了，对一下行列与色块';
   else infoQueensSub.textContent = '还差 ' + (n - q) + ' 只';
 
@@ -196,8 +201,9 @@ export function paintInfo() {
   if (state.status === 'lost' && state.lostBy === 'steps') {
     infoStepsSub.textContent = '限步 ' + state.stepLimit + ' 步用完了，这局没解开';
   } else if (state.status === 'lost') {
-    // 时间到的那局步数也照实说：它是这一局留下的读数，不是「还剩多少」
-    infoStepsSub.textContent = '时间到，这局走了 ' + st + ' 步';
+    // 输掉的局步数也照实说：它是这一局留下的读数，不是「还剩多少」
+    infoStepsSub.textContent = (state.lostBy === 'lives' ? '命用完了' : '时间到') +
+      '，这局走了 ' + st + ' 步';
   } else if (state.status === 'won') {
     infoStepsSub.textContent = '这局一共走了 ' + st + ' 步';
   } else if (state.stepLimit) {

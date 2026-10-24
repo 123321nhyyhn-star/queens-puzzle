@@ -103,6 +103,21 @@
           </span>
         </button>
       </div>
+
+      <!-- 挑战「标错惩罚」的命数：只有这一局真的带惩罚时才露出来（ui/lives.js 管开关）。
+           红心与血条两套画法都在这一条里，显示哪套看 <html data-life>（外观面板换）。
+           放在信息条下面而不是挤进去：信息条在 320px 上已经排满了。
+           id 叫 livesRow 而不是 lifeRow：后者是外观面板里那一排展位。 -->
+      <div class="life-row" id="livesRow" hidden>
+        <div class="lives" id="lives" role="img" aria-label="还剩 3 条命">
+          <span class="life-hearts" id="lifeHearts"></span>
+          <span class="life-bar">
+            <span class="life-track"><span class="life-fill"></span>
+              <span class="life-ticks" id="lifeTicks" aria-hidden="true"></span>
+            </span>
+          </span>
+        </div>
+      </div>
     </div>
 
     <div class="coach" id="coach" role="group" aria-label="提示引导" tabindex="-1" hidden>

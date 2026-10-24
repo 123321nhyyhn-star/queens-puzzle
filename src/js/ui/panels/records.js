@@ -122,6 +122,7 @@ function metaBits(rec) {
   if (!rec.won) {
     // 输的原因：老记录没有 lr，只能按时限猜（那时挑战只有限时这一种）
     if (rec.lr === 'steps') bits.push('步数用尽');
+    else if (rec.lr === 'lives') bits.push('命用完了');
     else if (rec.lr === 'time') bits.push('超时');
     else bits.push(rec.lim ? '超时' : '未完成');
   }

@@ -28,7 +28,7 @@ import { closeRecords, openRecords } from './ui/panels/records.js';
 import { showResult } from './ui/panels/result.js';
 import { render, updateStats } from './ui/render.js';
 import { takeHashCode, tryLoadShare } from './ui/share.js';
-import { checkSteps, checkTimeout } from './ui/win.js';
+import { checkLives, checkSteps, checkTimeout } from './ui/win.js';
 
 /* 浮层先挂上：markup 进 #sheets，各面板的元素引用与事件在这一步接好。
  * 必须早于 boot()——外观面板要按面板里的展位建按钮，applyLook 靠它。 */
@@ -116,6 +116,8 @@ function boot() {
   checkTimeout();
   // 步数用尽同理：两次数都是存档里带回来的，回来就该看到同一张结局卡
   checkSteps();
+  // 命用尽也一样：剩 0 条命的那局读回来，先判负再谈别的
+  checkLives();
   paintClock();
 
   window.addEventListener('beforeunload', function () {
@@ -142,6 +144,9 @@ window.__QUEENS_DEBUG__ = {
   remaining: limitRemaining,
   checkTimeout: checkTimeout,
   checkSteps: checkSteps,
+  checkLives: checkLives,
+  // 命数（挑战「标错惩罚」）：面板上换挡位走 newgame.js，这里是只读探针
+  lives: function () { return { left: state.lives, limit: state.lifeLimit }; },
   // 引导相关的探针，只给 tools/ 里的自动化测试用
   guide: function () {
     return { open: guide.open, at: guide.at, plan: guide.plan };
@@ -166,7 +171,8 @@ window.__QUEENS_DEBUG__ = {
     return {
       surface: settings.surfaceStyle,
       mark: settings.markStyle,
-      piece: settings.pieceStyle
+      piece: settings.pieceStyle,
+      life: settings.lifeStyle
     };
   },
   openLook: openLook,

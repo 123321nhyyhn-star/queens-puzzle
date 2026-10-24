@@ -59,6 +59,14 @@ export var diffSeg = $('diffSeg');
 export var diffLevelEl = $('diffLevel');
 export var diffScoreEl = $('diffScore');
 
+/* 挑战「标错惩罚」的那一排命：整条只在惩罚开着时才露出来（ui/lives.js 管它）。
+ * 里面同时有红心与血条两套画法，显示哪套看 <html data-life>。
+ * 注意 id 是 livesRow —— 外观面板里那一排展位叫 lifeRow（surfaceRow 的邻居）。 */
+export var livesRow = $('livesRow');
+export var livesEl = $('lives');
+export var lifeHearts = $('lifeHearts');
+export var lifeTicks = $('lifeTicks');
+
 /* 顶栏四颗按钮：四颗各自的面板自己认领（新一局 / 设置 / 外观 / 战绩），
  * 这里只给引用，点的动作在各自的 ui/panels/<名字>.js 里绑。 */
 export var btnNew = $('btnNew');
