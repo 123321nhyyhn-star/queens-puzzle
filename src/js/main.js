@@ -1,13 +1,13 @@
 /* ============================================================================
  * main.js
- * 应用入口：启动流程（恢复存档 / 载入分享码 / 开新局）、尺寸监听、调试探针。
+ * 应用入口：挂载浮层、启动流程（恢复存档 / 载入分享码 / 开新局）、尺寸监听、调试探针。
  * ========================================================================== */
 
 import './events.js';   // 事件接线（纯副作用模块，必须早于 boot 执行）
 import { clearBoard } from './app/actions.js';
 import { applyBoard, newGame, retryGame } from './app/puzzle.js';
 import { limitRemaining, paintClock, pauseTimer, startTimer } from './core/clock.js';
-import { hintEl, stage } from './core/dom.js';
+import { hintEl, sheetsHost, stage } from './core/dom.js';
 import { guide, hasProgress, settings, state, view } from './core/state.js';
 import { doSave, loadGame, loadSettings } from './core/storage.js';
 import * as records from './core/records.js';
@@ -15,17 +15,24 @@ import { announce } from './core/utils.js';
 import { buildBoard, buildRegionBar } from './game/board.js';
 import { decodeShare, encodeShare } from './game/share-code.js';
 import { computeVibe } from './game/vibe.js';
-import { closeDiff, openDiff, paintInfo, updateDiffChip } from './ui/difficulty.js';
+import { updateDiffChip } from './ui/difficulty.js';
 import { applyFadeNow } from './ui/fade.js';
 import { closeGuide, guideNext, guidePrev, useHint } from './ui/guide.js';
 import { flashHint } from './ui/hint.js';
 import { relayout } from './ui/layout.js';
-import { applyLook, closeLook, openLook } from './ui/look.js';
+import { mountAll } from './ui/panels/index.js';
+import { closeDiff, openDiff, tick as infoTick } from './ui/panels/info.js';
+import { applyLook, closeLook, openLook } from './ui/panels/look.js';
+import { closeRecords, openRecords } from './ui/panels/records.js';
+import { showResult } from './ui/panels/result.js';
+import { closeSettings } from './ui/panels/settings.js';
 import { render, updateStats } from './ui/render.js';
-import { closeRecords, openRecords } from './ui/records.js';
-import { closeSheet } from './ui/settings.js';
 import { takeHashCode, tryLoadShare } from './ui/share.js';
-import { checkTimeout, showResult } from './ui/win.js';
+import { checkTimeout } from './ui/win.js';
+
+/* 浮层先挂上：markup 进 #sheets，各面板的元素引用与事件在这一步接好。
+ * 必须早于 boot()——外观面板要按面板里的展位建按钮，applyLook 靠它。 */
+mountAll(sheetsHost);
 
 var ro = null;
 var ticker = null;
@@ -94,17 +101,17 @@ function boot() {
     if (state.status === 'playing') {
       if (checkTimeout()) {
         // 面板还开着就先收起来，别让失败层背后挂着一张设置
-        if (view.sheetOpen) closeSheet();
+        closeSettings();
         return;
       }
       if (state.runningSince) paintClock();
     }
     /* 信息页开着时计时还在走：卡片上的读数跟着一起动，
      * 不然盯着「用时 01:12」看半分钟，还以为面板把游戏暂停了。 */
-    if (view.diffOpen) paintInfo();
+    infoTick();
   }, 250);
 
-  // 恢复出来的那局可能早就超时了（关着页面的时候不扣时间，但已用时是实打实的）
+  // 恢复出来的那局可能早就超时了（关着页面的时候不扣时间，但已用时的实打实的）
   checkTimeout();
   paintClock();
 
@@ -126,6 +133,8 @@ window.__QUEENS_DEBUG__ = {
   vibe: function () { return state.vibe; },
   openDiff: openDiff,
   closeDiff: closeDiff,
+  // 当前开着的浮层 id（null = 没开）。只给 tools/ 里的自动化测试用
+  sheet: function () { return view.sheet; },
   // 挑战相关的探针，只给 tools/ 里的自动化测试用
   remaining: limitRemaining,
   checkTimeout: checkTimeout,

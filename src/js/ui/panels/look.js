@@ -1,35 +1,72 @@
 /* ============================================================================
- * look.js
- * 外观面板：三排「展柜」，一排挑色块的花样，一排挑叉，一排挑皇后长什么样。
+ * panels/look.js · 外观面板
  * ----------------------------------------------------------------------------
- * 选项不再写在这个文件里：按钮是按 looks/index.js 登记的外观插件现场生成的，
+ * 三排「展柜」：色块的花样、叉、皇后长什么样。
+ * 选项不写在这个文件里：按钮是按 looks/index.js 登记的外观插件现场生成的，
  * 一排里跨了好几个插件时，每个展位左上角会挂一个插件名的小标签。
  *
  * 跟棋盘大小那套 pending 不一样：外观是**即时生效**的（跟音效 / 冲突高亮一类），
  * 选完立刻写 settings、存盘、落到 <html data-*> 上，棋盘跟着变。
+ *
+ * 这个文件同时管「外观」这件事本身（applyLook / pickLook），面板只是它的门面：
+ * 开一局时 main.js 要先 applyLook() 再建棋盘，那时面板还没打开过。
  * ========================================================================== */
 
-import { buzz, sfx } from '../core/audio.js';
-import {
-  app, btnLook, lookSheet, lookWrap, markNow, markRow, pieceNow, pieceRow,
-  surfaceNow, surfaceRow
-} from '../core/dom.js';
-import { REGION_COLORS } from '../core/palette.js';
-import { settings, view } from '../core/state.js';
-import { saveSettings } from '../core/storage.js';
-import { announce } from '../core/utils.js';
-import { applyPieceStyle } from '../game/board.js';
-import { applySurface, surfaceInk } from '../game/skin.js';
-import {
-  DEFAULT_LOOK, KIND, KINDS, groupsOf, styleId, styleName
-} from '../looks/index.js';
+import { buzz, sfx } from '../../core/audio.js';
+import { btnLook } from '../../core/dom.js';
+import { REGION_COLORS } from '../../core/palette.js';
+import { createSheet } from '../../core/sheet.js';
+import { settings, view } from '../../core/state.js';
+import { saveSettings } from '../../core/storage.js';
+import { announce } from '../../core/utils.js';
+import { applyPieceStyle } from '../../game/board.js';
+import { applySurface, surfaceInk } from '../../game/skin.js';
+import { DEFAULT_LOOK, KIND, KINDS, groupsOf, styleId, styleName } from '../../looks/index.js';
+
+export var HTML = /* html */ `
+<div class="sheet-wrap" id="lookWrap" hidden>
+  <div class="sheet-backdrop" id="lookBackdrop"></div>
+  <div class="sheet look-sheet" id="lookSheet" role="dialog" aria-modal="true" aria-labelledby="lookTitle" tabindex="-1">
+    <div class="sheet-head">
+      <h2 id="lookTitle">外观</h2>
+      <button class="icon-btn" id="btnCloseLook" type="button" aria-label="关闭外观">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true">
+          <path d="M6 6l12 12M18 6L6 18"></path>
+        </svg>
+      </button>
+    </div>
+    <p class="sheet-note">色块的纹样、叉和皇后各挑一样。选完立刻生效，自动打的标记也一起换。</p>
+
+    <!-- 三排展柜：选项按钮由 src/js/looks/ 里登记的外观插件现场生成。
+         一排里跨了多个插件时，展位左上角会挂一个插件名的小标签。 -->
+    <div class="case">
+      <div class="case-head"><b>色块</b><span id="surfaceNow">当前：几何</span></div>
+      <div class="case-row" id="surfaceRow" role="radiogroup" aria-label="色块的样式"></div>
+    </div>
+
+    <div class="case">
+      <div class="case-head"><b>叉</b><span id="markNow">当前：叉</span></div>
+      <div class="case-row" id="markRow" role="radiogroup" aria-label="叉的样式"></div>
+    </div>
+
+    <div class="case">
+      <div class="case-head"><b>皇后</b><span id="pieceNow">当前：皇后</span></div>
+      <div class="case-row" id="pieceRow" role="radiogroup" aria-label="皇后样式"></div>
+    </div>
+
+    <button class="btn sheet-done" id="btnLookDone" type="button">知道了</button>
+  </div>
+</div>`;
+
+var lookWrap = null, lookSheet = null, lookBackdrop = null;
+var surfaceRow = null, surfaceNow = null;
+var markRow = null, markNow = null;
+var pieceRow = null, pieceNow = null;
+
+var sheet = null;
 
 /* 每类外观落在面板里的容器与「当前：…」那行小字 */
-var ROW_ELS = {
-  surface: { row: surfaceRow, now: surfaceNow },
-  mark: { row: markRow, now: markNow },
-  piece: { row: pieceRow, now: pieceNow }
-};
+var ROW_ELS = null;
 
 /* 展位右上角那枚勾：选中才亮，用一块黄圆点把「就是这套」说清楚 */
 var TICK_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true">' +
@@ -123,8 +160,6 @@ function buildCase(kind) {
   }
 }
 
-for (var kk = 0; kk < KINDS.length; kk++) buildCase(KINDS[kk]);
-
 /* ==========================================================
    落地与同步
    ========================================================== */
@@ -143,6 +178,7 @@ export function applyLook() {
 }
 
 export function syncLook() {
+  if (!ROW_ELS) return;
   for (var k = 0; k < KINDS.length; k++) {
     var kind = KINDS[k];
     var els = ROW_ELS[kind];
@@ -181,30 +217,55 @@ export function pickLook(kind, id) {
   announce(KIND[kind].label + '改成「' + styleName(kind, id) + '」');
 }
 
-/* ==========================================================
-   面板开关
-   ----------------------------------------------------------
-   跟设置 / 难度 / 战绩三个面板同一套：app 设 inert，canPlay() 也拦，
-   否则键盘事件挂在 document 上，面板背后还能落子。
-   ========================================================== */
-export function openLook() {
-  if (view.lookOpen) return;
-  view.lookOpen = true;
-  syncLook();
-  lookWrap.hidden = false;
-  if ('inert' in HTMLElement.prototype) app.inert = true;
-  else app.setAttribute('aria-hidden', 'true');
-  btnLook.setAttribute('aria-expanded', 'true');
-  lookSheet.focus();
-}
+export function openLook() { sheet.open(); }
+export function closeLook() { sheet.close(); }
+export function isLookOpen() { return !!sheet && sheet.isOpen(); }
 
-export function closeLook() {
-  if (!view.lookOpen) return;
-  view.lookOpen = false;
-  lookWrap.hidden = true;
-  if ('inert' in HTMLElement.prototype) app.inert = false;
-  app.removeAttribute('aria-hidden');
-  if (btnLook) btnLook.setAttribute('aria-expanded', 'false');
-  // 关掉之后焦点回到顶栏那颗按钮，键盘用户不用重新 Tab 一遍
-  if (btnLook && btnLook.focus) btnLook.focus();
+/* ==========================================================
+   挂载
+   ========================================================== */
+export function mount(host) {
+  host.insertAdjacentHTML('beforeend', HTML);
+
+  lookWrap = document.getElementById('lookWrap');
+  lookSheet = document.getElementById('lookSheet');
+  lookBackdrop = document.getElementById('lookBackdrop');
+  surfaceRow = document.getElementById('surfaceRow');
+  surfaceNow = document.getElementById('surfaceNow');
+  markRow = document.getElementById('markRow');
+  markNow = document.getElementById('markNow');
+  pieceRow = document.getElementById('pieceRow');
+  pieceNow = document.getElementById('pieceNow');
+
+  ROW_ELS = {
+    surface: { row: surfaceRow, now: surfaceNow },
+    mark: { row: markRow, now: markNow },
+    piece: { row: pieceRow, now: pieceNow }
+  };
+  for (var kk = 0; kk < KINDS.length; kk++) buildCase(KINDS[kk]);
+
+  /* 跟设置 / 本局信息 / 战绩同一套：inert、canPlay、Esc、Tab 都在 core/sheet.js 里。
+   * 关掉之后焦点回到顶栏那颗按钮，键盘用户不用重新 Tab 一遍。 */
+  sheet = createSheet({
+    id: 'look',
+    wrap: lookWrap,
+    panel: lookSheet,
+    opener: btnLook,
+    focusOpener: true,
+    beforeOpen: syncLook
+  });
+
+  btnLook.addEventListener('click', openLook);
+  document.getElementById('btnCloseLook').addEventListener('click', closeLook);
+  document.getElementById('btnLookDone').addEventListener('click', closeLook);
+  lookBackdrop.addEventListener('click', closeLook);
+
+  lookSheet.addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('.showcase') : null;
+    if (!b) return;
+    // 三排的按钮都叫 .showcase，靠 data-surface / data-mark / data-piece 分派
+    if (b.dataset.surface) pickLook('surface', b.dataset.surface);
+    else if (b.dataset.mark) pickLook('mark', b.dataset.mark);
+    else if (b.dataset.piece) pickLook('piece', b.dataset.piece);
+  });
 }

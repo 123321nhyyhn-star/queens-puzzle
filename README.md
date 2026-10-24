@@ -354,19 +354,22 @@ looks/
 
 ```
 .
-├─ index.html              纯结构 + 资源引入（约 290 行，不再放样式和脚本）
+├─ index.html              只有骨架：顶栏 / 棋盘 / 信息条 / 工具栏 + 一个 #sheets 挂载点
+│                          （约 200 行；浮层的 markup 不在这个文件里）
 ├─ serve.py                局域网静态服务器（零依赖）
 ├─ 启动局域网游戏.bat / start-lan.sh
 ├─ src/
 │  ├─ styles/              按加载顺序编号的样式片段
 │  └─ js/
-│     ├─ main.js           入口：启动流程 + 尺寸监听 + 调试探针
-│     ├─ events.js         事件接线：所有 DOM 事件都绑在这里
+│     ├─ main.js           入口：挂载浮层 + 启动流程 + 尺寸监听 + 调试探针
+│     ├─ events.js         棋盘指针 / 键盘 / 工具栏 / 全局监听
 │     ├─ engine/           出题 / 难度 / 提示三套引擎（经典脚本，双端通用）
-│     ├─ core/             基础设施
+│     ├─ core/             基础设施（含浮层基座 sheet.js）
 │     ├─ looks/            外观插件：色块图案 / 叉 / 皇后的画法都在这儿（没有依赖，最底层）
 │     ├─ game/             棋局逻辑
-│     ├─ ui/               界面
+│     ├─ ui/
+│     │  ├─ panels/        每个浮层一个文件：markup + 引用 + 事件 + 开关都在里面
+│     │  └─ *.js           渲染、引导、提示、淡化、布局、分享、胜负这些共用件
 │     └─ app/              流程编排
 ├─ docs/                   难度调研、提示可行性与文案库
 └─ tools/                  回归测试、截图、调参脚本
@@ -377,6 +380,9 @@ looks/
 ```
 looks  ←  core  ←  game  ←  ui  ←  app
 （画法） （基础设施）（棋局逻辑）（界面）（流程编排）
+
+ui/panels/*  →  core/sheet.js（浮层基座）
+ui/panels/index.js 是这些面板唯一的清单
 ```
 
 - **只能向下依赖**：`looks` 谁也不引用（纯数据与画法），`core` 不引用 `game / ui / app`，
@@ -385,9 +391,10 @@ looks  ←  core  ←  game  ←  ui  ←  app
 - `events.js` 与 `main.js` 在最上层，可以引用任何模块。
 - 有几处刻意保留的互相依赖，别硬拆（拆了反而更绕）：
   `ui/layout ↔ ui/guide`（重排要重画圈画层，引导翻页要重排）、
-  `ui/settings ↔ ui/share`（面板里要刷新分享码，载入分享码要关面板）、
+  `ui/panels/settings ↔ ui/share`（面板里要刷新分享码，载入分享码要关面板）、
   `ui/guide → app/actions`（点「照做」要落子，落子又要收起面板）、
-  `ui/share → app/puzzle`（载入分享码其实就是换一盘棋）。
+  `ui/share → app/puzzle`（载入分享码其实就是换一盘棋）、
+  `ui/panels/result ↔ app/puzzle`（结果层的按钮要开新局，换盘时要先收掉结果层）。
   ESM 允许循环引用，**前提是只在函数体内用对方**——不要在模块顶层求值时读对方的值。
 
 ### 各目录里有什么
@@ -402,7 +409,8 @@ looks  ←  core  ←  game  ←  ui  ←  app
 | `looks/sky.js` | 「天空」插件：18 枚天象（云 / 太阳 / 月牙 / 彩虹 / 闪电 / 风筝……），`ink: 'tint'` 走提亮 |
 | `looks/sticker.js` | 「贴纸」插件：18 枚图标（心 / 星 / 笑脸 / 皇冠 / 音符 / 爪印……），形状先垫一遍半透明白当裁边，整层 `veil: .45` |
 | `core/state.js` | 全局状态：`state`（局面）/ `settings`（设置）/ `pending`（面板里未生效的意向）/ `guide`（引导进度）/ `view`（视图层可变引用）；撤销栈深度上限 `UNDO_MAX` 也在这里 |
-| `core/dom.js` | 所有 DOM 元素引用，**只在这里取一次** |
+| `core/dom.js` | **骨架**上的 DOM 引用（顶栏 / 棋盘 / 信息条 / 工具栏 / 提示行 / 遮罩）。浮层里的元素不在这里，各面板自己取 |
+| `core/sheet.js` | 浮层基座：显隐、互斥、`inert`、Esc、Tab 锁焦、层内快捷键、`aria-expanded`。`view.sheet` 由它维护，`canPlay()` 只看这一个字段 |
 | `core/utils.js` | `clamp`、读屏播报、时间格式化、撤销步数读数 `stepText`、脉冲动画、`svgEl` |
 | `core/palette.js` | 18 色淡彩池 + 按邻接图做 Lab 色差分配 |
 | `core/audio.js` | WebAudio 实时合成音效 + 震动 |
@@ -421,21 +429,51 @@ looks  ←  core  ←  game  ←  ui  ←  app
 | `ui/layout.js` | 棋盘尺寸计算（提示行 + 信息条算一块，浮层开关不许挪动棋盘） |
 | `ui/guide.js` | 提示引导面板 + 棋盘圈画层 |
 | `ui/hint.js` | 顶部提示行文案 + 提示行上的「补齐」按钮（露不露、差几只） |
-| `ui/settings.js` | 设置面板（尺寸/难度/挑战只写 `pending`，点「换一局」才落地） |
-| `ui/look.js` | 外观面板：按插件生成三排展柜、样式切换（即时生效）、`<html data-*>` 落地 |
-| `ui/difficulty.js` | 信息条上的难度段 + 本局信息页（读数卡片 + 难度构成） |
-| `ui/share.js` | 分享面板：复制 / 粘贴载入 / `#QNS1-...` 链接开局 |
-| `ui/records.js` | 战绩面板：记录列表（缩略图 / 分享码）、排行榜筛选与名次、删除与清空 |
-| `ui/win.js` | 胜利判定、礼花、结果层（解开 / 时间到共用一张卡）、`checkTimeout()` |
-| `ui/mismatch.js` | 「没抽到够格的盘」那一层：不装盘，给「再抽一局 / 更换设置」两条路（Esc 关不掉） |
+| `ui/difficulty.js` | 只有信息条上的难度段（骨架上的东西，面板关着也得更新） |
+| `ui/share.js` | 分享码的数据侧：`refreshShareCode` / `tryLoadShare` / `#QNS1-...` 开局。**UI 在设置面板里**，元素由面板 `bindShareUI()` 交进来 |
+| `ui/win.js` | 胜利判定、礼花、超时判负、记战绩；结果层那张卡在 `ui/panels/result.js` |
+| `ui/panels/index.js` | **浮层清单**：`PANELS` 数组 + `mountAll()`。加面板只改这里一行 |
+| `ui/panels/settings.js` | 设置面板（尺寸/难度/挑战只写 `pending`，点「换一局」才落地）+ 分享那一段 UI |
+| `ui/panels/info.js` | 本局信息页：四张读数卡片 + 步数 + 难度构成（`DIFF_ROWS` 的文案出处） |
+| `ui/panels/records.js` | 战绩面板：记录列表（缩略图 / 分享码）、排行榜筛选与名次、删除与清空 |
+| `ui/panels/look.js` | 外观面板：三排展柜 + `applyLook` / `pickLook`（开一局时也要用） |
+| `ui/panels/result.js` | 结果层（解开 / 时间到共用一张卡），输掉时 Esc 关不掉 |
+| `ui/panels/mismatch.js` | 「没抽到够格的盘」那一层：不装盘，只给「再抽一局 / 更换设置」（Esc 关不掉） |
 | `app/actions.js` | 玩家动作：点格语义、落子、清空、一键补齐 `fillQueens()` |
 | `app/history.js` | 撤销 / 重做（整盘快照，最多 `UNDO_MAX` 步；挑战里禁用时直接拦下） |
-| `app/puzzle.js` | 出题与换盘：按档位夹尺寸 → `roll()` 里 `pickBoard()` 抽最多 3 张挑最难的那张，够不到档位下限就交给 `ui/mismatch.js` 问玩家 → 生成遮罩 → 装上棋盘；`retryGame()` 原盘重开 |
+| `app/puzzle.js` | 出题与换盘：按档位夹尺寸 → `roll()` 里 `pickBoard()` 抽最多 3 张挑最难的那张，够不到档位下限就交给 `ui/panels/mismatch.js` 问玩家 → 生成遮罩 → 装上棋盘；`retryGame()` 原盘重开 |
 
 ### 样式
 
 `src/styles/` 里的文件**按编号顺序加载**（`index.html` 里逐个 `<link>`），
 `01-tokens.css` 放设计令牌，`18-responsive.css` 必须最后。新增片段时按顺序插号即可。
+
+### 加一个浮层面板
+
+浮层（设置 / 本局信息 / 战绩 / 外观 / 结果层 / 「没抽到够格的盘」）都是**一个文件**：
+markup、元素引用、事件、开关全在 `src/js/ui/panels/xxx.js` 里。加一个新的只要两步：
+
+1. 照 `ui/panels/look.js` 抄一个文件，导出 `mount(host)`：里面先
+   `host.insertAdjacentHTML('beforeend', HTML)`，再取引用、绑事件，最后
+   `createSheet({ id, wrap, panel, opener, ... })`；
+2. 在 `ui/panels/index.js` 的 `PANELS` 里加一行 import 和一项。
+
+**不用动** `index.html`、`core/dom.js`、`events.js`、`app/actions.js`、`core/state.js`：
+- `index.html` 只有一行 `<div id="sheets"></div>` 当挂载点；
+- `canPlay()` 只看 `view.sheet`（字符串），浮层基座负责维护它；
+- Esc / Tab / `inert` / `aria-expanded` / 互斥都在 `createSheet` 里，面板只声明行为。
+
+`createSheet` 认的字段（写在文件开头也有说明）：`id`、`wrap`（整层，关时 hidden）、
+`panel`（焦点与 Tab 容器）、`opener`（触发按钮）、`focusOpener`（关时焦点回不回去）、
+`inert`（默认 true，整屏盖住的那两层传 false）、`beforeOpen` / `afterOpen` /
+`beforeClose` / `afterClose`、`canClose(opt)`（返回 false 就 Esc / 点背景都关不掉，
+只有传 `{ force: true }` 才收）、`onKey(e)`（层内额外快捷键）。
+
+外部要开某个面板，`import` 它导出的 `openXxx()`，或者直接用基座的
+`openSheet('xxx')`（不用认识那个模块）。
+
+> markup 是**同步**插进去的模板字符串，不要改成 `fetch('xxx.html')`：那会让启动变成
+> async，`tools/` 里所有等 `__QUEENS_DEBUG__` 的断言都得改，首屏还会闪一下空面板。
 
 ## 常见改动去哪儿改
 
@@ -444,7 +482,7 @@ looks  ←  core  ←  game  ←  ui  ←  app
 | 改配色 / 圆角 / 阴影 | `src/styles/01-tokens.css` |
 | 改色块底色池 | `src/js/core/palette.js`（用 `node tools/gen-palette.mjs` 生成候选） |
 | 改顶栏 / 信息条 / 棋盘 / 面板外观 | 对应编号的 CSS 片段（信息条在 `03-topbar.css`） |
-| 加一个设置开关 | `core/config.js` 的 `DEFAULT_SETTINGS` + `loadSettings`（老存档给个兜底）、`index.html` 里加一行 `.switch-row`（放进 `#sheetMore`，默认折在「显示更多选项」里）、`core/dom.js` 取引用、`ui/settings.js` 的 `syncSheet` 与 `events.js` 的 `sheet` click 分支 |
+| 加一个设置开关 | `core/config.js` 的 `DEFAULT_SETTINGS` + `loadSettings`（老存档给个兜底），然后**全在 `ui/panels/settings.js` 一个文件里**：`HTML` 里加一行 `.switch-row`（放进 `#sheetMore`，默认折在「显示更多选项」里）、`syncSheet()` 里 `setSwitch('swXxx', settings.xxx)`、`mount()` 里那个 `sheet` 的 click 分支加一支。别的文件一个字都不用改 |
 | 改唯一位置提示的强度 / 节奏 | `06-board-states.css` 的 `.cell.is-forced`（`forcedGlow` 的峰值亮度与 2.8s 呼吸周期；这里刻意不描边） |
 | 改拖动标 × 的对齐方式 | `events.js` 的 `pointermove`（`settings.alignDrag` 一开一关两条路）、默认值在 `core/config.js` |
 | 改淡化淡成什么样 / 等多久 | `06-board-states.css` 的 `.is-dim`（底色与画的透明度）、`ui/fade.js` 的 `DIM_DELAY`（防抖） |
@@ -452,22 +490,24 @@ looks  ←  core  ←  game  ←  ui  ←  app
 | 改色块图案的浓淡 / 换一套图形 | 对应主题插件里的 `tone` 与 `MOTIFS`（几何 `geometry.js`、自然 `nature.js`、天空 `sky.js`、贴纸 `sticker.js`；纯色在 `classic.js`） |
 | 新加一整套色块主题 | 照 `looks/nature.js` 抄结构：18 枚 `MOTIFS` + 一个 `tone`，要提亮加 `ink: 'tint'`、要整层压淡加 `veil`。面板会自己长出第 6 个展位 |
 | 改限时挡位 | `core/config.js` 的 `LIMIT_OPTIONS`（面板按钮是按它生成的） |
-| 加一项挑战 | 照「限时 / 禁用提示 / 禁用撤销」三件套：`DEFAULT_SETTINGS` + `pending`（`core/state.js`）+ `index.html` 的 `.challenge` 块 + `ui/settings.js` 的 `syncSheet`/`commitChallenge` + 动作入口里 `settings.xxx` 一拦 |
+| 加一项挑战 | 照「限时 / 禁用提示 / 禁用撤销」三件套：`DEFAULT_SETTINGS` + `pending`（`core/state.js`）+ `ui/panels/settings.js` 的 `.challenge` 块 / `syncSheet` / `commitChallenge` + 动作入口里 `settings.xxx` 一拦 |
 | 改超时判负的时机 | `core/clock.js` 的 `limitExpired`、`ui/win.js` 的 `checkTimeout`（由 `main.js` 的 250ms 心跳调用） |
+| 改结果层文案 / 按钮 | `ui/panels/result.js` 的 `HTML` + `paint()`；Esc 关不关得掉由 `canClose` 决定 |
 | 改出题规则 | `src/js/engine/engine.js`（改动后跑 `node tools/test-engine.mjs`） |
 | 改提示措辞 / 推理等级 | `src/js/engine/hint.js`（`node tools/test-hint.mjs`；L4 那套话看 `check-probe-guide.mjs`） |
 | 改难度评分 | `src/js/engine/difficulty.js` + `game/vibe.js` |
 | 改信息条有哪几段 / 什么顺序 | `index.html` 的 `.hud`（每段一个 `.hud-seg`，样式在 `03-topbar.css`），读数由 `ui/render.js` 与 `ui/difficulty.js` 写 |
-| 改信息页的卡片 / 文案 | `index.html` 的 `.info-grid` + `ui/difficulty.js` 的 `paintInfo()` / `renderDiff()`，样式在 `11-sheet-difficulty.css` |
+| 改信息页的卡片 / 文案 | `ui/panels/info.js` 的 `HTML`（`.info-grid`）+ `paintInfo()` / `renderDiff()`，样式在 `11-sheet-difficulty.css` |
 | 改「补齐」什么时候露 / 补哪几格 | `game/rules.js` 的 `pendingQueens()`（三条判据都在这儿）；露不露的文案在 `ui/hint.js` 的 `setNudge()`，落子节奏在 `app/actions.js` 的 `fillQueens()` |
 | 改步数的上限 / 读法 | `core/state.js` 的 `UNDO_MAX`（同时管入栈与显示）；`60+` 的写法在 `core/utils.js` 的 `stepText()` |
 | 改战绩记什么 | `core/records.js` 的 `add()` / `tidy()`（加字段记得兼容老数据） |
-| 改排行榜怎么分组 / 排序 | `core/records.js` 的 `group()`；筛选项在 `ui/records.js` 的 `renderBoard()` |
-| 改战绩行 / 排行榜长什么样 | `ui/records.js` 的 `rowHtml()` / `lbRow()` + `16-records.css` |
+| 改排行榜怎么分组 / 排序 | `core/records.js` 的 `group()`；筛选项在 `ui/panels/records.js` 的 `renderBoard()` |
+| 改战绩行 / 排行榜长什么样 | `ui/panels/records.js` 的 `rowHtml()` / `lbRow()` + `16-records.css` |
 | 改棋盘缩略图 | `game/preview.js`（纯字符串，改完看 `tools/check-records.mjs`） |
 | 加键位 / 手势 | `src/js/events.js` |
 
-不要在两个模块里各建一份状态：新状态加进 `core/state.js`，需要可变引用就挂到 `view` 上。
+不要在两个模块里各建一份状态：跨模块要读的加进 `core/state.js`，需要可变引用就挂到 `view` 上。
+只给某一个面板自己用的临时视图（比如战绩看的是哪一页、哪个筛选）就放在**那个面板模块**里。
 
 ## 测试
 
@@ -498,7 +538,8 @@ node tools/check-diff-ui.mjs     # 信息条 + 本局信息页：读数 / 难度
 
 现在没有构建工具，浏览器原生跑 ESM。将来要打包时：
 
-1. 以 `index.html` 为入口，Vite / Rollup 能直接吃掉这套原生模块，无需改代码；
+1. 以 `index.html` 为入口，Vite / Rollup 能直接吃掉这套原生模块，无需改代码
+   （浮层的 markup 已经是 JS 里的模板字符串，不用 `?raw` 再引一次）；
 2. `src/js/engine/` 三个文件是「经典脚本 + CJS 双模」，浏览器里挂在 `window.Queens*`、
    Node 里用 `require`（`tools/` 大量依赖）。要转成纯 ESM 时，记得同步改 `tools/` 的 `require`；
 3. `index.html` 里的 17 个 `<link>` 会被打包器自动合并，不用手工合并 CSS。

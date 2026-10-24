@@ -1,47 +1,60 @@
 /* ============================================================================
- * share.js
- * 分享面板：展示 / 复制 / 粘贴载入，以及 #QNS1-... 链接开局。
+ * share.js · 分享码的取用与载入
+ * ----------------------------------------------------------------------------
+ * 分享那一段 UI（代码框 / 复制 / 载入 / 状态行）住在设置面板里，markup 跟着
+ * 面板走（ui/panels/settings.js）。这里只管数据这一头：
+ *
+ *   · refreshShareCode / fitShareCode / setShareStatus —— 往那几块元素里写东西
+ *   · tryLoadShare —— 校验并装上别人给的盘（战绩面板的「玩这盘」也走它）
+ *   · takeHashCode —— 链接里带 #QNS1-... 时开局直接用
+ *
+ * 元素由面板在 mount() 时用 bindShareUI() 交进来。这样这个文件不再认识
+ * 任何 DOM id，「分享」也就不会绑着设置面板一起被搬。
  * ========================================================================== */
 
 import { applyBoard, hideVeil, showVeil, veilDelayFor } from '../app/puzzle.js';
 import { buzz, sfx } from '../core/audio.js';
-import { shareCode, shareStatus, shareTag, sheetWrap } from '../core/dom.js';
 import { state } from '../core/state.js';
 import { announce } from '../core/utils.js';
 import { decodeShare, encodeShare, shareFailText } from '../game/share-code.js';
 import { flashHint } from './hint.js';
-import { closeSheet } from './settings.js';
+
+/* 由设置面板交进来：{ code, status, tag, sheetWrap, close } */
+var ui = null;
+
+export function bindShareUI(o) { ui = o; }
 
 export function setShareStatus(text, kind) {
-  if (!shareStatus) return;
-  shareStatus.textContent = text || '';
-  shareStatus.classList.toggle('is-good', kind === 'good');
-  shareStatus.classList.toggle('is-bad', kind === 'bad');
+  var el = ui && ui.status;
+  if (!el) return;
+  el.textContent = text || '';
+  el.classList.toggle('is-good', kind === 'good');
+  el.classList.toggle('is-bad', kind === 'bad');
 }
 
 export function refreshShareCode() {
-  if (!shareCode) return;
+  if (!ui || !ui.code) return;
   if (!state.regions || !state.solution) {
-    shareCode.value = '';
+    ui.code.value = '';
     return;
   }
-  shareCode.value = encodeShare(state.size, state.regions, state.solution);
-  shareTag.textContent = state.size + '×' + state.size;
+  ui.code.value = encodeShare(state.size, state.regions, state.solution);
+  ui.tag.textContent = state.size + '×' + state.size;
   setShareStatus('');
   fitShareCode();
 }
 
 /* 代码长的时候（16×16 有近 300 位）让框自己长高，尽量整段都露出来 */
 export function fitShareCode() {
-  if (!shareCode || sheetWrap.hidden) return;
-  shareCode.style.height = 'auto';
-  shareCode.style.height = Math.min(170, Math.max(46, shareCode.scrollHeight + 2)) + 'px';
+  if (!ui || !ui.code || (ui.sheetWrap && ui.sheetWrap.hidden)) return;
+  ui.code.style.height = 'auto';
+  ui.code.style.height = Math.min(170, Math.max(46, ui.code.scrollHeight + 2)) + 'px';
 }
 
 /* 剪贴板：局域网 http 下没有 navigator.clipboard，需要 execCommand 兜底 */
 var shareFocusHold = false;
 
-/* 复制时代码框会被迫聚焦，那一瞬间的 focus 事件不该再把面板滚一下（见 events.js）。 */
+/* 复制时代码框会被迫聚焦，那一瞬间的 focus 事件不该再把面板滚一下（见设置面板）。 */
 export function isShareFocusHold() {
   return shareFocusHold;
 }
@@ -51,9 +64,9 @@ export function copyText(text, done) {
     var ok = false;
     try {
       shareFocusHold = true;
-      shareCode.focus();
-      shareCode.select();
-      shareCode.setSelectionRange(0, shareCode.value.length);
+      ui.code.focus();
+      ui.code.select();
+      ui.code.setSelectionRange(0, ui.code.value.length);
       ok = document.execCommand('copy');
     } catch (e) { ok = false; }
     window.setTimeout(function () { shareFocusHold = false; }, 260);
@@ -96,7 +109,7 @@ export function tryLoadShare(raw) {
     }
 
     applyBoard(n, out.regions, out.solution, 0);
-    closeSheet();
+    if (ui && ui.close) ui.close();
     setShareStatus('');
     sfx('share');
     buzz(12);

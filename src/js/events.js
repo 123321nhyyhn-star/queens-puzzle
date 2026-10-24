@@ -1,38 +1,29 @@
 /* ============================================================================
- * events.js
- * 事件接线层：所有 DOM 事件的绑定集中在这里，方便一眼看清「哪里点了会怎样」。
+ * events.js · 棋盘与全局交互
+ * ----------------------------------------------------------------------------
+ * 只留「骨架上的东西」：棋盘的指针与键盘、工具栏三颗按钮、提示行、引导面板、
+ * 全局监听（失焦 / 切后台 / 首次触碰解锁音频）。
+ *
+ * 浮层里的点击不在这里——每个面板自己的 mount() 绑自己的元素，
+ * 加一个面板不用再往这个文件里插一段。
  * ========================================================================== */
 
 import { canPlay, clearBoard, fillQueens, onCell, placeQueen } from './app/actions.js';
-import { newGame, retryGame } from './app/puzzle.js';
+import { pushHistory, redo, undo } from './app/history.js';
+import { newGame } from './app/puzzle.js';
 import { audio, buzz, sfx } from './core/audio.js';
 import { pauseTimer, startTimer } from './core/clock.js';
-import { DIFF_BANDS, DIFF_ORDER, SIZE_MAX, SIZE_MIN } from './core/config.js';
-import { btnAgain, btnClear, btnClearRecs, btnCloseDiff, btnCloseLook, btnCloseRec,
-  btnCloseSheet, btnCopyCode, btnDiffDone, btnFinish, btnHint, btnHud, btnInfoSetup, btnLoadCode, btnLook,
-  btnLookDone, btnMoreOpts, btnMoreRecs, btnNew, btnPeek, btnRecords, btnReplay, btnSettings,
-  btnShuffle, btnUndo, coachClose, coachNext, coachPrev, diffBackdrop, diffOpts, diffSheet,
-  gridEl, limChips, limitOpts, lookBackdrop, lookSheet, lvChips, mismatchEl, quickRow,
-  recBackdrop, recList, boardList, regionsEl, resultEl, shareCode, shareStatus, sheet,
-  sheetBackdrop, sizeMinus, sizePlus, tabBoard, tabRecs } from './core/dom.js';
-import { guide, hasProgress, pending, settings, state, view } from './core/state.js';
-import { save, saveSettings } from './core/storage.js';
-import { announce, clamp } from './core/utils.js';
+import {
+  btnClear, btnFinish, btnHint, btnNew, btnUndo, coachClose, coachNext, coachPrev, gridEl,
+  regionsEl
+} from './core/dom.js';
+import { handleKey } from './core/sheet.js';
+import { guide, hasProgress, settings, state, view } from './core/state.js';
+import { save } from './core/storage.js';
 import { endPeek } from './game/board.js';
-import { decodeShare } from './game/share-code.js';
-import { closeDiff, openDiff, toggleDiffTip } from './ui/difficulty.js';
-import { applyFadeNow } from './ui/fade.js';
 import { closeGuide, guideNext, guidePrev, useHint } from './ui/guide.js';
-import { flashHint, updateHint } from './ui/hint.js';
-import { closeLook, openLook, pickLook } from './ui/look.js';
-import { pushHistory, redo, undo } from './app/history.js';
+import { flashHint } from './ui/hint.js';
 import { render } from './ui/render.js';
-import { closeSheet, commitChallenge, challengeSummary, openSheet, setPendingLimit,
-  setPendingSize, syncSheet, toggleMore, trapFocus } from './ui/settings.js';
-import { copyText, isShareFocusHold, setShareStatus, shareReject, tryLoadShare } from './ui/share.js';
-import { dismissResult } from './ui/win.js';
-import { closeRecords, openRecords, pickChip, recAction, requestClearAll, showMore,
-  switchTab, trapRecords } from './ui/records.js';
 
 // 松手 / 手势被打断 / 窗口失焦，都算结束（指针被捕获在老色卡上时也能兜住）
 window.addEventListener('pointerup', endPeek, true);
@@ -41,9 +32,8 @@ window.addEventListener('blur', endPeek);
 regionsEl.addEventListener('contextmenu', function (e) { e.preventDefault(); });
 
 /* ==========================================================
-   事件
+   指针：轻点标 × / 双击放皇后 / 按住拖动批量涂抹
    ========================================================== */
-/* ---- 指针：轻点标 × / 双击放皇后 / 按住拖动批量涂抹 ---- */
 var stroke = null;          // 当前这一笔：{ id, mode, x, y, moved, last }
 var PAINT_SLOP = 6;         // 位移超过这么多像素才算「拖动」
 var lastPaintTick = 0;
@@ -227,6 +217,9 @@ gridEl.addEventListener('click', function (e) {
   if (!isNaN(i)) onCell(i);
 });
 
+/* ==========================================================
+   工具栏 / 提示行 / 引导
+   ========================================================== */
 btnUndo.addEventListener('click', undo);
 btnHint.addEventListener('click', useHint);
 btnClear.addEventListener('click', function () { clearBoard(false); });
@@ -245,243 +238,9 @@ btnNew.addEventListener('click', function () {
   newGame(state.size);
 });
 
-btnSettings.addEventListener('click', openSheet);
-/* 信息条整条是一个按钮：棋盘 / 用时 / 皇后 / 难度点了都进同一个信息页。
- * 以前「尺寸」点开设置面板、其余三处两个不能点、一个点开难度说明，
- * 想看一眼现在几点得先记住哪个能按。 */
-btnHud.addEventListener('click', openDiff);
-btnCloseSheet.addEventListener('click', closeSheet);
-sheetBackdrop.addEventListener('click', closeSheet);
-/* 「显示更多选项」：只改面板露出多少，不碰任何设置；展开状态留在这一次会话里 */
-btnMoreOpts.addEventListener('click', toggleMore);
-
-/* ---- 外观：色块图案 / 叉 / 皇后的样式，选完立刻生效 ---- */
-btnLook.addEventListener('click', openLook);
-btnCloseLook.addEventListener('click', closeLook);
-btnLookDone.addEventListener('click', closeLook);
-lookBackdrop.addEventListener('click', closeLook);
-lookSheet.addEventListener('click', function (e) {
-  var b = e.target.closest ? e.target.closest('.showcase') : null;
-  if (!b) return;
-  // 三排的按钮都叫 .showcase，靠 data-surface / data-mark / data-piece 分派
-  if (b.dataset.surface) pickLook('surface', b.dataset.surface);
-  else if (b.dataset.mark) pickLook('mark', b.dataset.mark);
-  else if (b.dataset.piece) pickLook('piece', b.dataset.piece);
-});
-
-btnCloseDiff.addEventListener('click', function () { closeDiff(true); });
-btnDiffDone.addEventListener('click', function () { closeDiff(true); });
-diffBackdrop.addEventListener('click', function () { closeDiff(true); });
-/* 难度构成每行右端的问号：点开那一行的说明，点面板别处收起。
- * 桌面端另有 :hover（11-sheet-difficulty.css），这里是触屏的唯一一路。 */
-diffSheet.addEventListener('click', function (e) { toggleDiffTip(e.target); });
-/* 信息页底部那句「改棋盘大小与难度」：看完信息想动手改，直接去设置面板——
- * 这是页面里明写的一个动作，不是又一个「点哪里会怎样」的隐藏入口。 */
-btnInfoSetup.addEventListener('click', function () {
-  closeDiff(false);
-  openSheet();
-});
-
-/* ---- 战绩 / 排行榜 ---- */
-btnRecords.addEventListener('click', openRecords);
-btnCloseRec.addEventListener('click', closeRecords);
-recBackdrop.addEventListener('click', closeRecords);
-tabRecs.addEventListener('click', function () { switchTab('list'); });
-tabBoard.addEventListener('click', function () { switchTab('board'); });
-limChips.addEventListener('click', pickChip);
-lvChips.addEventListener('click', pickChip);
-recList.addEventListener('click', recAction);
-boardList.addEventListener('click', recAction);
-btnMoreRecs.addEventListener('click', showMore);
-btnClearRecs.addEventListener('click', requestClearAll);
-/* 换一局：唯一会作废当前这局的动作，面板上半部分（尺寸 / 难度 / 挑战）的改动都在这里落地 */
-btnShuffle.addEventListener('click', function () {
-  var lv = pending.difficulty && pending.difficulty !== 'any' ? pending.difficulty : 'any';
-  var band = DIFF_BANDS[lv] || null;
-  var challenge = challengeSummary();   // 落地前先记下来，好念给读屏
-
-  settings.difficulty = lv;
-  /* 尺寸由玩家在这一档开放的区间里挑（见 ui/settings.js 的 syncSheet），
-   * 这里照抄就是；哪怕 pending 里残留了越界值，newGame 也会再夹一次。 */
-  settings.size = clamp(pending.size, SIZE_MIN, SIZE_MAX);
-  commitChallenge();
-  saveSettings();
-
-  closeSheet();
-  newGame(settings.size);
-
-  if (band) {
-    announce('已换局：' + band.name + ' ' + settings.size + '×' + settings.size +
-      (challenge ? '，挑战：' + challenge : ''));
-  } else {
-    announce('已换局：' + settings.size + '×' + settings.size +
-      (challenge ? '，挑战：' + challenge : ''));
-  }
-});
-
-sizeMinus.addEventListener('click', function () {
-  setPendingSize(pending.size - 1);
-});
-
-sizePlus.addEventListener('click', function () {
-  setPendingSize(pending.size + 1);
-});
-
-quickRow.addEventListener('click', function (e) {
-  var btn = e.target.closest ? e.target.closest('.qbtn') : null;
-  if (!btn) return;
-  setPendingSize(parseInt(btn.dataset.size, 10));
-});
-
-/* 目标难度：只记选择，不碰正在下的这局——点「换一局」才生效。 */
-diffOpts.addEventListener('click', function (e) {
-  var btn = e.target.closest ? e.target.closest('.dbtn') : null;
-  if (!btn) return;
-  var lv = btn.dataset.level;
-  if (DIFF_ORDER.indexOf(lv) < 0 || lv === pending.difficulty) return;
-
-  pending.difficulty = lv;
-  syncSheet();
-  var band = lv !== 'any' ? DIFF_BANDS[lv] : null;
-  announce(band
-    ? '目标难度：' + band.name + '，开放 ' + band.lo + '×' + band.lo + '–' + band.hi + '×' + band.hi +
-      '，先按 ' + pending.size + '×' + pending.size + ' 出（换一局后生效）'
-    : '目标难度：不限（换一局后生效）');
-});
-
-/* 限时：跟尺寸 / 难度一样只记意向，点「换一局」才真的开始计时 */
-limitOpts.addEventListener('click', function (e) {
-  var btn = e.target.closest ? e.target.closest('.lbtn') : null;
-  if (!btn) return;
-  setPendingLimit(parseInt(btn.dataset.limit, 10));
-  sfx('x');
-  buzz(5);
-});
-
-/* ---- 分享棋盘 ---- */
-btnCopyCode.addEventListener('click', function () {
-  var val = (shareCode.value || '').trim();
-  if (!val) { shareReject('现在还没有棋盘可以分享'); return; }
-  copyText(val, function (ok) {
-    if (ok) {
-      setShareStatus('已复制，发给朋友就能玩这一局', 'good');
-      sfx('share');
-      buzz(10);
-      announce('棋盘代码已复制');
-    } else {
-      setShareStatus('这个浏览器不让自动复制，长按上面的代码手动全选吧', 'bad');
-      shareCode.focus();
-      shareCode.select();
-    }
-  });
-});
-
-btnLoadCode.addEventListener('click', function () { tryLoadShare(shareCode.value); });
-
-shareCode.addEventListener('paste', function (e) {
-  var text = '';
-  try {
-    var cb = e.clipboardData || window.clipboardData;
-    text = cb ? (cb.getData('text') || '') : '';
-  } catch (err) { text = ''; }
-  if (!text) return;
-
-  var out = decodeShare(text);
-  if (out.ok) {
-    // 粘的是一整串棋盘代码，直接开这一局
-    e.preventDefault();
-    shareCode.value = text.trim();
-    tryLoadShare(text);
-    return;
-  }
-  window.setTimeout(function () { setShareStatus(out.msg, 'bad'); }, 0);
-});
-
-shareCode.addEventListener('keydown', function (e) {
-  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-    e.preventDefault();
-    tryLoadShare(shareCode.value);
-  }
-});
-
-// 手机上弹出键盘会盖住面板下半截，聚焦时把分享区顶到可视范围靠上
-shareCode.addEventListener('focus', function () {
-  if (isShareFocusHold()) return;
-  window.setTimeout(function () {
-    if (!view.sheetOpen || sheet.scrollHeight <= sheet.clientHeight + 4) return;
-    var top = shareCode.parentNode.offsetTop - 12;
-    if (sheet.scrollTop < top) sheet.scrollTop = top;
-  }, 80);
-});
-
-shareCode.addEventListener('input', function () {
-  if (shareStatus.classList.contains('is-bad')) setShareStatus('');
-});
-
-sheet.addEventListener('click', function (e) {
-  var sw = e.target.closest ? e.target.closest('.switch') : null;
-  if (!sw) return;
-  var id = sw.id;
-  if (id === 'swAuto') {
-    settings.autoMark = !settings.autoMark;
-    render();
-  } else if (id === 'swAlignDrag') {
-    // 拖动对齐只影响手指怎么涂，棋盘不用重画；提示行那句话跟着换
-    settings.alignDrag = !settings.alignDrag;
-    updateHint();
-    announce(settings.alignDrag ? '拖动：按行列对齐' : '拖动：可以随意涂');
-  } else if (id === 'swFadeMark' || id === 'swFadeQueen') {
-    // 淡化是纯外观，不用重画格子：只加减一个类。拨开关的人正盯着效果，
-    // 这里不跟 0.5 秒防抖，立刻落地（见 ui/fade.js 的 applyFadeNow）。
-    if (id === 'swFadeMark') settings.fadeMark = !settings.fadeMark;
-    else settings.fadeQueen = !settings.fadeQueen;
-    applyFadeNow();
-  } else if (id === 'swConflict') {
-    settings.conflict = !settings.conflict;
-    if (!settings.conflict) view.lastConflictCount = 0;
-    render();
-  } else if (id === 'swForced') {
-    settings.forced = !settings.forced;
-    render();
-  } else if (id === 'swSound') {
-    settings.sound = !settings.sound;
-    if (settings.sound) { audio.init(); sfx('x'); }
-  } else if (id === 'swHaptics') {
-    settings.haptics = !settings.haptics;
-    if (settings.haptics) buzz(12);
-  } else if (id === 'swNoHint') {
-    // 挑战这一组只写 pending：这一局的规则不改，换一局才生效
-    pending.noHint = !pending.noHint;
-    announce(pending.noHint ? '挑战：换一局后禁用提示' : '挑战：换一局后恢复提示');
-  } else if (id === 'swNoUndo') {
-    pending.noUndo = !pending.noUndo;
-    announce(pending.noUndo ? '挑战：换一局后禁用撤销' : '挑战：换一局后恢复撤销');
-  }
-  syncSheet();
-  saveSettings();
-});
-
-btnAgain.addEventListener('click', function () {
-  var lost = state.status === 'lost';
-  dismissResult(true);
-  if (lost) retryGame(); else newGame(state.size);
-});
-/* 重来这局：同一盘棋从零再下一遍（解开后才会露出来）。
- * 输了那一屏的主按钮本来就是「重试这一局」，这里就不重复了。 */
-btnReplay.addEventListener('click', function () {
-  dismissResult(true);
-  retryGame();
-});
-btnPeek.addEventListener('click', function () {
-  var lost = state.status === 'lost';
-  dismissResult(true);
-  // 解开时是「看看棋盘」（结果层收掉就行）；输了就只有「换一局新的」这条路
-  if (lost) newGame(state.size);
-});
-resultEl.addEventListener('click', function (e) {
-  if (e.target === resultEl) dismissResult();
-});
-
+/* ==========================================================
+   全局
+   ========================================================== */
 document.addEventListener('pointerdown', function () { audio.init(); }, { capture: true, once: true });
 document.addEventListener('keydown', function () { audio.init(); }, { capture: true, once: true });
 
@@ -496,52 +255,16 @@ document.addEventListener('visibilitychange', function () {
 });
 
 document.addEventListener('keydown', function (e) {
+  /* 浮层优先：开着一个浮层时，Esc / Tab / 层内快捷键全归它（core/sheet.js），
+   * 游戏快捷键一律让路——否则面板背后还能落子。 */
+  if (handleKey(e)) return;
+
   if (e.key === 'Escape') {
-    /* 「没抽到够格的盘」那一层必须做个选择，Esc 也不放行：
-     * 关掉之后既没新盘也没旧盘，只剩一块空棋盘，比玩错盘更莫名其妙。 */
-    if (view.mismatchOpen) { e.preventDefault(); return; }
-    if (view.diffOpen) { e.preventDefault(); closeDiff(true); return; }
-    if (view.recordsOpen) { e.preventDefault(); closeRecords(); return; }
-    if (view.lookOpen) { e.preventDefault(); closeLook(); return; }
-    if (view.sheetOpen) { e.preventDefault(); closeSheet(); return; }
-    if (view.resultOpen) { e.preventDefault(); dismissResult(); return; }
-    if (guide.open) { e.preventDefault(); closeGuide(); return; }
-    state.lastTap = null;
-  }
-
-  if (view.mismatchOpen) {
-    if (e.key === 'Tab') trapFocus(e, mismatchEl);
-    return;
-  }
-
-  if (view.diffOpen) {
-    if (e.key === 'Tab') trapFocus(e, diffSheet);
-    return;
-  }
-
-  if (view.recordsOpen) {
-    if (e.key === 'Tab') trapRecords(e);
-    return;
-  }
-
-  if (view.lookOpen) {
-    if (e.key === 'Tab') trapFocus(e, lookSheet);
-    return;
-  }
-
-  if (view.sheetOpen) {
-    if (e.key === 'Tab') trapFocus(e, sheet);
-    return;
-  }
-
-  if (view.resultOpen) {
-    if (e.key === 'Tab') trapFocus(e, resultEl);
-    if (e.key.toLowerCase() === 'n' && !e.ctrlKey && !e.metaKey) {
+    if (guide.open) {
       e.preventDefault();
-      var lostNow = state.status === 'lost';
-      dismissResult(true);
-      if (lostNow) retryGame(); else newGame(state.size);
+      closeGuide();
     }
+    state.lastTap = null;
     return;
   }
 

@@ -1,31 +1,83 @@
 /* ============================================================================
- * records.js
- * 战绩面板：每局记录列表（带棋盘缩略图 / 分享码）+ 按限时 × 难度分开的排行榜。
+ * panels/records.js · 战绩与排行榜
  * ----------------------------------------------------------------------------
  * 面板只读 core/records.js 里的数据，自己不存东西：所有改动（增删）都走那边，
  * 这里只负责画出来、把点击翻译成动作。
  *
  * 列表分页：一条记录一张缩略图，20 条一屏画完就停，剩下的点「显示更多」。
  * 上限 300 条的时候一次性全画会把面板卡住，而绝大多数时候没人往下翻那么多。
+ *
+ * 面板自己的临时视图（看的是哪一页、哪个筛选、哪条展开着）放在这个文件里，
+ * 不进 core/state.js——只有这一个面板会读它，每次打开重置，不写盘。
  * ========================================================================== */
 
-import { buzz, sfx } from '../core/audio.js';
-import { DIFF_BANDS, LIMIT_OPTIONS, RECORD_PAGE, RECORD_TOP, limitLabel } from '../core/config.js';
-import { app, boardEmpty, boardList, boardNote, btnClearRecs, btnMoreRecs, btnRecords,
-  limChips, lvChips, paneBoard, paneRecs, recEmpty, recList, recSheet, recStatus,
-  recTotal, recWrap, tabBoard, tabRecs } from '../core/dom.js';
-import * as recs from '../core/records.js';
-import { state, view } from '../core/state.js';
-import { announce, formatTime } from '../core/utils.js';
-import { boardPreviewUri } from '../game/preview.js';
-import { encodeShare } from '../game/share-code.js';
-import { closeSheet, trapFocus } from './settings.js';
-import { tryLoadShare } from './share.js';
+import { buzz, sfx } from '../../core/audio.js';
+import { DIFF_BANDS, LIMIT_OPTIONS, RECORD_PAGE, RECORD_TOP, limitLabel } from '../../core/config.js';
+import { btnRecords } from '../../core/dom.js';
+import * as recs from '../../core/records.js';
+import { createSheet } from '../../core/sheet.js';
+import { state } from '../../core/state.js';
+import { announce, formatTime } from '../../core/utils.js';
+import { boardPreviewUri } from '../../game/preview.js';
+import { encodeShare } from '../../game/share-code.js';
+import { tryLoadShare } from '../share.js';
+
+export var HTML = /* html */ `
+<div class="sheet-wrap" id="recWrap" hidden>
+  <div class="sheet-backdrop" id="recBackdrop"></div>
+  <div class="sheet rec-sheet" id="recSheet" role="dialog" aria-modal="true" aria-labelledby="recTitle" tabindex="-1">
+    <div class="sheet-head">
+      <h2 id="recTitle">战绩</h2>
+      <button class="icon-btn" id="btnCloseRec" type="button" aria-label="关闭战绩">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true">
+          <path d="M6 6l12 12M18 6L6 18"></path>
+        </svg>
+      </button>
+    </div>
+
+    <div class="rec-tabs" role="tablist" aria-label="战绩视图">
+      <button class="rtab is-on" id="tabRecs" type="button" role="tab" aria-selected="true" aria-controls="paneRecs">记录<i id="recTotal"></i></button>
+      <button class="rtab" id="tabBoard" type="button" role="tab" aria-selected="false" aria-controls="paneBoard">排行榜</button>
+    </div>
+
+    <div class="rec-pane" id="paneRecs" role="tabpanel" aria-labelledby="tabRecs">
+      <p class="rec-hint">解开或超时都会记一局。点开一条能看棋盘、复制分享码，或者原样再玩一遍。</p>
+      <div class="rec-list" id="recList"></div>
+      <p class="rec-empty" id="recEmpty" hidden>还没有战绩。解完一局就会记在这里。</p>
+      <button class="btn rec-more" id="btnMoreRecs" type="button" hidden>显示更多</button>
+    </div>
+
+    <div class="rec-pane" id="paneBoard" role="tabpanel" aria-labelledby="tabBoard" hidden>
+      <p class="group-title">限时</p>
+      <div class="rec-chips" id="limChips" role="group" aria-label="按限时筛选"></div>
+      <p class="group-title">难度</p>
+      <div class="rec-chips" id="lvChips" role="group" aria-label="按难度筛选"></div>
+      <p class="board-note" id="boardNote"></p>
+      <div class="rec-list" id="boardList"></div>
+      <p class="rec-empty" id="boardEmpty" hidden>这组还没有成绩。</p>
+    </div>
+
+    <p class="rec-status" id="recStatus" aria-live="polite"></p>
+    <button class="btn-text rec-clear" id="btnClearRecs" type="button" hidden>清空全部记录</button>
+  </div>
+</div>`;
+
+var recWrap = null, recSheet = null, recBackdrop = null;
+var tabRecs = null, tabBoard = null, recTotal = null;
+var paneRecs = null, paneBoard = null, recList = null, recEmpty = null, btnMoreRecs = null;
+var limChips = null, lvChips = null, boardNote = null, boardList = null, boardEmpty = null;
+var recStatus = null, btnClearRecs = null;
+
+var sheet = null;
+
+/* 面板自己的临时视图：看的是哪一页、哪个筛选、哪条展开着。
+ * 每次打开重置，不写盘。 */
+var v = { tab: 'list', limit: 0, level: 'mid', openId: '', shown: RECORD_PAGE };
 
 /* ==========================================================
    小工具
    ========================================================== */
-function pad2(v) { return v < 10 ? '0' + v : String(v); }
+function pad2(n) { return n < 10 ? '0' + n : String(n); }
 
 /** 「今天 21:04」/「昨天 09:12」/「10月20日 21:04」——最近的更爱说相对时间。 */
 function dateText(at) {
@@ -160,44 +212,15 @@ function disarm(btn) {
 /* ==========================================================
    开 / 关
    ========================================================== */
-export function openRecords() {
-  if (view.recordsOpen) return;
-  if (view.sheetOpen) closeSheet();
-  view.recordsOpen = true;
-
-  // 默认落在「这一局」的组合上：刚从 5 分钟中等里杀出来，点开就该看见这一组
-  view.recTab = 'list';
-  view.recLimit = state.limit || 0;
-  view.recLevel = (state.vibe && state.vibe.tone) || recs.toneOfSize(state.size);
-  view.recOpenId = '';
-  view.recShown = RECORD_PAGE;
-  setStatus('');
-
-  recWrap.hidden = false;
-  if ('inert' in HTMLElement.prototype) app.inert = true;
-  else app.setAttribute('aria-hidden', 'true');
-  btnRecords.setAttribute('aria-expanded', 'true');
-
-  renderRecords();
-  recSheet.focus();
-}
-
-export function closeRecords() {
-  if (!view.recordsOpen) return;
-  view.recordsOpen = false;
-  recWrap.hidden = true;
-  disarm(btnClearRecs);
-  if ('inert' in HTMLElement.prototype) app.inert = false;
-  app.removeAttribute('aria-hidden');
-  btnRecords.setAttribute('aria-expanded', 'false');
-  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
-}
+export function openRecords() { sheet.open(); }
+export function closeRecords() { sheet.close(); }
+export function isRecordsOpen() { return !!sheet && sheet.isOpen(); }
 
 /* ==========================================================
    渲染
    ========================================================== */
 function syncTabs() {
-  var board = view.recTab === 'board';
+  var board = v.tab === 'board';
   var n = recs.total();
 
   recTotal.textContent = n ? String(n) : '';
@@ -212,15 +235,15 @@ function syncTabs() {
 }
 
 export function renderRecords() {
-  if (!view.recordsOpen) return;
+  if (!sheet || !sheet.isOpen()) return;
   syncTabs();
-  if (view.recTab === 'board') renderBoard();
+  if (v.tab === 'board') renderBoard();
   else renderList();
 }
 
 function renderList() {
   var all = recs.all();
-  var shown = all.slice(0, view.recShown);
+  var shown = all.slice(0, v.shown);
   var html = '';
   for (var i = 0; i < shown.length; i++) html += rowHtml(shown[i]);
   recList.innerHTML = html;
@@ -232,7 +255,7 @@ function renderList() {
 }
 
 function rowHtml(rec) {
-  var open = view.recOpenId === rec.id;
+  var open = v.openId === rec.id;
   var code = open ? codeOf(rec) : '';
 
   return '<article class="rec" data-id="' + rec.id + '" data-won="' + (rec.won ? 1 : 0) + '">' +
@@ -264,7 +287,7 @@ function rowHtml(rec) {
 }
 
 function renderBoard() {
-  var lim = view.recLimit, lv = view.recLevel;
+  var lim = v.limit, lv = v.level;
 
   /* 挡位按钮照 LIMIT_OPTIONS 生成。万一筛的是表里没有的限时
    * （老版本存档、或者以后自定义的档位），也给它补一个按钮——
@@ -327,12 +350,12 @@ function lbRow(rec, i) {
 }
 
 /* ==========================================================
-   交互（事件绑定都在 events.js，这里只处理「点了然后呢」）
+   交互：点了然后呢
    ========================================================== */
 export function switchTab(tab) {
   if (tab !== 'list' && tab !== 'board') return;
-  if (view.recTab === tab) return;
-  view.recTab = tab;
+  if (v.tab === tab) return;
+  v.tab = tab;
   disarm(btnClearRecs);
   renderRecords();
   recSheet.scrollTop = 0;
@@ -344,8 +367,8 @@ export function pickChip(e) {
   var b = t && t.closest ? t.closest('[data-lim]') : null;
   if (b) {
     var ms = parseInt(b.dataset.lim, 10) || 0;
-    if (ms === view.recLimit) return;
-    view.recLimit = ms;
+    if (ms === v.limit) return;
+    v.limit = ms;
     renderBoard();
     sfx('x');
     buzz(4);
@@ -353,8 +376,8 @@ export function pickChip(e) {
   }
   b = t && t.closest ? t.closest('[data-lv]') : null;
   if (b) {
-    if (b.dataset.lv === view.recLevel) return;
-    view.recLevel = b.dataset.lv;
+    if (b.dataset.lv === v.level) return;
+    v.level = b.dataset.lv;
     renderBoard();
     sfx('x');
     buzz(4);
@@ -362,9 +385,9 @@ export function pickChip(e) {
 }
 
 export function showMore() {
-  view.recShown += RECORD_PAGE;
+  v.shown += RECORD_PAGE;
   renderList();
-  announce('已显示 ' + Math.min(view.recShown, recs.total()) + ' 局');
+  announce('已显示 ' + Math.min(v.shown, recs.total()) + ' 局');
 }
 
 export function recAction(e) {
@@ -380,7 +403,7 @@ export function recAction(e) {
 
   switch (act.dataset.act) {
     case 'toggle':
-      view.recOpenId = view.recOpenId === rec.id ? '' : rec.id;
+      v.openId = v.openId === rec.id ? '' : rec.id;
       renderList();
       return;
 
@@ -418,7 +441,7 @@ export function recAction(e) {
     case 'del':
       if (act.dataset.armed === '1') {
         recs.remove(rec.id);
-        if (view.recOpenId === rec.id) view.recOpenId = '';
+        if (v.openId === rec.id) v.openId = '';
         renderRecords();
         setStatus('已删除这一条战绩', null);
         announce('已删除这一条战绩');
@@ -438,7 +461,7 @@ export function requestClearAll() {
   if (btn.dataset.armed === '1') {
     recs.clear();
     disarm(btn);
-    view.recOpenId = '';
+    v.openId = '';
     renderRecords();
     setStatus('战绩已清空', null);
     announce('战绩已清空');
@@ -448,7 +471,62 @@ export function requestClearAll() {
   announce('再点一次清空全部战绩');
 }
 
-/** 面板打开时把 Tab 关在面板里（和设置面板同一套做法）。 */
-export function trapRecords(e) {
-  trapFocus(e, recSheet);
+/* ==========================================================
+   挂载
+   ========================================================== */
+export function mount(host) {
+  host.insertAdjacentHTML('beforeend', HTML);
+
+  recWrap = document.getElementById('recWrap');
+  recSheet = document.getElementById('recSheet');
+  recBackdrop = document.getElementById('recBackdrop');
+  tabRecs = document.getElementById('tabRecs');
+  tabBoard = document.getElementById('tabBoard');
+  recTotal = document.getElementById('recTotal');
+  paneRecs = document.getElementById('paneRecs');
+  paneBoard = document.getElementById('paneBoard');
+  recList = document.getElementById('recList');
+  recEmpty = document.getElementById('recEmpty');
+  btnMoreRecs = document.getElementById('btnMoreRecs');
+  limChips = document.getElementById('limChips');
+  lvChips = document.getElementById('lvChips');
+  boardNote = document.getElementById('boardNote');
+  boardList = document.getElementById('boardList');
+  boardEmpty = document.getElementById('boardEmpty');
+  recStatus = document.getElementById('recStatus');
+  btnClearRecs = document.getElementById('btnClearRecs');
+
+  sheet = createSheet({
+    id: 'records',
+    wrap: recWrap,
+    panel: recSheet,
+    opener: btnRecords,
+    /* 关掉之后把焦点还给触发按钮（设置 / 战绩这两层沿用原来的做法：
+     * 直接 blur，键盘用户按 Esc 之后接着用 X / Q / Z 不会误触到按钮上） */
+    focusOpener: false,
+    beforeOpen: function () {
+      // 默认落在「这一局」的组合上：刚从 5 分钟中等里杀出来，点开就该看见这一组
+      v.tab = 'list';
+      v.limit = state.limit || 0;
+      v.level = (state.vibe && state.vibe.tone) || recs.toneOfSize(state.size);
+      v.openId = '';
+      v.shown = RECORD_PAGE;
+      setStatus('');
+    },
+    afterOpen: renderRecords,
+    beforeClose: function () { disarm(btnClearRecs); }
+  });
+
+  btnRecords.addEventListener('click', openRecords);
+  document.getElementById('btnCloseRec').addEventListener('click', closeRecords);
+  recBackdrop.addEventListener('click', closeRecords);
+
+  tabRecs.addEventListener('click', function () { switchTab('list'); });
+  tabBoard.addEventListener('click', function () { switchTab('board'); });
+  limChips.addEventListener('click', pickChip);
+  lvChips.addEventListener('click', pickChip);
+  recList.addEventListener('click', recAction);
+  boardList.addEventListener('click', recAction);
+  btnMoreRecs.addEventListener('click', showMore);
+  btnClearRecs.addEventListener('click', requestClearAll);
 }

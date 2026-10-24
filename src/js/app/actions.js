@@ -19,9 +19,10 @@ import { checkWin } from '../ui/win.js';
 /* ==========================================================
    落子 / 标记
    ========================================================== */
+/* 能不能往棋盘上落子。浮层开没开只看 view.sheet 一个字段——
+ * 浮层基座负责维护它（core/sheet.js），新加面板不用再来这里加一条。 */
 export function canPlay() {
-  return state.status === 'playing' && !view.sheetOpen && !view.diffOpen && !view.resultOpen &&
-    !view.recordsOpen && !view.lookOpen && !view.mismatchOpen && !view.filling;
+  return state.status === 'playing' && !view.sheet && !view.filling;
 }
 
 export function setMarks(next, anim) {

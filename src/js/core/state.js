@@ -58,8 +58,12 @@ export const guide = { open: false, plan: null, at: 0 };
 /* 视图层的可变引用（原闭包里的 var，拆模块后集中放这里）：
  *   cells / chips        棋盘格子与色卡元素数组，换盘时整体重建
  *   undo / redo          撤销重做栈
- *   sheetOpen 等         浮层开关，canPlay() 靠它判断能不能落子
- *   lastConflictCount    上一次渲染时的冲突对数，用来决定要不要响一声 */
+ *   sheet                当前开着的浮层 id（null = 没开），canPlay() 只看它
+ *   lastConflictCount    上一次渲染时的冲突对数，用来决定要不要响一声
+ *
+ * 浮层各自的临时状态（设置面板的「更多选项」、战绩看的是哪一页哪个筛选）
+ * 不进这里：它们只有那一个面板会读，放回面板模块自己身上。
+ * 这里只留「跨模块要看的」——sheet 是 canPlay 的判据，lastFinish 是结果层要念的。 */
 export const view = {
   cells: [],
   chips: [],
@@ -69,26 +73,9 @@ export const view = {
   /* 「一键补齐」正在一串串落子：这期间棋盘只读（canPlay 看它），
    * 免得手快的人跟动画抢同一个格子。换盘 / 重开时由 applyBoard 复位。 */
   filling: false,
-  sheetOpen: false,
-  /* 设置面板的「更多选项」展开着没有。只活在这一次会话里：刷新页面就收回，
-   * 不写盘——大多数人打开设置只是换一局，开关那一堆不该每次都摊在眼前。 */
-  sheetMore: false,
-  diffOpen: false,
-  resultOpen: false,
-  /* 「没抽到够格的盘」那一层：开着的时候不出盘、也不许落子，
-   * 由玩家自己选「再抽一局」还是「更换设置」（见 ui/mismatch.js）。 */
-  mismatchOpen: false,
-  recordsOpen: false,
-  lookOpen: false,     // 外观面板
+  sheet: null,
   /* 已经画进 .piece 的皇后样式：外观面板只在真的换了样式时才重画一遍格子里的画 */
   lookPiece: '',
-  /* 战绩面板的临时视图：看的是哪一页、哪个筛选、哪条展开着。
-   * 每次打开面板都重置，不写盘。 */
-  recTab: 'list',      // 'list' | 'board'
-  recLimit: 0,
-  recLevel: 'mid',
-  recOpenId: '',
-  recShown: 20,
   lastFinish: null,    // 刚结束那局的成绩 { rank, total }，结果层拿它说「本组最快」
   lastConflictCount: 0
 };

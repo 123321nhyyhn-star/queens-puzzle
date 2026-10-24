@@ -16,8 +16,8 @@ import { closeGuide, paintGl } from '../ui/guide.js';
 import { flashHint } from '../ui/hint.js';
 import { relayout } from '../ui/layout.js';
 import { render, resetBad, updateStats } from '../ui/render.js';
-import { dismissResult } from '../ui/win.js';
-import { dismissMismatch, showMismatch } from '../ui/mismatch.js';
+import { closeSheet, isOpen } from '../core/sheet.js';
+import { dismissMismatch, showMismatch } from '../ui/panels/mismatch.js';
 
 /* ==========================================================
    新一局
@@ -77,7 +77,7 @@ function targetBand() {
  *
  * wantMin 为 null（不限难度）时只生成一张就走。
  * 一批都没够到 wantMin 不是「失败」——这时**不装盘**，交给 mismatch 层问玩家
- * 要不要再抽一批（见 ui/mismatch.js）；装上去了，目标难度就名存实亡。
+ * 要不要再抽一批（见 ui/panels/mismatch.js）；装上去了，目标难度就名存实亡。
  */
 var PICK_TRIES = 3;
 
@@ -116,7 +116,7 @@ export function newGame(size) {
  * tried 是「这次换局一共已经抽掉多少张」——再抽时累加上去，
  * 好让那一层照实说「13×13 抽了 6 张，最高 7.8」。 */
 function roll(n, band, tried) {
-  if (view.resultOpen) dismissResult(true);
+  if (isOpen('result')) closeSheet('result', { force: true });
   dismissMismatch();
   boardEl.classList.remove('is-won', 'is-lost');
 
@@ -176,7 +176,7 @@ function roll(n, band, tried) {
 
 /* 把一副已经确定的棋盘装上（新生成 / 载入分享码 / 恢复存档 / 重试共用） */
 export function applyBoard(n, regions, solution, seed, preVibe) {
-  if (view.resultOpen) dismissResult(true);
+  if (isOpen('result')) closeSheet('result', { force: true });
   dismissMismatch();   // 真装上了，那张「不够格」的卡就不该还挂着
   if (guide.open) closeGuide();
   paintGl(null);
