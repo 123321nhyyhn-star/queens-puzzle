@@ -20,13 +20,22 @@ import { queenCount } from '../game/rules.js';
    ----------------------------------------------------------
    engine/difficulty.js 会用同一套推理器把这盘推一遍：先纯逻辑，卡住了就
    假设试推，再不行才试错落子。这里只负责展示。
+
+   名词解释不再常显在面板上（一屏五行小字，把读数挤没了）：每一行右端一枚
+   问号，点开 / 悬浮才展开那一句。列在这里的 tip 是唯一的出处。
    ========================================================== */
 var DIFF_ROWS = [
-  { key: 'openSingles', name: '开局可定', cls: 'is-key' },
-  { key: 'block', name: '区块封锁', cls: '' },
-  { key: 'count', name: '集合计数', cls: '' },
-  { key: 'probe', name: '假设试推', cls: 'is-probe' },
-  { key: 'guess', name: '试错落子', cls: 'is-guess' }
+  { key: 'openSingles', name: '开局可定', cls: 'is-key',
+    tip: '第一轮纯逻辑推导定下的皇后数：唯一候选，以及被区块封锁、集合计数解锁的格。' +
+      '之后靠假设试推才解锁的格不计入。0 表示开局没有任何一格能被直接确定。' },
+  { key: 'block', name: '区块封锁', cls: '',
+    tip: '某色块的候选格全部落在同一行（或同一列）时，这一行其余格可以全部排除。计的是这类推理发生的次数。' },
+  { key: 'count', name: '集合计数', cls: '',
+    tip: 'k 个色块的候选格一共只落在 k 行（或 k 列）里，这 k 行只能由这些色块占用，其余格全部排除。k ≥ 2。' },
+  { key: 'probe', name: '假设试推', cls: 'is-probe',
+    tip: '假设某一格放皇后，再用纯逻辑往下推，推出矛盾就划掉这一格。计的是假设过的次数，上限 1200 次。' },
+  { key: 'guess', name: '试错落子', cls: 'is-guess',
+    tip: '假设试推也推不动时才记录：直接落一只皇后再看是否成立。前面的试推绝大多数盘都能推完，所以这一行通常为 0。' }
 ];
 
 /* 信息条上那一段：只有分级和分数，没有就整段收起来（刚开局还没算完的那一瞬间） */
@@ -143,25 +152,55 @@ export function renderDiff() {
     html += '<div class="diff-step ' + row.cls + (n2 ? '' : ' is-zero') + '">' +
       '<span class="ds-name">' + row.name + '</span>' +
       '<span class="ds-bar"><i style="width:' + w + '%"></i></span>' +
-      '<span class="ds-n">×' + n2 + '</span></div>';
+      '<span class="ds-n">×' + n2 + '</span>' +
+      '<button class="ds-help" type="button" aria-expanded="false"' +
+        ' aria-label="' + row.name + '的说明" aria-describedby="dsTip-' + row.key + '">?</button>' +
+      '<span class="ds-tip" id="dsTip-' + row.key + '" role="tooltip">' + row.tip + '</span>' +
+      '</div>';
   }
   diffSteps.innerHTML = html;
 
-  /* 分数看的是「要做多少功」，色块面积跟难度没有相关性（实测 <0.31），
-   * 摆在这里只会误导玩家，所以这一行改成报「试推几次」——
-   * 这也是 v2 刻度里权重最大的那一项。 */
+  /* 这一行只报事实（尺寸 / 试推次数 / 纯逻辑能定几只），不写「不猜不试」这类
+   * 结论——结论会跟玩家的实际推演打架。试推次数取 steps.probe，与下面那一行
+   * 是同一个数；分数用的是另一次独立统计，差异写进面板底部的说明。
+   * 措辞控制在一行内：16×16 多出一行就会把面板顶出 92svh。 */
   var n = v.metrics ? v.metrics.n : (v.steps && v.steps.n) || 0;
-  var probes = v.metrics ? (v.metrics.probes || 0) : 0;
-  var lead = n + '×' + n + ' · 试推 ' + probes + ' 次 · ';
-  if (s.solved && s.openSingles >= n) {
-    lead += '不猜不试，纯推理就能推完';
-  } else if (!s.openSingles) {
-    lead += '开局没有能直接落子的格，得靠试推';
-  } else {
-    lead += '开局推理能定 ' + s.openSingles + ' 只，其余靠试推';
-  }
-  if (s.guess) lead += '（其中 ' + s.guess + ' 只要硬猜）';
+  var lead = n + '×' + n + ' · 试推 ' + (s.probe || 0) + ' 次 · ';
+  lead += '纯逻辑可定 ' + Math.min(s.openSingles || 0, n) + '/' + n + ' 只';
+  if (s.guess) lead += ' · 试错落子 ' + s.guess + ' 次';
   diffLead.textContent = lead;
+}
+
+/* ==========================================================
+   技巧说明（每行的问号）
+   ----------------------------------------------------------
+   点一下展开，再点收起；点同一处之外的地方也收起。
+   桌面端还有 :hover（见 11-sheet-difficulty.css），触屏只有点击这一路。
+   ========================================================== */
+export function clearDiffTips() {
+  var on = diffSteps.querySelectorAll('.diff-step.is-on');
+  for (var i = 0; i < on.length; i++) {
+    on[i].classList.remove('is-on');
+    var b = on[i].querySelector('.ds-help');
+    if (b) b.setAttribute('aria-expanded', 'false');
+  }
+}
+
+/* 返回是否吃掉了这次点击（点在某个问号或已展开的说明上） */
+export function toggleDiffTip(target) {
+  var btn = target && target.closest ? target.closest('.ds-help') : null;
+  if (!btn) {
+    if (target && target.closest && target.closest('.ds-tip')) return true;
+    clearDiffTips();
+    return false;
+  }
+  var row = btn.closest('.diff-step');
+  var open = row.classList.contains('is-on');
+  clearDiffTips();
+  if (open) return true;
+  row.classList.add('is-on');
+  btn.setAttribute('aria-expanded', 'true');
+  return true;
 }
 
 export function openDiff() {
@@ -179,6 +218,7 @@ export function openDiff() {
 export function closeDiff(fromHud) {
   if (!view.diffOpen) return;
   view.diffOpen = false;
+  clearDiffTips();
   diffWrap.hidden = true;
   if ('inert' in HTMLElement.prototype) app.inert = false;
   app.removeAttribute('aria-hidden');

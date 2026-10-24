@@ -345,15 +345,17 @@
 
     <p class="diff-lead" id="diffLead"></p>
 
+    <!-- 每一行右端的问号按需展开该技巧的解释（见 ui/difficulty.js 的 DIFF_ROWS） -->
     <div class="diff-steps" id="diffSteps"></div>
 
+    <!-- 读数与实际推演的差异：跟名词解释分开，这里是「这些数字不能当什么用」 -->
     <div class="diff-legend" id="diffLegend">
-      <b>开局可定</b> 一上手不用猜、直接就能落子的数目（0 = 一开始就得试）<br>
-      <b>区块封锁</b> 整块候选挤在同一行，这行别处就能排掉<br>
-      <b>集合计数</b> k 个色块只能落在 k 行里，这几行就被它们占满<br>
-      <b>假设试推</b> 假设这格放子，推两步就矛盾 → 划掉<br>
-      <b>试错落子</b> 前面都推不动，只能先落一只再看看<br>
-      <span class="diff-note">分数算的是这盘要做多少功（试推几次、开局卡不卡），不是盘面多大——所以 13×13 不一定比 12×12 难。</span>
+      <b class="dl-title">读数与实际的差异</b>
+      <ol class="dl-list">
+        <li>次数来自程序按固定顺序走<strong>一条</strong>参考路径，不是这盘的唯一解法；换个起手，同一只皇后可能记在别的技巧下，试推次数也能差出数倍。</li>
+        <li>「试错落子」通常为 0：试推在 1200 次以内基本都能推完，非 0 才表示连试推都推不动。</li>
+        <li>分数只由边长、试推次数、开局推进率算出，与用时、步数无关；尺寸只决定底分，13×13 不一定比 12×12 难。</li>
+      </ol>
     </div>
 
     <button class="btn btn-hint sheet-done" id="btnDiffDone" type="button">知道了</button>

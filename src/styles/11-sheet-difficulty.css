@@ -232,8 +232,9 @@
 }
 
 .diff-step {
+  position: relative;
   display: grid;
-  grid-template-columns: 76px 1fr 42px;
+  grid-template-columns: 76px 1fr 42px 18px;
   align-items: center;
   gap: 9px;
   font-size: 12.5px;
@@ -266,30 +267,107 @@
   color: var(--ink);
 }
 
-.diff-step.is-zero { opacity: .42; }
+/* 次数为 0 的行压暗，但只压读数：问号要留得住（×0 的行最需要解释），
+ * 展开的说明更不能跟着变成半透明。 */
+.diff-step.is-zero .ds-name,
+.diff-step.is-zero .ds-bar,
+.diff-step.is-zero .ds-n { opacity: .42; }
+
+.diff-step.is-zero .ds-help { opacity: .55; }
+
 .diff-step.is-key .ds-bar i { background: var(--accent); }
 .diff-step.is-probe .ds-bar i { background: #F2762E; }
 .diff-step.is-guess .ds-bar i { background: #E23B3B; }
 
+/* ---- 每行的问号 + 展开的说明 ----
+   名词解释原来常显在面板底部（五行小字），把读数挤得没地方；
+   现在收到问号后面：桌面 hover / 键盘 focus 即显，触屏点一下开、点别处收。 */
+.ds-help {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid var(--ink-faint);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-faint);
+  font-size: 10.5px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--t-fast), color var(--t-fast), border-color var(--t-fast);
+}
+
+.ds-help:hover,
+.ds-help:focus-visible,
+.ds-help[aria-expanded="true"] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--bg-card);
+}
+
+/* 说明浮在下一行之上，不参与排版：展开不会把面板顶高、也不会推走「知道了」 */
+.ds-tip {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 5;
+  padding: 8px 10px;
+  border: 1.5px solid var(--ink);
+  border-radius: 10px;
+  background: var(--bg-card);
+  box-shadow: 0 3px 0 rgba(58, 51, 53, .16);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.6;
+  color: var(--ink);
+  pointer-events: none;
+}
+
+.diff-step.is-on { z-index: 6; }
+/* 气泡不接指针（两种情况都不接）：鼠标往下移不会因为离开问号就闪掉，
+ * 手指点在气泡上会落到它盖住的那一行——正好换看下一行的说明，或随手关掉。 */
+.diff-step.is-on .ds-tip { display: block; }
+
+@media (hover: hover) {
+  .ds-help:hover ~ .ds-tip,
+  .ds-help:focus-visible ~ .ds-tip { display: block; }
+}
+
+/* ---- 读数与实际推演的差异 ----
+   跟名词解释分家：这里说的是「这些数字不能当什么用」，所以留着常显。 */
 .diff-legend {
-  margin: 0 0 2px;
-  padding: 9px 12px;
+  margin: 10px 0 2px;
+  padding: 9px 11px;
   border-radius: 12px;
   background: var(--bg-neutral);
-  font-size: 11.5px;
-  line-height: 1.72;
+  font-size: 11px;
+  line-height: 1.55;
   color: var(--ink-mute);
 }
 
-.diff-legend b { color: var(--ink); font-weight: 800; }
-
-/* 补一句「分数看的是功，不是盘面大小」：跨尺寸不单调是事实，别让人以为是 bug */
-.diff-legend .diff-note {
+.diff-legend .dl-title {
   display: block;
-  margin-top: 6px;
-  padding-top: 6px;
-  border-top: 1px dashed rgba(58, 51, 53, .16);
-  font-size: 11px;
+  margin-bottom: 4px;
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: 1.2px;
   color: var(--ink-faint);
+}
+
+.diff-legend .dl-list {
+  margin: 0;
+  padding-left: 15px;
+}
+
+.diff-legend .dl-list li { margin: 0 0 3px; }
+.diff-legend .dl-list li:last-child { margin-bottom: 0; }
+
+.diff-legend strong {
+  font-weight: 900;
+  color: var(--ink);
 }
 

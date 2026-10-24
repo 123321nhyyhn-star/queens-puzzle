@@ -838,6 +838,72 @@ check('信息页内容不溢出', !sheet1.scrollable);
 check('打开后焦点在弹层里', sheet1.focus === 'diffSheet', `focus=${sheet1.focus}`);
 await page.screenshot({ path: `${OUT}/14-diff-sheet.png` });
 
+// 名词解释收进每行的问号：默认不占版面，点开才出现
+const tips0 = await page.evaluate(() => {
+  const rows = Array.from(document.querySelectorAll('.diff-step'));
+  const row = rows[3];
+  const btn = row.querySelector('.ds-help');
+  const tip = row.querySelector('.ds-tip');
+  const lg = document.getElementById('diffLegend');
+  return {
+    helps: document.querySelectorAll('.ds-help').length,
+    tips: document.querySelectorAll('.ds-tip').length,
+    shown: getComputedStyle(tip).display !== 'none',
+    expanded: btn.getAttribute('aria-expanded'),
+    label: btn.getAttribute('aria-label'),
+    ids: rows.every(r => {
+      const b = r.querySelector('.ds-help'), t = r.querySelector('.ds-tip');
+      return b && t && b.getAttribute('aria-describedby') === t.id;
+    }),
+    legend: lg.textContent.replace(/\s+/g, ''),
+    legendH: Math.round(lg.getBoundingClientRect().height)
+  };
+});
+check('五类技巧各有一枚问号', tips0.helps === 5 && tips0.tips === 5, `${tips0.helps}/${tips0.tips}`);
+check('说明默认收起', !tips0.shown && tips0.expanded === 'false');
+check('问号有无障碍名称并与说明关联', /假设试推/.test(tips0.label) && tips0.ids, tips0.label);
+check('底部常显的是差异说明而非名词表',
+  /读数与实际的差异/.test(tips0.legend) && !/一上手|直接就能落子/.test(tips0.legend), tips0.legend.slice(0, 24));
+
+const tipOpen = await page.evaluate(() => {
+  const row = document.querySelectorAll('.diff-step')[3];
+  const btn = row.querySelector('.ds-help');
+  const before = Math.round(document.getElementById('btnDiffDone').getBoundingClientRect().top);
+  btn.click();
+  const tip = row.querySelector('.ds-tip');
+  const r = tip.getBoundingClientRect();
+  const sh = document.getElementById('diffSheet').getBoundingClientRect();
+  const after = Math.round(document.getElementById('btnDiffDone').getBoundingClientRect().top);
+  return {
+    display: getComputedStyle(tip).display,
+    expanded: btn.getAttribute('aria-expanded'),
+    text: tip.textContent,
+    stillFits: document.getElementById('diffSheet').scrollHeight <=
+      document.getElementById('diffSheet').clientHeight + 4,
+    inside: r.left >= sh.left - 1 && r.right <= sh.right + 1 && r.bottom <= sh.bottom + 1,
+    noShift: before === after
+  };
+});
+check('点问号展开该行说明', tipOpen.display === 'block' && tipOpen.expanded === 'true', tipOpen.display);
+check('展开的是那一行的解释', /假设/.test(tipOpen.text) && /矛盾/.test(tipOpen.text), tipOpen.text.slice(0, 16));
+check('说明浮在面板内，不撑出滚动条', tipOpen.inside && tipOpen.stillFits);
+check('展开不推走「知道了」', tipOpen.noShift);
+await page.screenshot({ path: `${OUT}/14b-diff-tip.png` });
+
+const tipClosed = await page.evaluate(() => {
+  const rows = Array.from(document.querySelectorAll('.diff-step'));
+  rows[3].querySelector('.ds-help').click();          // 再点一次收起
+  const closedByToggle = !rows[3].classList.contains('is-on');
+  rows[1].querySelector('.ds-help').click();          // 开另一行
+  const other = rows[1].classList.contains('is-on') && !rows[3].classList.contains('is-on');
+  document.getElementById('diffTitle').click();       // 点别处收起
+  const open = document.querySelectorAll('.diff-step.is-on').length;
+  return { closedByToggle, other, open, expanded: rows[1].querySelector('.ds-help').getAttribute('aria-expanded') };
+});
+check('再点一次收起', tipClosed.closedByToggle);
+check('一次只展开一行', tipClosed.other);
+check('点别处收起且 aria 复位', tipClosed.open === 0 && tipClosed.expanded === 'false', `open=${tipClosed.open}`);
+
 // 弹层开着时棋盘点不动
 const locked = await page.evaluate(() => {
   const d = __QUEENS_DEBUG__;

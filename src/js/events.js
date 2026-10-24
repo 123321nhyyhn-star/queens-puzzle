@@ -20,7 +20,7 @@ import { save, saveSettings } from './core/storage.js';
 import { announce, clamp } from './core/utils.js';
 import { endPeek } from './game/board.js';
 import { decodeShare } from './game/share-code.js';
-import { closeDiff, openDiff } from './ui/difficulty.js';
+import { closeDiff, openDiff, toggleDiffTip } from './ui/difficulty.js';
 import { applyFadeNow } from './ui/fade.js';
 import { closeGuide, guideNext, guidePrev, useHint } from './ui/guide.js';
 import { flashHint, updateHint } from './ui/hint.js';
@@ -272,6 +272,9 @@ lookSheet.addEventListener('click', function (e) {
 btnCloseDiff.addEventListener('click', function () { closeDiff(true); });
 btnDiffDone.addEventListener('click', function () { closeDiff(true); });
 diffBackdrop.addEventListener('click', function () { closeDiff(true); });
+/* 难度构成每行右端的问号：点开那一行的说明，点面板别处收起。
+ * 桌面端另有 :hover（11-sheet-difficulty.css），这里是触屏的唯一一路。 */
+diffSheet.addEventListener('click', function (e) { toggleDiffTip(e.target); });
 /* 信息页底部那句「改棋盘大小与难度」：看完信息想动手改，直接去设置面板——
  * 这是页面里明写的一个动作，不是又一个「点哪里会怎样」的隐藏入口。 */
 btnInfoSetup.addEventListener('click', function () {

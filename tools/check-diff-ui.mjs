@@ -116,5 +116,42 @@ for (const [w, h, tag] of [[430, 932, '430'], [360, 740, '360'], [740, 360, '横
   await page.screenshot({ path: OUT + '/diff-' + tag + '.png' });
 }
 
+// 桌面端：悬浮问号即显说明（触屏没有这一路，只能点）
+await page.setViewport({ width: 430, height: 932, deviceScaleFactor: 2 });
+await page.reload({ waitUntil: 'networkidle0' });
+await page.waitForFunction('window.__QUEENS_DEBUG__ && __QUEENS_DEBUG__.state.vibe', { timeout: 20000 });
+await sleep(400);
+await page.click('#btnHud');
+await sleep(400);
+const hoverBox = await page.evaluate(() => {
+  const b = document.querySelectorAll('.diff-step')[3].querySelector('.ds-help').getBoundingClientRect();
+  return { x: b.left + b.width / 2, y: b.top + b.height / 2 };
+});
+await page.mouse.move(hoverBox.x, hoverBox.y);
+await sleep(260);
+const hover = await page.evaluate(() => {
+  const row = document.querySelectorAll('.diff-step')[3];
+  const tip = row.querySelector('.ds-tip');
+  const sh = document.getElementById('diffSheet').getBoundingClientRect();
+  const r = tip.getBoundingClientRect();
+  return {
+    display: getComputedStyle(tip).display,
+    pointer: getComputedStyle(tip).pointerEvents,
+    inside: r.left >= sh.left - 1 && r.right <= sh.right + 1,
+    keepsOpen: Math.abs(r.height) > 0,
+    pressed: row.querySelector('.ds-help').getAttribute('aria-expanded')
+  };
+});
+console.log('悬浮问号:', JSON.stringify(hover));
+console.log('  桌面悬浮即显:', hover.display === 'block' && hover.inside);
+await page.screenshot({ path: OUT + '/diff-tip-hover.png' });
+await page.mouse.move(10, 10);
+await sleep(200);
+console.log('移开后收起:', await page.evaluate(() => {
+  const row = document.querySelectorAll('.diff-step')[3];
+  return getComputedStyle(row.querySelector('.ds-tip')).display === 'none' &&
+    row.querySelector('.ds-help').getAttribute('aria-expanded') === 'false';
+}));
+
 console.log('页面错误:', errs.length ? errs : '无');
 await browser.close();
