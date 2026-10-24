@@ -7,7 +7,7 @@
  *   3. 跨尺寸 —— 大盘整体还是比小盘难（16×16 的 p10 > 4×4 的 p90）
  *   4. 可达性 —— 极难真能在 14–16 上抽到（K=3 取最高的命中率）
  *   5. 量程   —— 所有盘落在 1.0–9.9；小盘不该出高档
- *   6. 阈值   —— config.js 的 DIFF_BANDS.min 与 difficulty.js 的 levelOf 对齐
+ *   6. 阈值   —— config.js 的 DIFF_BANDS.min/max 与 difficulty.js 的 levelOf 对齐
  *
  *   node tools/check-scale.mjs
  *   node tools/check-scale.mjs --per=20     # 加样本（慢）
@@ -187,6 +187,22 @@ console.log('\n[6] 阈值与 DIFF_BANDS');
   }
   ok('每档的分数下限正好是 levelOf 的分界线', aligned,
     Object.keys(BANDS).map(k => k + ':' + BANDS[k].min).join(' '));
+
+  /* 上界同样要对齐：max 是开区间（正好 8.4 算极难），所以它必须就是下一档的 min，
+   * 这样出题时才不会出现「选了困难、盘写着极难」。最后一档不封顶。 */
+  const chain = ['easy', 'mid', 'hard', 'extreme'];
+  let caps = true;
+  for (let i = 0; i < chain.length; i++) {
+    const b = BANDS[chain[i]];
+    const next = BANDS[chain[i + 1]];
+    if (!(b.max > b.min)) caps = false;
+    if (next) {
+      if (b.max !== next.min) caps = false;
+      if (diff.levelOf(b.max).level !== next.name) caps = false;
+    } else if (b.max < 9.9) caps = false;
+  }
+  ok('每档的分数上限正好是下一档的下限（开区间，不叠不漏）', caps,
+    chain.map(t => t + ': ' + BANDS[t].min + '–' + BANDS[t].max).join('  '));
 
   const tones = ['easy', 'mid', 'hard', 'extreme'];
   let nested = true;

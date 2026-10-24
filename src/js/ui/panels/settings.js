@@ -16,7 +16,7 @@
 
 import { newGame } from '../../app/puzzle.js';
 import { audio, buzz, sfx } from '../../core/audio.js';
-import { DIFF_BANDS, DIFF_ORDER, LIMIT_OPTIONS, limitLabel, normalizeLimit, SIZE_MAX, SIZE_MIN } from '../../core/config.js';
+import { DIFF_BANDS, DIFF_ORDER, LIMIT_OPTIONS, bandRangeLabel, limitLabel, normalizeLimit, SIZE_MAX, SIZE_MIN } from '../../core/config.js';
 import { btnSettings } from '../../core/dom.js';
 import { createSheet } from '../../core/sheet.js';
 import { pending, settings, state, view } from '../../core/state.js';
@@ -281,7 +281,7 @@ export function syncSheet() {
   buildQuickRow(lo, hi);
 
   /* 两行各说一件事，别重复：尺寸那行说「这一档能挑多大」，
-   * 难度那行说「这一档的分数从哪儿起」+ 什么时候生效。 */
+   * 难度那行说「这一档的分数区间」+ 什么时候生效。 */
   sizeHint.textContent = band
     ? '「' + band.name + '」开放 ' + lo + '×' + lo + '–' + hi + '×' + hi
     : '4×4 到 16×16，每盘唯一解';
@@ -290,9 +290,9 @@ export function syncSheet() {
     (state.vibe ? ' · ' + state.vibe.level + ' ' + state.vibe.score.toFixed(1) : '') +
     (state.limit ? ' · 限时 ' + limitLabel(state.limit) : '');
 
+  /* 区间两头都写出来：只写「7.0 分起」会让人以为越难越好，抽到 8.6 的极难盘也算数 */
   diffHint.textContent = band
-    ? '「' + band.name + '」' + (band.min > 0 ? band.min.toFixed(1) + ' 分起 · ' : '') +
-      '挑好尺寸，点「换一局」生效'
+    ? '「' + band.name + '」' + bandRangeLabel(band) + ' · 挑好尺寸，点「换一局」生效'
     : '选好档位，再挑一个尺寸，点下面「换一局」生效';
 
   var dbtns = diffOpts.querySelectorAll('.dbtn');
@@ -500,7 +500,8 @@ export function mount(host) {
     syncSheet();
     var band = lv !== 'any' ? DIFF_BANDS[lv] : null;
     announce(band
-      ? '目标难度：' + band.name + '，开放 ' + band.lo + '×' + band.lo + '–' + band.hi + '×' + band.hi +
+      ? '目标难度：' + band.name + '，' + bandRangeLabel(band) + '，开放 ' +
+        band.lo + '×' + band.lo + '–' + band.hi + '×' + band.hi +
         '，先按 ' + pending.size + '×' + pending.size + ' 出（换一局后生效）'
       : '目标难度：不限（换一局后生效）');
   });

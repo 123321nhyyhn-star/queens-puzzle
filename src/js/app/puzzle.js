@@ -1,6 +1,6 @@
 /* ============================================================================
  * puzzle.js
- * 出题与换盘：按目标难度夹尺寸、挑出最难的一张、生成遮罩、把棋盘装上。
+ * 出题与换盘：按目标难度夹尺寸、挑出落进档位区间的一张、生成遮罩、把棋盘装上。
  * ========================================================================== */
 
 import { sfx } from '../core/audio.js';
@@ -23,8 +23,8 @@ import { dismissMismatch, showMismatch } from '../ui/panels/mismatch.js';
    新一局
    ----------------------------------------------------------
    尺寸由玩家在「目标难度」开放的区间里挑（见 DIFF_BANDS），这里只负责夹一次；
-   然后 pickBoard 抽最多 3 张、取分数最高的那张。一批都没够到下限就不装盘，
-   反过来问玩家「再抽一局 / 更换设置」——见下面的 roll()。
+   然后 pickBoard 抽最多 4 张，取第一张分数落进 [min, max) 的。一张都没落进去
+   就不装盘，反过来问玩家「再抽一局 / 更换设置」——见下面的 roll()。
    出题是同步的：算的时候主线程被占住，动画也会冻住，所以遮罩只是「告知」，
    不是「装饰」。快的时候根本不该出现——见 showVeil 的 delay。
    ========================================================== */
@@ -68,40 +68,58 @@ function targetBand() {
 }
 
 /* ------------------------------------------------------------ 挑盘
- * 生成最多 tries 张，取难度分最高的一张；一旦够到档位下限就提前收手。
+ * 生成最多 tries 张，第一张落进 [min, max) 的就装；一张都没落进去就收手。
  * 引擎本来每局就要抽 2~3 张（挑色块最均匀的那张），所以平均成本基本不变；
  * 度量本身是 1ms 级，瓶颈始终在生成。
  *
  * 为什么不在引擎里挑：engine.js 是独立 UMD，引用 difficulty.js 会破坏分层、
  * 也拖慢引擎。这里是 app 层，两边都看得见，正合适。
  *
- * wantMin 为 null（不限难度）时只生成一张就走。
- * 一批都没够到 wantMin 不是「失败」——这时**不装盘**，交给 mismatch 层问玩家
- * 要不要再抽一批（见 ui/panels/mismatch.js）；装上去了，目标难度就名存实亡。
+ * band 为 null（不限难度）时只生成一张就走。
+ *
+ * 两头都不够格不是「失败」——这时**不装盘**，交给 mismatch 层问玩家要不要
+ * 再抽一批（见 ui/panels/mismatch.js）；装上去了，目标难度就名存实亡。
+ * 上界同样要卡：只卡下限的话，选「困难」会掉出一盘 8.6 的极难盘。
+ * 没装的那批里挑出「差得最少」的一张报给那一层 —— 偏低报最高、偏高报最低。
  */
-var PICK_TRIES = 3;
+var PICK_TRIES = 4;
 
-/* 玩家点了「再抽一局」就把这一批抽得更狠一点：3 → 4 → 5 → 6 封顶。
- * 14×14 的单张命中率只有三成左右（一批三张仍有约三分之一不够格），
- * 一路 3 张抽下去会变成「点半天不给盘」；而多抽的这点成本只在真卡住时才付，
+/* 玩家点了「再抽一局」就把这一批抽得更狠一点：4 → 5 → 6 封顶。
+ * 单张落在档内的概率只有二到五成（9×9 的困难盘只有约两成），一路 4 张
+ * 抽下去仍会「点半天不给盘」；而多抽的这点成本只在真卡住时才付，
  * 16×16 抽满 6 张也在 1 秒内（有遮罩兜着）。 */
 function triesFor(tried) {
-  return PICK_TRIES + Math.min(Math.floor(tried / PICK_TRIES), 3);
+  return PICK_TRIES + Math.min(Math.floor(tried / PICK_TRIES), 2);
 }
 
-function pickBoard(n, wantMin, tries) {
+function pickBoard(n, band, tries) {
   var best = null, bestV = null, made = 0;
+  var under = null, over = null;   // 没落进区间：偏低里最高的 / 偏高里最低的
   for (var i = 0; i < tries; i++) {
     var b = null;
     try { b = window.QueensEngine.generate(n); } catch (e) { b = null; }
     if (!b) continue;
     made++;
     var v = computeVibe(b.size, b.regions, b.solution);
-    if (!v) return { board: b, vibe: null, tries: made };
-    if (!bestV || v.score > bestV.score) { best = b; bestV = v; }
-    if (wantMin == null || v.score >= wantMin) break;   // 早退
+    if (!v) return { board: b, vibe: null, tries: made, off: null };
+    if (!band) return { board: b, vibe: v, tries: made, off: null };
+    if (v.score >= band.max) { if (!over || v.score < over.score) over = v; continue; }
+    if (v.score < band.min) { if (!under || v.score > under.score) under = v; continue; }
+    best = b; bestV = v;
+    break;                                   // 落进区间就收
   }
-  return { board: best, vibe: bestV, tries: made };
+
+  /* 一张都没进区间：报「离区间最近」的那一头（正好两边都有就取更近的），
+   * 那一层据此说「最高 6.8，还差点」还是「最低 8.6，超了」。 */
+  var off = null;
+  if (!bestV) {
+    if (under && over) {
+      off = band.min - under.score <= over.score - band.max
+        ? { vibe: under, dir: 'low' } : { vibe: over, dir: 'high' };
+    } else if (under) off = { vibe: under, dir: 'low' };
+    else if (over) off = { vibe: over, dir: 'high' };
+  }
+  return { board: best, vibe: bestV, tries: made, off: off };
 }
 
 export function newGame(size) {
@@ -112,7 +130,7 @@ export function newGame(size) {
   roll(n, band, 0);
 }
 
-/* 出一盘：抽一批，够格就装，不够格就摆出两条路让玩家选。
+/* 出一盘：抽一批，落进档位区间就装，没落进去就摆出两条路让玩家选。
  * tried 是「这次换局一共已经抽掉多少张」——再抽时累加上去，
  * 好让那一层照实说「13×13 抽了 6 张，最高 7.8」。 */
 function roll(n, band, tried) {
@@ -126,34 +144,36 @@ function roll(n, band, tried) {
 
   var run = function () {
     var t0 = performance.now();
-    var picked = pickBoard(n, band ? band.min : null, triesFor(tried));
+    var picked = pickBoard(n, band, triesFor(tried));
     var board = picked.board;
     var vibe = picked.vibe;
     if (!board) {
       hideVeil();
-      flashHint('生成失败，请再试一次');
+      // 有 band 时一张都没落进区间，picked.off 一定在；没有就是真生成失败
+      if (!picked.off) { flashHint('生成失败，请再试一次'); return; }
+
+      // 记下这局真正占住主线程多久，下次同尺寸就知道要不要提前露遮罩
+      blockCost[n] = Math.max(blockCost[n] || 0, Math.round(performance.now() - t0));
+
+      /* 这批一张都没落进档位区间：这一盘不装。
+       * 尺寸和档位都在 allowed 范围内，只是这批手气不好——玩家说了算：
+       * 再抽一批，还是换个尺寸/档位。dir 说明是「不够」还是「超了」，
+       * 那一层的标题、读数、建议都跟着这个走。 */
+      showMismatch({
+        size: n,
+        band: band,
+        difficulty: settings.difficulty,
+        dir: picked.off.dir,
+        vibe: picked.off.vibe,
+        tried: tried + picked.tries,
+        onRetry: function () { roll(n, band, tried + picked.tries); }
+      });
       return;
     }
 
     // 记下这局真正占住主线程多久，下次同尺寸就知道要不要提前露遮罩
     var cost = Math.round(performance.now() - t0);
     blockCost[board.size] = Math.max(blockCost[board.size] || 0, cost);
-
-    /* 一批下来都没够到档位下限：这一盘不装。
-     * 尺寸和档位都在 allowed 范围内，只是这批手气不好——玩家说了算：
-     * 再抽一批，还是换个尺寸/档位。 */
-    if (band && band.min && vibe && vibe.score < band.min) {
-      hideVeil();
-      showMismatch({
-        size: n,
-        band: band,
-        difficulty: settings.difficulty,
-        vibe: vibe,
-        tried: tried + picked.tries,
-        onRetry: function () { roll(n, band, tried + picked.tries); }
-      });
-      return;
-    }
 
     applyBoard(board.size, board.regions, board.solution, board.seed, vibe);
 

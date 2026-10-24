@@ -26,18 +26,32 @@ export var RECORD_TOP = 12;
 
 /* 目标难度：档位跟难度分走，尺寸只是「可选范围」。
  * lo/hi 是该档开放给玩家的棋盘尺寸（选了档位就只能在这些尺寸里挑），
- * min 是该档的分数下限——生成时最多抽 3 张，够格就收（见 app/puzzle.js）。
+ * [min, max) 是该档的分数区间——生成时最多抽 4 张，落进区间就收（见 app/puzzle.js）。
+ *
+ * 两头都卡：只卡下限的话，选「困难」会给你一盘 8.6 的（顶栏写着极难），
+ * 档位就名存实亡了。min/max 就是 levelOf 的那两个阈值，边界对齐、不重叠；
+ * max 是开区间上界（正好 8.4 算极难），所以两档不会抢同一张盘。
  *
  * 区间与下限来自实测的可达性矩阵（docs/难度刻度v2-实施方案.md）：
  *   4×4 / 5×5 只可能「容易」；6–7 到中等封顶；8–10 到困难封顶；
- *   12×12 起才出得了极难，14×14 最稳。所以 13×13 归困难、不归极难。 */
+ *   12×12 起才出得了极难，14×14 最稳。所以 13×13 归困难、不归极难。
+ * 分数本身就是 1.0–9.9 截断过的，极难那一档写 10 就等于「不封顶」。 */
 export var DIFF_BANDS = {
-  easy: { name: '容易', lo: 4, hi: 5, min: 0 },
-  mid: { name: '中等', lo: 6, hi: 8, min: 5.5 },
-  hard: { name: '困难', lo: 9, hi: 13, min: 7.0 },
-  extreme: { name: '极难', lo: 14, hi: 16, min: 8.4 }
+  easy: { name: '容易', lo: 4, hi: 5, min: 0, max: 5.5 },
+  mid: { name: '中等', lo: 6, hi: 8, min: 5.5, max: 7.0 },
+  hard: { name: '困难', lo: 9, hi: 13, min: 7.0, max: 8.4 },
+  extreme: { name: '极难', lo: 14, hi: 16, min: 8.4, max: 10 }
 };
 export var DIFF_ORDER = ['any', 'easy', 'mid', 'hard', 'extreme'];
+
+/** 档位的分数区间说法：困难「7.0–8.4 分」、容易「低于 5.5 分」、极难「8.4 分以上」。
+ *  设置面板与「没抽到够格的盘」都读这一句，别各写一套。 */
+export function bandRangeLabel(band) {
+  if (!band) return '';
+  if (band.max >= 9.9) return band.min.toFixed(1) + ' 分以上';
+  if (!band.min) return '低于 ' + band.max.toFixed(1) + ' 分';
+  return band.min.toFixed(1) + '–' + band.max.toFixed(1) + ' 分';
+}
 
 /* 挑战：限时挡位（毫秒，0 = 不限时）。
  * 设置面板的按钮按这张表生成，加挡位只改这里。 */

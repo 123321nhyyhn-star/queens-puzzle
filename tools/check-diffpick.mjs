@@ -16,12 +16,13 @@ function ok(name, cond, info) {
   else { fail++; console.log('  FAIL  ' + name + (info !== undefined ? '  ' + JSON.stringify(info) : '')); }
 }
 
-/* 档位表必须与 core/config.js 的 DIFF_BANDS 一致 */
+/* 档位表必须与 core/config.js 的 DIFF_BANDS 一致。
+ * 区间是两头的：[min, max)，max 对齐下一档的 min（极难不封顶）。 */
 const BANDS = {
-  easy: { name: '容易', lo: 4, hi: 5, min: 0 },
-  mid: { name: '中等', lo: 6, hi: 8, min: 5.5 },
-  hard: { name: '困难', lo: 9, hi: 13, min: 7.0 },
-  extreme: { name: '极难', lo: 14, hi: 16, min: 8.4 }
+  easy: { name: '容易', lo: 4, hi: 5, min: 0, max: 5.5 },
+  mid: { name: '中等', lo: 6, hi: 8, min: 5.5, max: 7.0 },
+  hard: { name: '困难', lo: 9, hi: 13, min: 7.0, max: 8.4 },
+  extreme: { name: '极难', lo: 14, hi: 16, min: 8.4, max: 10 }
 };
 const LEVEL_MIN = { 容易: 0, 中等: 5.5, 困难: 7.0, 极难: 8.4 };
 const LEVEL_NEXT = { 容易: 5.5, 中等: 7.0, 困难: 8.4, 极难: 10 };
@@ -79,7 +80,7 @@ const same = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
 
 /* 一次换局只有两种结局：
  *   board    —— 新盘装上了（seed 变了、难度已就绪）
- *   mismatch —— 一批都没够到档位下限，那张「没抽到够格的盘」冒出来，盘**没动**
+ *   mismatch —— 一批里一张都没落进档位区间，那张「没抽到够格的盘」冒出来，盘**没动**
  * 后者是这一版的重点：不装「错」的盘，改问玩家要不要再抽。 */
 function waitOutcome(prevSeed) {
   return page.waitForFunction(p => {
@@ -247,15 +248,17 @@ const afterShuffle = await page.evaluate(() => ({
 ok('新局是 12×12', hard1.n === 12, hard1);
 ok('困难档分数够 7.0', hard1.score >= 7.0, hard1);
 ok('档位与分数自洽', toneOk(hard1), hard1);
-ok('困难档不会抽到中等', hard1.lvl !== '中等' && hard1.lvl !== '容易', hard1.lvl);
+ok('困难档不会抽到中等或容易', hard1.lvl !== '中等' && hard1.lvl !== '容易', hard1.lvl);
+/* 上界也要卡住：困难档（9–13）里偶尔会出 8.5 以上的极难盘，那一张不许装 */
+ok('困难档不会抽到极难', hard1.lvl !== '极难' && hard1.score < 8.4, hard1);
 /* 被「没抽到够格的盘」挡过的那一回中途会重抽一次，遮罩自然也会跟着露第二次，
- * 所以这条只在一次性抽到时判（12×12 一批命中 98%，绝大多数时候都走这条路）。 */
+ * 所以这条只在一次性抽到时判（12×12 一批命中约九成，绝大多数时候都走这条路）。 */
 ok('快盘不闪遮罩（12×12 出题 100ms 级）', hard1.blocked > 0 || veilShown.length === 0,
   { veil, blocked: hard1.blocked });
 ok('设置已写回 settings', afterShuffle.setting === 'hard' && afterShuffle.size === 12, afterShuffle);
 ok('设置已落 localStorage', afterShuffle.ls.difficulty === 'hard' && afterShuffle.ls.size === 12, afterShuffle.ls);
 ok('面板收起', afterShuffle.sheetClosed === true);
-// 标签显示的是这盘真实的档位：困难档也可能抽到 13×13 的极难盘
+// 标签显示的是这盘真实的档位，跟选的档位一致（上界卡住之后不可能再漂到极难）
 ok('顶栏难度标签已更新', afterShuffle.chip.indexOf(hard1.lvl) >= 0,
   afterShuffle.chip + ' / ' + hard1.lvl);
 await page.screenshot({ path: SHOTS + 'diff-hard-board.png' });
@@ -297,12 +300,14 @@ for (let i = 0; i < 8; i++) {
     (st.blocked ? '  （中途挡了 ' + st.blocked + ' 回）' : ''));
 }
 ok('8 局全是 12×12', seq.length === 8 && seq.every(s => s.n === 12), seq.map(s => s.n));
-/* 档位只是下限：够不到下限的盘不装，会退回「再抽一局 / 更换设置」，
- * 所以能落到这里的每一盘都该真的够到困难 7.0 */
+/* 区间是两头的：没落进去的盘一律不装，会退回「再抽一局 / 更换设置」，
+ * 所以能落到这里的每一盘都该真的在 7.0–8.4 之间 */
 ok('8 局都够到困难分', seq.length === 8 && seq.every(s => s.score >= 7.0), seq.map(s => s.score));
+ok('8 局都没超到极难', seq.length === 8 && seq.every(s => s.score < 8.4 && s.lvl === '困难'),
+  seq.map(s => s.lvl + s.score));
 ok('档位与分数自洽（每局）', seq.every(toneOk), seq.map(s => s.lvl + s.score));
-/* 12×12 一批三张大约九成多能到手，八局里偶尔要补一批是正常的；
- * 补得太多说明命中率掉了，得回头看刻度 */
+/* 12×12 单张落在档内的概率约五成，一批四张大约九成能到手；
+ * 八局里偶尔要补一批是正常的，补得太多说明命中率掉了，得回头看刻度 */
 ok('12×12 大多一批到手', seq.filter(s => s.batches === 1).length >= 6,
   seq.map(s => s.batches));
 
@@ -467,10 +472,10 @@ for (const [key, band] of Object.entries(BANDS)) {
   await sleep(250);
   await jsClick('.qbtn[data-size="' + band.hi + '"]');
   await sleep(250);
-  // 档位只是下限：一批没够到就再抽一批（该尺寸一批命中率都在 90% 以上）
+  // 区间两头：没落进去就再抽一批（该尺寸一批命中率大多在八九成）
   const got = await shuffle();
-  ok(band.name + '档 → ' + band.hi + '×' + band.hi + ' 分数够 ' + band.min,
-    got.n === band.hi && got.score >= band.min,
+  ok(band.name + '档 → ' + band.hi + '×' + band.hi + ' 分数落进区间',
+    got.n === band.hi && got.score >= band.min && got.score < band.max,
     { n: got.n, lvl: got.lvl, score: got.score, batches: got.batches, blocked: got.blocked });
   ok(band.name + '档的档位与分数自洽', toneOk(got), got.lvl + got.score);
 }
@@ -518,7 +523,7 @@ const mm = await page.evaluate(() => ({
   veil: document.getElementById('veil').hidden
 }));
 ok('弹出「没抽到够格的盘」', /还不够「极难」/.test(mm.title), mm.title);
-ok('说明写清尺寸与抽了几张', /14×14/.test(mm.sub) && /抽了 3 张/.test(mm.sub), mm.sub);
+ok('说明写清尺寸与抽了几张', /14×14/.test(mm.sub) && /抽了 4 张/.test(mm.sub), mm.sub);
 ok('读数：档位要求 8.4', mm.need === '8.4', mm.need);
 ok('读数：这批最高没够 8.4', parseFloat(mm.best) < 8.4, mm.best);
 ok('顺手劝一句「放大一档」', /15×15/.test(mm.note), mm.note);
@@ -544,8 +549,8 @@ await page.waitForFunction(() => !document.getElementById('mismatch').hidden, { 
 await sleep(150);
 const sub2 = await page.evaluate(() => document.getElementById('mmSub').textContent.trim());
 const tried2 = (sub2.match(/抽了 (\d+) 张/) || [])[1];
-// 第二批发得比第一批狠（triesFor：3 → 4 → …），所以只要「变多了」就说明累计对
-ok('再抽一批：累计张数接着往上涨', tried2 && Number(tried2) > 3, sub2);
+// 第二批发得比第一批狠（triesFor：4 → 5 → 6），所以只要「变多了」就说明累计对
+ok('再抽一批：累计张数接着往上涨', tried2 && Number(tried2) > 4, sub2);
 
 await jsClick('#btnMmSetup');
 await sleep(460);
@@ -580,8 +585,84 @@ ok('装上盘后那一层已收起',
   await page.evaluate(() => document.getElementById('mismatch').hidden));
 await page.evaluate(() => { window.QueensEngine.generate = window.__realGen; });
 
+/* ---------- 10b. 反过来：一批全都太狠，同样不装 ---------- */
+console.log('\n[10b] 超过档位上限也不装');
+/* 找一张 8.4 以上的 13×13 当素材：困难档（9–13）里这种盘是会抽到的，
+ * 上界没卡住的话它就会被当成「困难」装上——这正是这条要堵的口子。 */
+const over = await page.evaluate(() => {
+  const real = window.QueensEngine.generate;
+  for (let i = 0; i < 300; i++) {
+    const b = real(13);
+    const v = window.QueensDifficulty.vibe(b.size, b.regions, b.solution);
+    if (v.score >= 8.4) {
+      return { size: b.size, seed: b.seed, score: v.score,
+        regions: Array.from(b.regions), solution: Array.from(b.solution) };
+    }
+  }
+  return null;
+});
+ok('测试素材：找得到一张够 8.4 的 13×13', !!over, over && Math.round(over.score * 10) / 10);
+
+const beforeHi = await snap();
+await page.evaluate(g => {
+  __QUEENS_DEBUG__.settings.difficulty = 'hard';
+  window.QueensEngine.generate = () => ({
+    size: g.size, seed: g.seed,
+    regions: g.regions.slice(), solution: g.solution.slice(),
+    areas: [], minArea: 0, maxArea: 0
+  });
+  __QUEENS_DEBUG__.newGame(13);
+}, over);
+await page.waitForFunction(() => !document.getElementById('mismatch').hidden, { timeout: 30000 });
+await sleep(150);
+const mmHi = await page.evaluate(() => ({
+  kicker: document.getElementById('mmKicker').textContent.trim(),
+  title: document.getElementById('mmTitle').textContent.trim(),
+  sub: document.getElementById('mmSub').textContent.trim(),
+  need: document.getElementById('mmNeed').textContent.trim(),
+  needLabel: document.getElementById('mmNeedLabel').textContent.trim(),
+  best: document.getElementById('mmBest').textContent.trim(),
+  bestLabel: document.getElementById('mmBestLabel').textContent.trim(),
+  note: document.getElementById('mmNote').textContent.trim(),
+  over: document.getElementById('mismatch').classList.contains('is-over'),
+  board: __QUEENS_DEBUG__.state.size,
+  seed: __QUEENS_DEBUG__.state.seed
+}));
+ok('卡片标题说「超出了」', /超出了「困难」/.test(mmHi.title), mmHi.title);
+ok('英文小标题换成 TOO HARD', mmHi.kicker === 'TOO HARD', mmHi.kicker);
+ok('读数改成上限 / 这批最低', mmHi.needLabel === '档位上限' && mmHi.bestLabel === '这批最低',
+  [mmHi.needLabel, mmHi.bestLabel]);
+ok('上限写 8.4', mmHi.need === '8.4', mmHi.need);
+ok('这批最低确实超了 8.4', parseFloat(mmHi.best) >= 8.4, mmHi.best);
+ok('说明写清尺寸、抽了几张、最低多少',
+  /13×13/.test(mmHi.sub) && /抽了 4 张/.test(mmHi.sub) && /最低/.test(mmHi.sub), mmHi.sub);
+ok('建议改成收小一格（12×12）', /12×12/.test(mmHi.note), mmHi.note);
+ok('卡片换成「超了」的配色', mmHi.over === true);
+ok('这一盘也没装', mmHi.board === beforeHi.n && mmHi.seed === beforeHi.seed,
+  { now: mmHi.board, was: beforeHi.n });
+await page.screenshot({ path: SHOTS + 'diff-mismatch-over.png' });
+
+await jsClick('#btnMmSetup');
+await sleep(460);
+const hiSetup = await page.evaluate(() => ({
+  sheet: !document.getElementById('sheetWrap').hidden,
+  on: Array.from(document.querySelectorAll('.dbtn.is-on')).map(b => b.textContent.trim()),
+  val: parseInt(document.getElementById('sizeVal').textContent.trim(), 10),
+  hint: document.getElementById('diffHint').textContent.trim()
+}));
+ok('「更换设置」停在困难 13×13',
+  hiSetup.sheet === true && hiSetup.on[0] === '困难' && hiSetup.val === 13, hiSetup);
+ok('设置里写出整段区间（不只是下限）',
+  /7\.0/.test(hiSetup.hint) && /8\.4/.test(hiSetup.hint), hiSetup.hint);
+
+await closeSheetIfOpen();
+await page.evaluate(() => {
+  window.QueensEngine.generate = window.__realGen;
+  __QUEENS_DEBUG__.settings.difficulty = 'any';
+});
+
 /* ---------- 11. 无报错 ---------- */
-console.log('\n[10] 运行期报错');
+console.log('\n[11] 运行期报错');
 const realErrs = errs.filter(e => !/favicon|ERR_FAILED.*favicon/i.test(e));
 ok('无 JS 报错', realErrs.length === 0, realErrs);
 
