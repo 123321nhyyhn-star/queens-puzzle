@@ -28,12 +28,6 @@ export function formatTime(ms) {
 
 export function idxToRC(i) { return { r: (i / state.size) | 0, c: i % state.size }; }
 
-/* 撤销步数的读数：到顶了写成「60+」。
- * 栈满了以后更早的那几步真的撤不回去，写成确切的 60 会骗人。 */
-export function stepText(depth, max) {
-  return depth >= max ? max + '+' : String(depth);
-}
-
 export function pulseClass(el, cls, ms) {
   if (!el) return;
   el.classList.remove(cls);

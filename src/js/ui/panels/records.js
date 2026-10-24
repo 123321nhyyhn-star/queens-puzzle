@@ -114,15 +114,22 @@ function thumbOf(rec, size) {
     '" alt="' + rec.n + '×' + rec.n + ' 棋盘预览，' + recs.toneName(rec.lv) + '" draggable="false"></span>';
 }
 
-/** 小字左边那半：限时 / 挑战标记 / 提示 / 步数。
+/** 小字左边那半：限时 / 限步 / 挑战标记 / 提示 / 步数。
  *  提示 0 次是常态，省略掉，这一行才留得出位置给日期。 */
 function metaBits(rec) {
   var bits = [limitLabel(rec.lim)];
-  if (!rec.won) bits.push(rec.lim ? '超时' : '未完成');
+  if (rec.sl) bits.push('限步 ' + rec.sl);
+  if (!rec.won) {
+    // 输的原因：老记录没有 lr，只能按时限猜（那时挑战只有限时这一种）
+    if (rec.lr === 'steps') bits.push('步数用尽');
+    else if (rec.lr === 'time') bits.push('超时');
+    else bits.push(rec.lim ? '超时' : '未完成');
+  }
   if (rec.nh) bits.push('无提示');
   if (rec.nu) bits.push('无撤销');
   if (rec.h > 0) bits.push('提示 ' + rec.h);
-  bits.push(rec.mv + ' 步');
+  // 走几步：v3 之后的记录有 st；老记录当时只记了落子次数，退回用它
+  bits.push((rec.st == null ? rec.mv : rec.st) + ' 步');
   return bits;
 }
 

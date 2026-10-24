@@ -4,6 +4,7 @@
  * 两种结局共用一张卡，按 state.status 换文案与按钮：
  *   解开：再来一局 / 重来这局 / 看看棋盘
  *   超时：重试这一局（同一盘棋重开）/ 换一局新的
+ *   步数用尽：跟超时同一套按钮，只有标题与中间那格读数换成「限步」
  *
  * 输掉的那一屏必须做个选择（重试 / 换一局），Esc 关不掉、点背景也关不掉：
  * 关掉之后棋盘是封的，只剩「新一局」一条路，容易点得莫名其妙。
@@ -53,23 +54,35 @@ function rankText() {
   return f.rank === 1 ? ' · 本组最快' : ' · 本组第 ' + f.rank;
 }
 
-/* 打开前把这一局的读数写进卡片。who 由 state.status 决定，调用方不用传。 */
+/* 打开前把这一局的读数写进卡片。who 由 state.status 决定，调用方不用传；
+ * 输掉的那两种（超时 / 步数用尽）只有文案与中间那格读数不一样。 */
 function paint() {
   var lost = state.status === 'lost';
+  var bySteps = lost && state.lostBy === 'steps';
 
   el.dataset.kind = lost ? 'lost' : 'won';
-  resultKicker.textContent = lost ? 'TIME UP' : 'PUZZLE SOLVED';
-  resultTitle.textContent = lost ? '时间到' : '解开了';
+  resultKicker.textContent = bySteps ? 'OUT OF MOVES' : (lost ? 'TIME UP' : 'PUZZLE SOLVED');
+  resultTitle.textContent = bySteps ? '步数用尽' : (lost ? '时间到' : '解开了');
 
   resSize.textContent = state.size + '×' + state.size;
-  resTime.textContent = lost ? limitLabel(state.limit) : formatTime(state.elapsed);
-  resTimeLbl.textContent = lost ? '限时' : '用时';
+  if (bySteps) {
+    /* 中间那格跟「限时」对称：输在什么上，就报那条限制是多少 */
+    resTime.textContent = String(state.stepLimit);
+    resTimeLbl.textContent = '限步';
+  } else {
+    resTime.textContent = lost ? limitLabel(state.limit) : formatTime(state.elapsed);
+    resTimeLbl.textContent = lost ? '限时' : '用时';
+  }
   resHints.textContent = String(state.hints);
 
+  /* 步数写进副标题：它是这一局最实在的一个读数（撤销不退、刷新还在），
+   * 解开与没解开都值得看一眼。步数用尽那一屏不必再写一遍——限步多少就是走了多少。 */
+  var stepsText = bySteps ? '' : ' · ' + (state.steps || 0) + ' 步';
   resultSub.textContent = lost
-    ? state.size + '×' + state.size + ' · 限时 ' + limitLabel(state.limit) +
+    ? state.size + '×' + state.size +
+      (bySteps ? ' · 限步 ' + state.stepLimit + ' 步' : ' · 限时 ' + limitLabel(state.limit) + stepsText) +
       ' · 还差 ' + Math.max(0, state.size - queenCount()) + ' 只皇后'
-    : state.size + '×' + state.size + ' · 用时 ' + formatTime(state.elapsed) +
+    : state.size + '×' + state.size + ' · 用时 ' + formatTime(state.elapsed) + stepsText +
       (state.vibe ? ' · ' + state.vibe.level + ' ' + state.vibe.score.toFixed(1) : '') +
       rankText();
 

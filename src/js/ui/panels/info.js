@@ -2,7 +2,8 @@
  * panels/info.js · 本局信息页
  * ----------------------------------------------------------------------------
  * 顶栏那条信息条点开的就是这里。四张读数卡片（棋盘 / 用时 / 皇后 / 难度）
- * 跟信息条一一对应，步数那张单独占满一行，下面接难度构成。
+ * 跟信息条一一对应，步数那张单独占满一行（它记的是「一共走了几步」，
+ * 跟撤销栈不是一个数），下面接难度构成。
  *
  * 用时这张要跟着跑：面板开着的时候计时还在走，读数停住会让人以为卡了。
  * 由 main.js 的 250ms 心跳在面板打开时调 tick()。
@@ -15,8 +16,8 @@ import { elapsedMs, limitRemaining } from '../../core/clock.js';
 import { limitLabel } from '../../core/config.js';
 import { btnHud } from '../../core/dom.js';
 import { createSheet } from '../../core/sheet.js';
-import { state, UNDO_MAX, view } from '../../core/state.js';
-import { formatTime, stepText } from '../../core/utils.js';
+import { state, view } from '../../core/state.js';
+import { formatTime } from '../../core/utils.js';
 import { queenCount } from '../../game/rules.js';
 import { openSettings } from './settings.js';
 
@@ -56,11 +57,11 @@ export var HTML = /* html */ `
         <b class="info-v"><span class="info-level" id="diffBadge" data-tone="mid">中等</span> <em id="diffBig">5.2</em></b>
         <span class="info-s" id="infoDiffSub">本局难度评估</span>
       </div>
-      <!-- 步数占满一整行：它答的是「能退回几步」，跟上面四项读数不是同一类 -->
+      <!-- 步数占满一整行：它答的是「这一局一共走了多少步」，跟上面四项读数不是同一类 -->
       <div class="info-card is-wide">
         <span class="info-k">步数</span>
         <b class="info-v" id="infoSteps">0</b>
-        <span class="info-s" id="infoStepsSub">还没有能撤回的步骤</span>
+        <span class="info-s" id="infoStepsSub">还没有动手</span>
       </div>
     </div>
 
@@ -156,15 +157,27 @@ export function paintInfo() {
   else if (q >= n) infoQueensSub.textContent = '放满了，对一下行列与色块';
   else infoQueensSub.textContent = '还差 ' + (n - q) + ' 只';
 
-  /* 步数 = 撤销栈里还剩几步。写「最多退回 N 步」而不是「走了 N 步」：
-   * 这两个数在拖动连涂（一整笔只留一个撤销点）和清空之后就分道扬镳了，
-   * 而玩家真正要按的是撤销那几下。 */
+  /* 步数 = 这一局一共落了几次笔（state.steps）。它跟撤销栈是两个数：
+   * 撤销栈封顶 UNDO_MAX、刷新后清空，答的是「还能退几步」；这个数不封顶、
+   * 跟着存档走，答的是「这一局走到哪儿了」。小字就在两者之间说清关系。 */
+  var st = state.steps || 0;
   var depth = view.undo.length;
-  infoSteps.textContent = stepText(depth, UNDO_MAX);
-  if (state.status === 'won') infoStepsSub.textContent = '这局已经解开，不用再退了';
-  else if (!depth) infoStepsSub.textContent = '还没有能撤回的步骤';
-  else if (depth >= UNDO_MAX) infoStepsSub.textContent = '撤销栈满了（最多 ' + UNDO_MAX + ' 步，更早的退不回去）';
-  else infoStepsSub.textContent = '按「撤销」最多退回 ' + depth + ' 步';
+  infoSteps.textContent = String(st);
+  if (state.status === 'lost' && state.lostBy === 'steps') {
+    infoStepsSub.textContent = '限步 ' + state.stepLimit + ' 步用完了，这局没解开';
+  } else if (state.status === 'lost') {
+    // 时间到的那局步数也照实说：它是这一局留下的读数，不是「还剩多少」
+    infoStepsSub.textContent = '时间到，这局走了 ' + st + ' 步';
+  } else if (state.status === 'won') {
+    infoStepsSub.textContent = '这局一共走了 ' + st + ' 步';
+  } else if (state.stepLimit) {
+    infoStepsSub.textContent = '限步 ' + state.stepLimit + ' 步 · 还剩 ' +
+      Math.max(0, state.stepLimit - st) + ' 步';
+  } else if (!st) {
+    infoStepsSub.textContent = '还没有动手';
+  } else {
+    infoStepsSub.textContent = '撤销不退这个数' + (depth ? ' · 可退 ' + depth + ' 步' : '');
+  }
 }
 
 export function renderDiff() {

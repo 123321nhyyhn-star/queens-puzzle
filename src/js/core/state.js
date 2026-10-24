@@ -20,9 +20,18 @@ export const state = {
   marks: null,
   hints: 0,
   moves: 0,
+  /* 步数：这一局一共落了几次笔（每次改动棋盘算一次，见 app/history.js 的 pushHistory）。
+   * 它**不是**撤销栈的深度：撤销 / 重做不改它，刷新页面照样保留（存档里带着）；
+   * 撤销栈封顶 UNDO_MAX（更早的退不回去），这个数不封顶。
+   * 挑战的「步数限制」看 stepLimit，用完还没解开就判负。 */
+  steps: 0,
+  stepLimit: 0,
   elapsed: 0,
   runningSince: 0,
   status: 'playing',
+  /* 输掉的原因：'time'（超时）或 'steps'（步数用尽），没输时为 null。
+   * 结果层与战绩都靠它挑文案——同样是 lost，说的话不一样。 */
+  lostBy: null,
   auto: null,
   conflicts: null,
   regionCounts: null,
@@ -47,6 +56,7 @@ export const pending = {
   size: 8,
   difficulty: 'any',
   timeLimit: 0,
+  stepLimit: 0,
   noHint: false,
   noUndo: false
 };
@@ -87,5 +97,6 @@ export function hasProgress() {
 }
 
 /* 撤销栈的深度上限：整盘快照，太深了占内存（8×8 一步 64 字节，16×16 一步 256）。
- * 到顶以后最早的几步就撤不回去了，信息条上写成「60+」——数字得跟能做的事一致。 */
+ * 到顶以后最早的几步就撤不回去了。注意这是**撤销**的上限，不是步数的上限：
+ * 信息条上的步数读 state.steps，不封顶（见上面 state.steps 的说明）。 */
 export var UNDO_MAX = 60;

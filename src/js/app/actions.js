@@ -14,7 +14,7 @@ import { clearHintTimer, flashHint, updateHint } from '../ui/hint.js';
 import { pendingQueens } from '../game/rules.js';
 import { pushHistory } from './history.js';
 import { render } from '../ui/render.js';
-import { checkWin } from '../ui/win.js';
+import { checkSteps, checkWin } from '../ui/win.js';
 
 /* ==========================================================
    落子 / 标记
@@ -30,6 +30,9 @@ export function setMarks(next, anim) {
   render(anim);
   save();
   checkWin();
+  /* 判完胜再判步数：最后一步「刚好摆满」时那是解开，不是步数用尽。
+   * 放在这里而不是每个动作里，是因为所有改棋盘的路都会经过它。 */
+  if (state.status === 'playing') checkSteps();
 }
 
 export function onCell(i) {

@@ -1,6 +1,7 @@
 /* ============================================================================
  * 步数与「一键补齐」
- *   · 信息条上的步数段：撤销栈还剩几步、0 / 数字 / 60+ 三种读法、撤销重做跟着走
+ *   · 信息条上的步数段：一次落笔涨一步、没有 60+ 封顶、撤销重做不退、
+ *     刷新页面还能接着这个数、信息页与信息条一致
  *   · 提示行上的「补齐」：只在「除了皇后位别处都划掉了」时露出，
  *     点下去挨个落子、只压一个撤销点、最后照常判胜
  *
@@ -121,7 +122,7 @@ await boot(true);
 const s0 = await stepState();
 check('首屏步数为 0', s0.text === '0', s0.text);
 check('0 步时整段淡下去', s0.zero === true && /还没有/.test(s0.title), s0.title);
-check('读屏文案带步数', /可撤销 0 步/.test(s0.aria), s0.aria);
+check('读屏文案带步数', /走了 0 步/.test(s0.aria), s0.aria);
 check('信息条没有横向溢出', s0.hudOverflow <= 0 && s0.docOverflow <= 0,
   `hud=${s0.hudOverflow} doc=${s0.docOverflow}`);
 await page.screenshot({ path: `${OUT}/finish-01-boot.png` });
@@ -182,32 +183,56 @@ check('拖一整行只算一步',
 await page.click('#btnUndo');
 await sleep(220);
 const s5 = await stepState();
-check('撤销一步数字跟着退', Number(s5.text) === Number(s4.text) - 1, `${s4.text} → ${s5.text}`);
+check('撤销不退步数（步数记的是走过的路）', s5.text === s4.text, `${s4.text} → ${s5.text}`);
+check('撤销确实把棋盘退回去了', (await xCount()) < xBefore + painted, String(await xCount()));
 await page.keyboard.down('Shift');
 await page.keyboard.press('z');
 await page.keyboard.up('Shift');
 await sleep(220);
 const s6 = await stepState();
-check('重做一步数字跟着进', Number(s6.text) === Number(s5.text) + 1, `${s5.text} → ${s6.text}`);
+check('重做也不改进步数', s6.text === s5.text, `${s5.text} → ${s6.text}`);
 await page.click('#btnClear');
 await sleep(220);
 const s7 = await stepState();
 check('清空也算一步（可撤销）', Number(s7.text) === Number(s6.text) + 1, `${s6.text} → ${s7.text}`);
 
-// 撤销栈到顶：61 步写成 60+，因为更早的那几步真撤不回去
+/* 撤销栈到顶（UNDO_MAX = 60）之后步数照涨：栈里更早的几步撤不回去，
+ * 但「这一局走了几步」跟能不能撤没关系，写成 60+ 就失去了参考意义。 */
 await page.evaluate(() => __QUEENS_DEBUG__.clear());
 await sleep(200);
+const before61 = await stepState();   // clear() 自己也压了一个撤销点，算一步
 const ids = [];
 for (let i = 0; i < 61; i++) ids.push(i);
 await clickCells(ids);
 await sleep(300);
 const sCap = await stepState();
-check('撤销栈满了写 60+', sCap.text === '60+', sCap.text);
-check('60+ 时信息条仍然不溢出', sCap.hudOverflow <= 0, String(sCap.hudOverflow));
+check('超过 60 步照实写（不再是 60+）',
+  sCap.text === String(Number(before61.text) + 61) && !/\+/.test(sCap.text),
+  `${before61.text} → ${sCap.text}`);
+check('步数确实走过了 60', Number(sCap.text) > 60, sCap.text);
+check('三位数时信息条仍然不溢出', sCap.hudOverflow <= 0, String(sCap.hudOverflow));
+await page.screenshot({ path: `${OUT}/finish-02-steps.png` });
+
+// 刷新页面：步数跟着存档回来（撤销栈是不落盘的，两者在这里分道扬镳）
+const beforeReload = sCap.text;
+await page.reload({ waitUntil: 'networkidle0' });
+await page.waitForFunction('window.__QUEENS_DEBUG__ && __QUEENS_DEBUG__.state.regions.length > 0', { timeout: 20000 });
+await sleep(600);
+const afterReload = await stepState();
+check('刷新后步数还在', afterReload.text === beforeReload, `${beforeReload} → ${afterReload.text}`);
+const reloadSub = await page.evaluate(() => {
+  document.getElementById('btnHud').click();
+  const sh = document.getElementById('diffSheet');
+  return {
+    steps: document.getElementById('infoSteps').textContent,
+    sub: document.getElementById('infoStepsSub').textContent,
+    open: sh.getBoundingClientRect().height > 0
+  };
+});
+check('刷新后信息页读数也是同一个数', reloadSub.steps === beforeReload, `${reloadSub.steps}`);
 
 // 信息页上那一张卡片
-await page.click('#btnHud');
-await sleep(350);
+await sleep(200);
 const info = await page.evaluate(() => {
   const sh = document.getElementById('diffSheet');
   return {
@@ -220,11 +245,11 @@ const info = await page.evaluate(() => {
   };
 });
 check('信息页卡片与信息条一致', info.steps === sCap.text, info.steps);
-check('信息页解释了步数怎么读', /退不回去|退回/.test(info.sub), info.sub);
+check('信息页解释了步数怎么读', /撤销不退/.test(info.sub), info.sub);
 check('信息页五张卡片（步数占满一行）',
   info.cards === 5 && Math.abs(info.cardW - info.gridW) <= 2, `${info.cards} 张 / ${info.cardW} of ${info.gridW}`);
 check('信息页内容不溢出', !info.scrollable);
-await page.screenshot({ path: `${OUT}/finish-02-info.png` });
+await page.screenshot({ path: `${OUT}/finish-03-info.png` });
 await page.click('#btnCloseDiff');
 await sleep(280);
 

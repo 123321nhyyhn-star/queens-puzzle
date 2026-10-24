@@ -10,7 +10,8 @@
  * 记录只增不改：一局结束（解开 / 超时）写一条，删只能整条删。
  * ========================================================================== */
 
-import { DIFF_BANDS, RECORD_MAX, SIZE_MAX, SIZE_MIN, STORE_RECORDS, normalizeLimit } from './config.js';
+import { DIFF_BANDS, RECORD_MAX, SIZE_MAX, SIZE_MIN, STORE_RECORDS,
+  normalizeLimit, normalizeSteps } from './config.js';
 
 /** 难度档，和 DIFF_BANDS 的键、以及本局难度评估的 tone 是同一套。 */
 export var RECORD_TONES = ['easy', 'mid', 'hard', 'extreme'];
@@ -73,8 +74,13 @@ export function toneOfSize(n) {
  *   rg  色块（n*n 个十六进制字符）  so 解（每行皇后的列）
  *   lv  难度档（easy/mid/hard/extreme）  sc 难度体感分  sq 刻度版本
  *   lim 本局限时（0 = 不限）  ms 用时
- *   h   提示次数  mv 落子次数
- *   won 是否解开  nh 禁用提示  nu 禁用撤销
+ *   sl  本局步数限制（0 = 不限）  st 这一局走了几步
+ *   h   提示次数  mv 落子次数（放了几只皇后，不是步数）
+ *   won 是否解开  lr 输的原因（time / steps，解开时为空）
+ *   nh 禁用提示  nu 禁用撤销
+ *
+ *   st 与 mv 都留着：老记录没有 st（那时还没记真步数），列表里退回用 mv；
+ *   mv 现在仍然进战绩，答的是「落了几只皇后」。
  */
 function tidy(raw) {
   if (!raw || typeof raw !== 'object') return null;
@@ -97,10 +103,14 @@ function tidy(raw) {
     // 没这个字段的都是 v2 之前的老记录（1 = 旧刻度）
     sq: clampNum(raw.sq, 1, 99) || 1,
     lim: normalizeLimit(raw.lim),
+    sl: normalizeSteps(raw.sl),
     ms: clampNum(raw.ms, 0, 24 * 3600 * 1000),
+    // null 而不是 0：老记录没记过步数，跟「走了 0 步」得分得开（列表退回 mv）
+    st: raw.st == null ? null : clampNum(raw.st, 0, 999999),
     h: clampNum(raw.h, 0, 999),
     mv: clampNum(raw.mv, 0, 99999),
     won: raw.won === true || raw.won === 1,
+    lr: raw.lr === 'time' || raw.lr === 'steps' ? raw.lr : '',
     nh: raw.nh === true,
     nu: raw.nu === true
   };
@@ -147,10 +157,13 @@ export function add(f) {
     sc: f.vib ? f.vib.score : null,
     sq: (f.vib && f.vib.scale) || RECORD_SCALE,
     lim: f.limit,
+    sl: f.stepLimit,
     ms: Math.round(f.ms || 0),
+    st: f.steps == null ? null : f.steps,
     h: f.hints,
     mv: f.moves,
     won: !!f.won,
+    lr: f.lostBy || '',
     nh: !!f.noHint,
     nu: !!f.noUndo
   });

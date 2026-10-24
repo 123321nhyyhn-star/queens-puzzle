@@ -7,7 +7,7 @@
  * ========================================================================== */
 
 import { btnHud, diffLevelEl, diffScoreEl, diffSeg } from '../core/dom.js';
-import { state, view } from '../core/state.js';
+import { state } from '../core/state.js';
 import { queenCount } from '../game/rules.js';
 
 export function updateDiffChip() {
@@ -27,7 +27,8 @@ export function paintHudLabel() {
   var parts = [
     '棋盘 ' + state.size + '×' + state.size,
     '皇后 ' + queenCount() + '/' + state.size,
-    '可撤销 ' + view.undo.length + ' 步'
+    '走了 ' + (state.steps || 0) + ' 步' +
+      (state.stepLimit ? '，限步 ' + state.stepLimit : '')
   ];
   if (state.vibe) parts.push('难度 ' + state.vibe.level + ' ' + state.vibe.score.toFixed(1) + ' 分');
   btnHud.setAttribute('aria-label', '本局信息：' + parts.join('，'));

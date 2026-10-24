@@ -30,6 +30,10 @@ export function pushHistory() {
   view.undo.push(snapshot());
   if (view.undo.length > UNDO_MAX) view.undo.shift();
   view.redo.length = 0;
+  /* 步数在这里涨：一次落笔 = 一步（拖动连涂一整行也只走这一处，所以算一步）。
+   * 只增不减——撤销 / 重做是「回到走过的位置」，不是又走了一步；
+   * 所以这个数跟撤销栈的深度不是一回事（栈还有 UNDO_MAX 封顶、刷新后会清空）。 */
+  state.steps++;
 }
 
 export function undo() {

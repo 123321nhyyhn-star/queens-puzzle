@@ -51,6 +51,8 @@ export var timePill = $('timePill');
 export var timeText = $('timeText');
 export var stepPill = $('stepPill');
 export var stepCountEl = $('stepCount');
+/* 步数后面那一小截：平时是「步」，开了步数限制就变成「/60」 */
+export var stepUnitEl = $('stepUnit');
 export var queenPill = $('queenPill');
 export var queenCountEl = $('queenCount');
 export var diffSeg = $('diffSeg');

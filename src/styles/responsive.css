@@ -22,8 +22,9 @@
   .brand-cn { font-size: 17px; letter-spacing: .5px; }
   .hud { font-size: 10.5px; }
   .hud-seg { padding: 0 6px; gap: 3px; }
-  /* 极窄屏上只留数字：段数比原来多了一段，得把「步」这个字让出去 */
-  .hud-step .step-unit { display: none; }
+  /* 极窄屏上只留数字：段数比原来多了一段，得把「步」这个字让出去。
+     但开了步数限制时尾缀是「/60」，那是这一步还剩多少的读数，不能省。 */
+  .hud-step:not(.has-limit) .step-unit { display: none; }
   .icon-btn { width: 27px; height: 27px; }
   .icon-btn svg { width: 14px; height: 14px; }
   .actions { gap: 4px; }

@@ -16,7 +16,8 @@
 
 import { newGame } from '../../app/puzzle.js';
 import { audio, buzz, sfx } from '../../core/audio.js';
-import { DIFF_BANDS, DIFF_ORDER, LIMIT_OPTIONS, bandRangeLabel, limitLabel, normalizeLimit, SIZE_MAX, SIZE_MIN } from '../../core/config.js';
+import { STEP_OPTIONS, DIFF_BANDS, DIFF_ORDER, LIMIT_OPTIONS, bandRangeLabel, limitLabel,
+  normalizeLimit, normalizeSteps, stepLimitLabel, SIZE_MAX, SIZE_MIN } from '../../core/config.js';
 import { btnSettings } from '../../core/dom.js';
 import { createSheet } from '../../core/sheet.js';
 import { pending, settings, state, view } from '../../core/state.js';
@@ -77,6 +78,12 @@ export var HTML = /* html */ `
         <div class="stepper-label">限时<small id="limitHint">开启后第一次操作开始倒计时，超时判负</small></div>
         <!-- 挡位按钮按 core/config.js 的 LIMIT_OPTIONS 生成，见 buildLimitOpts -->
         <div class="limit-opts" id="limitOpts" role="group" aria-label="限时"></div>
+      </div>
+
+      <div class="limit-row">
+        <div class="stepper-label">步数限制<small id="stepHint">用完还没解开就算输；拖动连涂一整行只算一步</small></div>
+        <!-- 挡位按钮按 core/config.js 的 STEP_OPTIONS 生成，见 buildStepOpts -->
+        <div class="limit-opts" id="stepOpts" role="group" aria-label="步数限制"></div>
       </div>
 
       <div class="switch-row">
@@ -167,6 +174,7 @@ export var HTML = /* html */ `
 var sheetWrap = null, sheet = null, sheetBackdrop = null;
 var sheetNote = null, sizeHint = null, sizeMinus = null, sizePlus = null, sizeVal = null;
 var quickRow = null, diffOpts = null, diffHint = null, limitOpts = null, limitHint = null;
+var stepOpts = null, stepHint = null;
 var challengeTitle = null, btnShuffle = null, shuffleHint = null;
 var btnMoreOpts = null, moreOptsLabel = null, sheetMore = null;
 var shareCode = null, shareTag = null, shareStatus = null;
@@ -206,11 +214,37 @@ export function setPendingLimit(ms) {
   announce('限时：' + (ms ? limitLabel(ms) : '不限') + '（换一局后生效）');
 }
 
+/* 步数限制：跟限时同一套规矩，从 STEP_OPTIONS 生成一排挡位 */
+function buildStepOpts() {
+  if (!stepOpts || stepOpts.childNodes.length) return;
+  for (var i = 0; i < STEP_OPTIONS.length; i++) {
+    var o = STEP_OPTIONS[i];
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'lbtn';
+    b.dataset.steps = String(o.steps);
+    b.textContent = o.label;
+    b.setAttribute('aria-pressed', 'false');
+    stepOpts.appendChild(b);
+  }
+}
+
+export function setPendingSteps(n) {
+  n = normalizeSteps(n);
+  if (n === pending.stepLimit) return;
+  pending.stepLimit = n;
+  syncSheet();
+  announce('步数限制：' + (n ? stepLimitLabel(n) : '不限') + '（换一局后生效）');
+}
+
 /* 这一组里有哪些还没落地的改动，给「换一局」下方的说明与读屏播报共用 */
 function challengeBits() {
   var bits = [];
   if ((pending.timeLimit || 0) !== (settings.timeLimit || 0)) {
     bits.push(pending.timeLimit ? '限时 ' + limitLabel(pending.timeLimit) : '不限时');
+  }
+  if ((pending.stepLimit || 0) !== (settings.stepLimit || 0)) {
+    bits.push(pending.stepLimit ? '限步 ' + stepLimitLabel(pending.stepLimit) : '不限步数');
   }
   if (!!pending.noHint !== !!settings.noHint) {
     bits.push(pending.noHint ? '禁用提示' : '提示可用');
@@ -228,6 +262,7 @@ export function challengeSummary() {
 /* 换一局时把挑战的意向落到设置上：这是它唯一生效的时机 */
 export function commitChallenge() {
   settings.timeLimit = normalizeLimit(pending.timeLimit);
+  settings.stepLimit = normalizeSteps(pending.stepLimit);
   settings.noHint = !!pending.noHint;
   settings.noUndo = !!pending.noUndo;
   saveSettings();
@@ -288,7 +323,8 @@ export function syncSheet() {
 
   sheetNote.textContent = '当前这局：' + state.size + '×' + state.size +
     (state.vibe ? ' · ' + state.vibe.level + ' ' + state.vibe.score.toFixed(1) : '') +
-    (state.limit ? ' · 限时 ' + limitLabel(state.limit) : '');
+    (state.limit ? ' · 限时 ' + limitLabel(state.limit) : '') +
+    (state.stepLimit ? ' · 限步 ' + stepLimitLabel(state.stepLimit) : '');
 
   /* 区间两头都写出来：只写「7.0 分起」会让人以为越难越好，抽到 8.6 的极难盘也算数 */
   diffHint.textContent = band
@@ -324,6 +360,20 @@ export function syncSheet() {
     ? '换一局后生效：' + (lim ? '限时 ' + limitLabel(lim) : '不限时')
     : (lim ? '本局限时 ' + limitLabel(lim) + '，超时判负，可以重试这一局'
         : '开启后第一次操作开始倒计时，超时判负');
+
+  /* 步数限制：跟限时同一个读法，也跟前一排一样只写 pending */
+  var sl = pending.stepLimit || 0;
+  var slApplied = settings.stepLimit || 0;
+  var sbtns = stepOpts.querySelectorAll('.lbtn');
+  for (var s = 0; s < sbtns.length; s++) {
+    var son = parseInt(sbtns[s].dataset.steps, 10) === sl;
+    sbtns[s].classList.toggle('is-on', son);
+    sbtns[s].setAttribute('aria-pressed', son ? 'true' : 'false');
+  }
+  stepHint.textContent = sl !== slApplied
+    ? '换一局后生效：' + stepLimitLabel(sl)
+    : (sl ? '本局限步 ' + stepLimitLabel(sl) + '，用完判负，可以重试这一局'
+        : '用完还没解开就算输；拖动连涂一整行只算一步');
   setSwitch('swNoHint', pending.noHint);
   setSwitch('swNoUndo', pending.noUndo);
 
@@ -429,6 +479,8 @@ export function mount(host) {
   diffHint = document.getElementById('diffHint');
   limitOpts = document.getElementById('limitOpts');
   limitHint = document.getElementById('limitHint');
+  stepOpts = document.getElementById('stepOpts');
+  stepHint = document.getElementById('stepHint');
   challengeTitle = document.getElementById('challengeTitle');
   btnShuffle = document.getElementById('btnShuffle');
   shuffleHint = document.getElementById('shuffleHint');
@@ -440,6 +492,7 @@ export function mount(host) {
   shareStatus = document.getElementById('shareStatus');
 
   buildLimitOpts();
+  buildStepOpts();
 
   /* 分享那一段的 UI 交给 ui/share.js：它只认这个对象，不认 id */
   bindShareUI({
@@ -463,6 +516,7 @@ export function mount(host) {
       pending.size = state.size;
       pending.difficulty = state.diffApplied || settings.difficulty;
       pending.timeLimit = settings.timeLimit || 0;
+      pending.stepLimit = settings.stepLimit || 0;
       pending.noHint = !!settings.noHint;
       pending.noUndo = !!settings.noUndo;
       syncSheet();
@@ -511,6 +565,15 @@ export function mount(host) {
     var btn = e.target.closest ? e.target.closest('.lbtn') : null;
     if (!btn) return;
     setPendingLimit(parseInt(btn.dataset.limit, 10));
+    sfx('x');
+    buzz(5);
+  });
+
+  /* 步数限制：同一套规矩，只记意向 */
+  stepOpts.addEventListener('click', function (e) {
+    var btn = e.target.closest ? e.target.closest('.lbtn') : null;
+    if (!btn) return;
+    setPendingSteps(parseInt(btn.dataset.steps, 10));
     sfx('x');
     buzz(5);
   });

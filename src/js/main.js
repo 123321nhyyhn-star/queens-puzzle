@@ -28,7 +28,7 @@ import { showResult } from './ui/panels/result.js';
 import { closeSettings } from './ui/panels/settings.js';
 import { render, updateStats } from './ui/render.js';
 import { takeHashCode, tryLoadShare } from './ui/share.js';
-import { checkTimeout } from './ui/win.js';
+import { checkSteps, checkTimeout } from './ui/win.js';
 
 /* 浮层先挂上：markup 进 #sheets，各面板的元素引用与事件在这一步接好。
  * 必须早于 boot()——外观面板要按面板里的展位建按钮，applyLook 靠它。 */
@@ -113,6 +113,8 @@ function boot() {
 
   // 恢复出来的那局可能早就超时了（关着页面的时候不扣时间，但已用时的实打实的）
   checkTimeout();
+  // 步数用尽同理：两次数都是存档里带回来的，回来就该看到同一张结局卡
+  checkSteps();
   paintClock();
 
   window.addEventListener('beforeunload', function () {
@@ -138,6 +140,7 @@ window.__QUEENS_DEBUG__ = {
   // 挑战相关的探针，只给 tools/ 里的自动化测试用
   remaining: limitRemaining,
   checkTimeout: checkTimeout,
+  checkSteps: checkSteps,
   // 引导相关的探针，只给 tools/ 里的自动化测试用
   guide: function () {
     return { open: guide.open, at: guide.at, plan: guide.plan };

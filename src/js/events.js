@@ -8,7 +8,7 @@
  * 加一个面板不用再往这个文件里插一段。
  * ========================================================================== */
 
-import { canPlay, clearBoard, fillQueens, onCell, placeQueen } from './app/actions.js';
+import { canPlay, clearBoard, fillQueens, onCell, placeQueen, setMarks } from './app/actions.js';
 import { pushHistory, redo, undo } from './app/history.js';
 import { newGame } from './app/puzzle.js';
 import { audio, buzz, sfx } from './core/audio.js';
@@ -325,8 +325,8 @@ document.addEventListener('keydown', function (e) {
       pushHistory();
       state.marks[focused] = 0;
       state.lastTap = null;
-      render();
-      save();
+      // 走 setMarks 而不是 render：判胜 / 判步数用尽都在那一条路上
+      setMarks(state.marks);
     }
     return;
   }

@@ -88,13 +88,14 @@
             </svg>
             <span id="timeText">00:00</span>
           </span>
-          <!-- 步数 = 撤销栈里还剩几步。图标是回退箭头，读法就是「按这么多下撤销」 -->
-          <span class="hud-seg hud-step is-zero" id="stepPill" title="可撤销的步数">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M4 12a8 8 0 1 0 2.6-5.9"></path>
-              <path d="M4 4v5h5"></path>
+          <!-- 步数 = 这一局一共落了几次笔（不封顶、撤销不退、刷新后还在）。
+               图标是一段台阶：读的是「走到第几级」，不是「还能退几步」；
+               开了步数限制时尾缀变成 /60 这样的上限。 -->
+          <span class="hud-seg hud-step is-zero" id="stepPill" title="这一局走了几步">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3.6 19.4h5.2v-5.2h5.2V8.9h5.4"></path>
             </svg>
-            <span id="stepCount">0</span><span class="step-unit">步</span>
+            <span id="stepCount">0</span><span class="step-unit" id="stepUnit">步</span>
           </span>
           <span class="hud-seg hud-queen" id="queenPill"><svg class="hud-q" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.4 7.6l4.4 3L12 4.2l4.2 6.4 4.4-3-1.5 9.2H4.9L3.4 7.6z"></path><path d="M5.6 20.2h12.8"></path></svg> <span id="queenCount">0/8</span></span>
           <span class="hud-seg hud-diff" id="diffSeg" hidden>

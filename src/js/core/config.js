@@ -78,6 +78,31 @@ export function limitLabel(ms) {
   return m >= 1 ? m + ' 分钟' : '不到 1 分钟';
 }
 
+/* 挑战：步数限制的挡位（0 = 不限）。
+ * 一步 = 一次落笔（见 app/history.js 的 pushHistory）：点一格是一步，
+ * 拖动连涂一整行也只算一步——跟撤销点同一个口径，玩家心里那笔账才对得上。
+ * 挡位按「一局大概要落多少次笔」排：8×8 顺手时二三十步，16×16 慢慢推能到上百步。 */
+export var STEP_OPTIONS = [
+  { steps: 0, label: '不限' },
+  { steps: 60, label: '60 步' },
+  { steps: 100, label: '100 步' },
+  { steps: 150, label: '150 步' },
+  { steps: 250, label: '250 步' }
+];
+
+export var STEP_MAX = 9999;
+
+export function normalizeSteps(v) {
+  v = parseInt(v, 10);
+  if (!v || v < 0) return 0;
+  return Math.min(v, STEP_MAX);
+}
+
+/** 步数限制的人话说法：「100 步」/「不限步数」。 */
+export function stepLimitLabel(n) {
+  return n ? n + ' 步' : '不限步数';
+}
+
 export var DEFAULT_SETTINGS = {
   size: 8,
   difficulty: 'any',
@@ -91,6 +116,7 @@ export var DEFAULT_SETTINGS = {
   alignDrag: true,
   // 挑战（即时生效，也跟着存盘）
   timeLimit: 0,     // 本局限时（毫秒），0 = 不限时
+  stepLimit: 0,     // 本局步数限制（0 = 不限），用完还没解开就算输
   noHint: false,    // 禁用提示
   noUndo: false,    // 禁用撤销
   // 外观（即时生效，跟着存盘）：色块的图案、叉的样式、皇后样式

@@ -99,6 +99,11 @@
 }
 
 .challenge .limit-row { padding: 10px 0 4px; }
+/* 限时与步数限制是两件事，中间用一条虚线分开，别读成一组按钮 */
+.challenge .limit-row + .limit-row {
+  border-top: 1px dashed rgba(58, 51, 53, .14);
+  padding-top: 12px;
+}
 .challenge .switch-row { padding: 9px 0; border-bottom: 0; }
 .challenge .switch-row:last-child { padding-bottom: 11px; }
 .challenge .switch-row + .switch-row { border-top: 1px dashed rgba(58, 51, 53, .14); }
@@ -127,9 +132,10 @@
 
 .lbtn:active:not(.is-on) { transform: translateY(2px); box-shadow: none; }
 
-/* 「不限」选中还是素色；选了具体分钟数就用橙底——挑战是真开着的 */
+/* 「不限」选中还是素色；选了具体的分钟数 / 步数就用橙底——挑战是真开着的。
+ * 限时那排带 data-limit，步数那排带 data-steps，两个「不限」都得排除掉。 */
 .lbtn.is-on { background: var(--bg-neutral); color: var(--ink); }
-.lbtn.is-on:not([data-limit="0"]) { background: #F2762E; color: #FFFFFF; }
+.lbtn.is-on:not([data-limit="0"]):not([data-steps="0"]) { background: #F2762E; color: #FFFFFF; }
 
 /* ============================================================
    「显示更多选项」

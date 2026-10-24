@@ -1,7 +1,7 @@
 /* ============================================================================
- * win.js · 胜利判定、礼花、超时判负
+ * win.js · 胜利判定、礼花、判负（超时 / 步数用尽）
  * ----------------------------------------------------------------------------
- * 「这一局结束了」这件事在这里发生：判赢、判超时、记战绩、放礼花。
+ * 「这一局结束了」这件事在这里发生：判赢、判负、记战绩、放礼花。
  * 结束之后那张卡在 ui/panels/result.js（它自己管开关），这里只负责叫它出来。
  * ========================================================================== */
 
@@ -31,6 +31,7 @@ export function checkWin() {
   for (var g = 0; g < n; g++) if (counts[g] !== 1) return;
 
   state.status = 'won';
+  state.lostBy = null;
   if (guide.open) closeGuide();
   stopTimer();
   sfx('win');
@@ -77,6 +78,9 @@ function recordFinish(won) {
     ms: state.elapsed,
     hints: state.hints,
     moves: state.moves,
+    steps: state.steps || 0,
+    stepLimit: state.stepLimit || 0,
+    lostBy: won ? '' : (state.lostBy || ''),
     won: won,
     noHint: !!settings.noHint,
     noUndo: !!settings.noUndo
@@ -85,22 +89,16 @@ function recordFinish(won) {
 }
 
 /* ==========================================================
-   超时判负
+   判负
    ----------------------------------------------------------
-   由入口的 250ms 心跳调用（见 main.js）：到点就把这局封盘。
+   两种挑战都会把这一局封盘：时间到（超时）与步数用尽。
    封盘后棋盘只读（canPlay 看 status），但「重试这一局」能把同一盘棋
-   原样重开一遍，不用重新出题。
+   原样重开一遍，不用重新出题。文案只有结果层那一张卡在分叉，这里只记下原因。
    ========================================================== */
-export function checkTimeout() {
-  if (state.status !== 'playing') return false;
-  if (!limitExpired()) return false;
-  failByTimeout();
-  return true;
-}
-
-export function failByTimeout() {
+function failGame(reason) {
   if (state.status !== 'playing') return;
   state.status = 'lost';
+  state.lostBy = reason;
   if (guide.open) closeGuide();
   stopTimer();
   updateStats();
@@ -109,11 +107,33 @@ export function failByTimeout() {
   boardEl.classList.remove('is-won');
   sfx('fail');
   buzz([30, 60, 30]);
-  announce('时间到，这局没解开');
+  announce(reason === 'steps' ? '步数用尽，这局没解开' : '时间到，这局没解开');
   save();
   recordFinish(false);
   showResult();
 }
+
+/* 由入口的 250ms 心跳调用（见 main.js）：到点就把这局封盘。 */
+export function checkTimeout() {
+  if (state.status !== 'playing') return false;
+  if (!limitExpired()) return false;
+  failByTimeout();
+  return true;
+}
+
+export function failByTimeout() { failGame('time'); }
+
+/* 步数用尽：每落一笔检查一次（见 app/actions.js 的 setMarks）。
+ * 判在判胜之后——最后一步同时放满皇后又正好用完步数，那是解开，不是用尽。 */
+export function checkSteps() {
+  if (state.status !== 'playing') return false;
+  if (!state.stepLimit) return false;
+  if ((state.steps || 0) < state.stepLimit) return false;
+  failBySteps();
+  return true;
+}
+
+export function failBySteps() { failGame('steps'); }
 
 export function burstConfetti() {
   if (REDUCE_MOTION) return;

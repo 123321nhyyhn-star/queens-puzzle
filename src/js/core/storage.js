@@ -4,7 +4,7 @@
  * ========================================================================== */
 
 import { elapsedMs } from './clock.js';
-import { DEFAULT_SETTINGS, DIFF_ORDER, normalizeLimit,
+import { DEFAULT_SETTINGS, DIFF_ORDER, normalizeLimit, normalizeSteps,
   SETTINGS_VERSION, SIZE_MAX, SIZE_MIN, STORE_GAME, STORE_SETTINGS } from './config.js';
 import { styleId } from '../looks/index.js';
 import { settings, state } from './state.js';
@@ -35,6 +35,7 @@ export function loadSettings() {
     settings.sound = s.sound !== false;
     settings.haptics = s.haptics !== false;
     settings.timeLimit = normalizeLimit(s.timeLimit);
+    settings.stepLimit = normalizeSteps(s.stepLimit);
     settings.noHint = s.noHint === true;
     settings.noUndo = s.noUndo === true;
     // 外观：老存档没这几个字段、认不出来的 id（插件被删了）也退回默认，不至于把棋盘画空
@@ -79,6 +80,11 @@ export function doSave() {
       marks: Array.prototype.slice.call(state.marks),
       hints: state.hints,
       moves: state.moves,
+      /* 步数跟着存：刷新页面还得是那个数（它记的是这一局走过的路，
+       * 不是撤销栈——栈根本没落盘）。 */
+      steps: state.steps,
+      stepLimit: state.stepLimit,
+      lostBy: state.lostBy || '',
       elapsed: Math.round(elapsedMs()),
       status: state.status,
       // 限时也跟着存：关掉页面再回来，倒计时接着走，不会白捡时间
@@ -125,6 +131,11 @@ export function loadGame() {
     state.marks = marks;
     state.hints = clamp(parseInt(g.hints, 10) || 0, 0, 999);
     state.moves = clamp(parseInt(g.moves, 10) || 0, 0, 99999);
+    /* 步数：老存档没这个字段，先按 0 起——那时没记过，编一个数比 0 更糟。
+     * 步数限制同理：存档里有就用存档的（这一局的规则），没有就按当前设置。 */
+    state.steps = clamp(parseInt(g.steps, 10) || 0, 0, 999999);
+    state.stepLimit = normalizeSteps(g.stepLimit != null ? g.stepLimit : settings.stepLimit);
+    state.lostBy = null;   // 超时 / 步数用尽的那局恢复成 playing，心跳会再判一次负
     state.elapsed = Math.max(0, parseInt(g.elapsed, 10) || 0);
     state.status = g.status === 'won' ? 'won' : 'playing';
     state.runningSince = 0;

@@ -159,10 +159,9 @@
   color: var(--ink-mute);
 }
 
-/* 步数：撤销栈里还剩几步（推演的时候不用自己数「我走了几步」）。
-   图标是一枚回退箭头，读法就是「按这么多下撤销」。
-   一步都没有时整段淡下去——那不是读数，是「还没有能撤的东西」；
-   到顶了写 60+（见 core/utils.js 的 stepText）。 */
+/* 步数：这一局一共落了几次笔（不封顶、撤销不退、刷新后还在）。
+   图标是一段台阶，读法是「走到第几级」；开了步数限制时尾缀变成 /60，
+   只剩 5 步以内整段转红——跟限时胶囊最后 30 秒一个意思。 */
 .hud-step {
   color: var(--ink);
 }
@@ -180,6 +179,15 @@
 
 .hud-step.is-zero { color: var(--ink-faint); }
 .hud-step.is-zero svg { color: var(--ink-faint); }
+
+/* 步数快用完：比限时那套安静一点，不闪，只换底色 */
+.hud-step.is-low {
+  background: #FFE2E2;
+  color: #C62828;
+  border-radius: 999px;
+}
+
+.hud-step.is-low .step-unit { color: #C62828; }
 
 /* 皇后放满：这一段绿底白字。这是「这盘摆完了」的状态提示，
  * 跟尺寸 / 难度那些读数不是一回事，所以允许它跳出来。 */

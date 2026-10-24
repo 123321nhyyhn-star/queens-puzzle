@@ -1,5 +1,5 @@
 /* ============================================================================
- * 挑战（设置面板里的限时 / 禁用提示 / 禁用撤销）
+ * 挑战（设置面板里的限时 / 步数限制 / 禁用提示 / 禁用撤销）
  *
  *   python serve.py --no-open
  *   node tools/check-challenge.mjs
@@ -7,13 +7,15 @@
  * 规矩：挑战跟尺寸 / 难度一样只写 pending，**点「换一局」才生效**。
  *
  * 覆盖：
- *   1. 面板结构：挑战在「换一局」之上，限时挡位由 LIMIT_OPTIONS 生成
+ *   1. 面板结构：挑战在「换一局」之上，限时 / 步数限制的挡位由 config 生成
  *   2. 只写 pending：选了不改这一局、不存盘，关面板就作废
  *   3. 换一局才落地：限时开始倒计时、提示 / 撤销被锁
  *   4. 超时判负：封盘 + 「时间到」结果层 + 「重试这一局」仍是同一盘
  *   5. 刷新后限时接着走，锁还在
  *   6. 中途改挑战不生效（这正是这次改动的重点）
  *   7. 限时里解开仍判胜
+ *  10. 步数限制：挡位、只写 pending、用完判负（「步数用尽」那一屏）、
+ *      重试归零、刷新后步数还在
  * ========================================================================== */
 import { createRequire } from 'node:module';
 const require = createRequire('C:/Users/CJL/.workbuddy/binaries/node/workspace/');
@@ -73,9 +75,13 @@ const snap = () => page.evaluate(() => ({
 const st = () => page.evaluate(() => ({
   status: __QUEENS_DEBUG__.state.status,
   limit: __QUEENS_DEBUG__.state.limit,
+  stepLimit: __QUEENS_DEBUG__.state.stepLimit,
+  steps: __QUEENS_DEBUG__.state.steps,
   elapsed: Math.round(__QUEENS_DEBUG__.state.elapsed),
   left: Math.round(__QUEENS_DEBUG__.remaining()),
   timeText: document.getElementById('timeText').textContent.trim(),
+  stepText: document.getElementById('stepCount').textContent.trim(),
+  stepUnit: document.getElementById('stepUnit').textContent.trim(),
   low: document.getElementById('timePill').classList.contains('is-low'),
   countdown: document.getElementById('timePill').classList.contains('is-countdown'),
   hintDisabled: document.getElementById('btnHint').disabled,
@@ -92,7 +98,11 @@ const sheetUi = () => page.evaluate(() => {
     titlePending: document.getElementById('challengeTitle').classList.contains('is-pending'),
     labels: Array.from(document.querySelectorAll('#limitOpts .lbtn')).map(b => b.textContent.trim()),
     on: Array.from(document.querySelectorAll('#limitOpts .lbtn.is-on')).map(b => b.textContent.trim()),
+    stepLabels: Array.from(document.querySelectorAll('#stepOpts .lbtn')).map(b => b.textContent.trim()),
+    stepOn: Array.from(document.querySelectorAll('#stepOpts .lbtn.is-on')).map(b => b.textContent.trim()),
     limitHint: document.getElementById('limitHint').textContent.trim(),
+    stepHint: document.getElementById('stepHint').textContent.trim(),
+    note: document.getElementById('sheetNote').textContent.trim(),
     noHint: document.getElementById('swNoHint').getAttribute('aria-checked'),
     noUndo: document.getElementById('swNoUndo').getAttribute('aria-checked'),
     aboveShuffle: gr.bottom <= sr.top + 1,
@@ -116,6 +126,9 @@ let ui = await sheetUi();
 ok('挑战组在「换一局」之上', ui.aboveShuffle);
 ok('限时挡位 5 个且首个是「不限」', ui.labels.length === 5 && ui.labels[0] === '不限', ui.labels);
 ok('默认选中「不限」', ui.on.length === 1 && ui.on[0] === '不限', ui.on);
+ok('步数限制挡位 5 个且首个是「不限」',
+  ui.stepLabels.length === 5 && ui.stepLabels[0] === '不限', ui.stepLabels);
+ok('步数限制默认也是「不限」', ui.stepOn.length === 1 && ui.stepOn[0] === '不限', ui.stepOn);
 ok('开关共 10 个（多了「拖动按行列对齐」）', ui.switches === 10, ui.switches);
 ok('没有未落地改动时标题是「挑战」', ui.title === '挑战' && !ui.titlePending, ui.title);
 ok('面板不横向溢出', ui.overflowX <= 0, ui.overflowX);
@@ -346,6 +359,148 @@ ok('统计中间是「用时」', won.timeLbl === '用时' && won.time === '01:3
 ok('按钮回到「再来一局 / 看看棋盘」', won.btn === '再来一局' && won.alt === '看看棋盘', `${won.btn}/${won.alt}`);
 ok('胶囊回到已用时', !won.countdown && won.pill === '01:30', won.pill);
 await page.screenshot({ path: `${SHOTS}/d7-won-with-limit.png` });
+
+console.log('\n--- 10. 步数限制：挡位 / 落地 / 用完判负 / 刷新还在 ---');
+/* 关掉自动打叉：自动标过的格子点下去不动，凑不满步数。
+ * 只改内存里的设置（不点面板），这一节最后再还回去。 */
+await page.evaluate(() => {
+  __QUEENS_DEBUG__.settings.autoMark = false;
+  __QUEENS_DEBUG__.newGame(8);
+});
+await page.waitForFunction(() => {
+  const d = __QUEENS_DEBUG__;
+  return d.state.status === 'playing' && d.state.size === 8 &&
+    document.querySelectorAll('.cell').length === 64 &&
+    [...d.state.marks].every(m => m === 0) &&
+    document.getElementById('result').hidden;
+}, { timeout: 20000 });
+await sleep(300);
+
+await openSheet();
+ui = await sheetUi();
+ok('面板上步数限制停在「不限」', ui.stepOn.length === 1 && ui.stepOn[0] === '不限', ui.stepOn);
+
+/* 跟限时一个规矩：只写 pending */
+await jsClick('#stepOpts .lbtn[data-steps="60"]');
+await sleep(260);
+ui = await sheetUi();
+const pStep = await st();
+ok('选中 60 步', ui.stepOn[0] === '60 步', ui.stepOn);
+ok('步数限制说明写明换一局后生效', /换一局后生效/.test(ui.stepHint), ui.stepHint);
+ok('标题提示待生效', ui.titlePending, ui.title);
+ok('待生效清单里有「限步 60 步」', /限步 60 步/.test(ui.shuffleHint), ui.shuffleHint);
+ok('这一局的步数限制还没变', pStep.stepLimit === 0, pStep.stepLimit);
+ok('设置没被写盘', pStep.saved.stepLimit === 0, pStep.saved.stepLimit);
+await page.screenshot({ path: `${SHOTS}/d8-steps-pending.png` });
+
+const seed5 = await snap();
+await shuffle(seed5.seed);
+let sl = await st();
+ok('换局后限步落地：60', sl.stepLimit === 60, sl.stepLimit);
+ok('信息条尾缀变成 /60、读数从 0 起', sl.stepText === '0' && sl.stepUnit === '/60', sl.stepText + sl.stepUnit);
+ok('设置已写盘', sl.saved.stepLimit === 60, sl.saved.stepLimit);
+
+/* 一路点到第 60 步：一步一格，第 60 步用完就判负 */
+await page.evaluate(() => {
+  const cells = [...document.querySelectorAll('.cell')];
+  for (let i = 0; i < 60; i++) cells[i].click();
+});
+await sleep(800);
+const over = await page.evaluate(() => {
+  const r = document.getElementById('result');
+  const rec = (__QUEENS_DEBUG__.records() || [])[0] || {};
+  return {
+    status: __QUEENS_DEBUG__.state.status,
+    lostBy: __QUEENS_DEBUG__.state.lostBy,
+    steps: __QUEENS_DEBUG__.state.steps,
+    open: !r.hidden,
+    kind: r.dataset.kind,
+    title: document.getElementById('resultTitle').textContent.trim(),
+    kicker: document.getElementById('resultKicker').textContent.trim(),
+    sub: document.getElementById('resultSub').textContent.trim(),
+    timeLbl: document.getElementById('resTimeLbl').textContent.trim(),
+    time: document.getElementById('resTime').textContent.trim(),
+    btn: document.getElementById('btnAgain').textContent.trim(),
+    alt: document.getElementById('btnPeek').textContent.trim(),
+    boardLost: document.getElementById('board').classList.contains('is-lost'),
+    hud: document.getElementById('stepCount').textContent.trim() + document.getElementById('stepUnit').textContent.trim(),
+    rec: { won: rec.won, sl: rec.sl, st: rec.st, lr: rec.lr }
+  };
+});
+ok('第 60 步用完就判负', over.status === 'lost' && over.lostBy === 'steps', `${over.status}/${over.lostBy}`);
+ok('结果层是 lost 版', over.open && over.kind === 'lost', over.kind);
+ok('文案是「步数用尽」', over.title === '步数用尽' && over.kicker === 'OUT OF MOVES', `${over.title}/${over.kicker}`);
+ok('中间那格换成「限步 60」', over.timeLbl === '限步' && over.time === '60', `${over.timeLbl}=${over.time}`);
+ok('副标题写清限步与还差几只', /限步 60 步/.test(over.sub) && /还差/.test(over.sub), over.sub);
+ok('按钮是重试 / 换一局新的', over.btn === '重试这一局' && over.alt === '换一局新的', `${over.btn}/${over.alt}`);
+ok('棋盘压暗封盘', over.boardLost);
+ok('信息条停在 60/60', over.hud === '60/60', over.hud);
+ok('封盘后多点的那几下不算步数', over.steps === 60, over.steps);
+ok('战绩记下这一局（没解开 / 限步 60 / 原因是步数）',
+  over.rec.won === false && over.rec.sl === 60 && over.rec.st === 60 && over.rec.lr === 'steps',
+  JSON.stringify(over.rec));
+await page.screenshot({ path: `${SHOTS}/d9-steps-lost.png` });
+
+/* 重试这一局：同一盘棋、步数归零、限步还在 */
+const regionsBefore = await page.evaluate(() => Array.from(__QUEENS_DEBUG__.state.regions).join());
+await jsClick('#btnAgain');
+await sleep(700);
+const retry2 = await st();
+ok('重试回到 playing', retry2.status === 'playing', retry2.status);
+ok('重试还是同一盘棋',
+  await page.evaluate(() => Array.from(__QUEENS_DEBUG__.state.regions).join()) === regionsBefore);
+ok('步数归零、限步还在', retry2.steps === 0 && retry2.stepLimit === 60, `${retry2.steps}/${retry2.stepLimit}`);
+ok('信息条回到 0/60', retry2.stepText === '0' && retry2.stepUnit === '/60', retry2.stepText + retry2.stepUnit);
+
+/* 刷新：步数跟着存档回来（撤销栈不落盘，两者在这里分道扬镳） */
+await page.evaluate(() => {
+  const cells = [...document.querySelectorAll('.cell')];
+  for (let i = 0; i < 5; i++) cells[i].click();
+});
+await sleep(500);
+const beforeReload = await st();
+await page.reload({ waitUntil: 'networkidle0' });
+await page.waitForFunction('window.__QUEENS_DEBUG__ && __QUEENS_DEBUG__.state.regions.length > 0', { timeout: 20000 });
+await sleep(800);
+const back2 = await st();
+ok('刷新前走了 5 步', beforeReload.steps === 5, beforeReload.steps);
+ok('刷新后步数还在', back2.steps === 5, back2.steps);
+ok('刷新后信息条还是 5/60', back2.stepText === '5' && back2.stepUnit === '/60', back2.stepText + back2.stepUnit);
+ok('刷新后限步还在', back2.stepLimit === 60, back2.stepLimit);
+ok('刷新后没被误判负', back2.status === 'playing', back2.status);
+
+/* 320 窄屏：平时「步」这个字会让出去，但 /60 是「还剩几步」的读数，不能省 */
+await page.evaluate(() => {
+  const cells = [...document.querySelectorAll('.cell')];
+  for (let i = 5; i < 50; i++) cells[i].click();
+});
+await sleep(300);
+await page.setViewport({ width: 320, height: 640, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+await sleep(600);
+const narrow = await page.evaluate(() => ({
+  text: document.getElementById('stepCount').textContent.trim(),
+  unit: document.getElementById('stepUnit').textContent.trim(),
+  unitShown: getComputedStyle(document.getElementById('stepUnit')).display !== 'none',
+  overflow: document.getElementById('btnHud').scrollWidth - document.getElementById('btnHud').clientWidth,
+  docOverflow: document.documentElement.scrollWidth - window.innerWidth
+}));
+ok('320 窄屏上 /60 还留着', narrow.unit === '/60' && narrow.unitShown, JSON.stringify(narrow));
+ok('320 窄屏不溢出', narrow.overflow <= 0 && narrow.docOverflow <= 0,
+  `${narrow.overflow}/${narrow.docOverflow} 数字=${narrow.text}`);
+await page.screenshot({ path: `${SHOTS}/d10-steps-320.png` });
+await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+await sleep(400);
+
+/* 收尾：换回「不限」，把自动打叉还回去 */
+await openSheet();
+await jsClick('#stepOpts .lbtn[data-steps="0"]');
+await sleep(220);
+const seed6 = await snap();
+await shuffle(seed6.seed);
+const cleared = await st();
+ok('换回「不限」后限步清掉', cleared.stepLimit === 0 && cleared.stepUnit === '步',
+  `${cleared.stepLimit}/${cleared.stepUnit}`);
+await page.evaluate(() => { __QUEENS_DEBUG__.settings.autoMark = true; });
 
 console.log('\n--- console ---');
 console.log(errs.length ? errs.join('\n') : '(none)');

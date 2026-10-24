@@ -6,9 +6,9 @@
 import { buzz, sfx } from '../core/audio.js';
 import { paintClock } from '../core/clock.js';
 import { boardEl, btnClear, btnHint, btnUndo, hudSize, linksEl, queenCountEl, queenPill, rbEl,
-  rlBad, rlEl, stepCountEl, stepPill } from '../core/dom.js';
-import { settings, state, UNDO_MAX, view } from '../core/state.js';
-import { pulseClass, stepText, svgEl } from '../core/utils.js';
+  rlBad, rlEl, stepCountEl, stepPill, stepUnitEl } from '../core/dom.js';
+import { settings, state, view } from '../core/state.js';
+import { pulseClass, svgEl } from '../core/utils.js';
 import { cellSize, regionPath } from '../game/geometry.js';
 import { FORCED_COL, FORCED_REGION, FORCED_ROW, badRegions, computeAuto, computeConflicts,
   computeForced, queenCount, regionCounts } from '../game/rules.js';
@@ -308,13 +308,24 @@ export function updateStats() {
   queenPill.classList.toggle('is-full', q === total && playing);
   hudSize.textContent = total + '×' + total;
 
-  /* 步数：撤销栈里还剩几步。推演的时候不用自己数「我走几步了」，
-   * 一按撤销就能退回去；栈满了写 60+（更早的几步已经撤不回去）。
-   * 读的是撤销栈、不是 state.moves——后者只记放了几只皇后，进了战绩。 */
-  var depth = view.undo.length;
-  stepCountEl.textContent = stepText(depth, UNDO_MAX);
-  stepPill.classList.toggle('is-zero', depth === 0);
-  stepPill.title = depth ? '可撤销 ' + depth + ' 步' : '还没有可撤销的步骤';
+  /* 步数：这一局一共落了几次笔（读 state.steps）。撤销栈封顶 60、刷新还会清空，
+   * 拿它当读数会越玩越不像话；这个数不封顶，也跟着存档走。
+   * 开了步数限制就把尾缀换成 /60，剩余不多时整段转红。 */
+  var st = state.steps || 0;
+  stepCountEl.textContent = String(st);
+  stepUnitEl.textContent = state.stepLimit ? '/' + state.stepLimit : '步';
+  stepPill.classList.toggle('is-zero', st === 0);
+  /* 窄屏上「步」这个字会被让出去（见 responsive.css），但 /60 这种上限得留着：
+   * 少了它，玩家只看见「57」不知道自己还剩几步 */
+  stepPill.classList.toggle('has-limit', state.stepLimit > 0);
+  var leftSteps = state.stepLimit ? Math.max(0, state.stepLimit - st) : 0;
+  stepPill.classList.toggle('is-low',
+    state.stepLimit > 0 && playing && leftSteps <= 5);
+  stepPill.title = !st
+    ? '还没有动手'
+    : '这一局走了 ' + st + ' 步' +
+      (state.stepLimit ? '（限步 ' + state.stepLimit + '，还剩 ' + leftSteps + ' 步）' : '') +
+      ' · 可撤销 ' + view.undo.length + ' 步';
 
   paintHudLabel();
 
