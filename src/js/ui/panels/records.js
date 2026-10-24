@@ -241,6 +241,12 @@ export function renderRecords() {
   else renderList();
 }
 
+/* 全屏页里滚的是分页自己（头与标签钉在上面），换页 / 换筛选都要从头看起 */
+function resetScroll() {
+  if (paneRecs) paneRecs.scrollTop = 0;
+  if (paneBoard) paneBoard.scrollTop = 0;
+}
+
 function renderList() {
   var all = recs.all();
   var shown = all.slice(0, v.shown);
@@ -358,7 +364,7 @@ export function switchTab(tab) {
   v.tab = tab;
   disarm(btnClearRecs);
   renderRecords();
-  recSheet.scrollTop = 0;
+  resetScroll();
   announce(tab === 'board' ? '排行榜' : '战绩记录');
 }
 
@@ -370,6 +376,7 @@ export function pickChip(e) {
     if (ms === v.limit) return;
     v.limit = ms;
     renderBoard();
+    if (paneBoard) paneBoard.scrollTop = 0;   // 换了组：从第一名看起，别停在上组的中间
     sfx('x');
     buzz(4);
     return;
@@ -379,6 +386,7 @@ export function pickChip(e) {
     if (b.dataset.lv === v.level) return;
     v.level = b.dataset.lv;
     renderBoard();
+    if (paneBoard) paneBoard.scrollTop = 0;
     sfx('x');
     buzz(4);
   }
@@ -471,6 +479,22 @@ export function requestClearAll() {
   announce('再点一次清空全部战绩');
 }
 
+/* 全屏页把滚动挪进了分页里：焦点还挂在整层面板上的时候，
+ * 方向键 / PageUp / PageDown 得手动转给当前这一页（浏览器只认焦点所在的那条链）。 */
+function recKey(e) {
+  if (document.activeElement !== recSheet) return;   // 焦点在按钮上：那是按钮的键
+  var el = v.tab === 'board' ? paneBoard : paneRecs;
+  if (!el) return;
+  var page = el.clientHeight * 0.9, step = 0;
+  if (e.key === 'PageDown') step = page;
+  else if (e.key === 'PageUp') step = -page;
+  else if (e.key === 'ArrowDown') step = 60;
+  else if (e.key === 'ArrowUp') step = -60;
+  if (!step) return;
+  e.preventDefault();
+  el.scrollTop += step;
+}
+
 /* ==========================================================
    挂载
    ========================================================== */
@@ -513,7 +537,8 @@ export function mount(host) {
       v.shown = RECORD_PAGE;
       setStatus('');
     },
-    afterOpen: renderRecords,
+    afterOpen: function () { resetScroll(); renderRecords(); },
+    onKey: recKey,
     beforeClose: function () { disarm(btnClearRecs); }
   });
 

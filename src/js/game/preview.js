@@ -34,24 +34,55 @@ export function boardPreviewSvg(n, regions, solution, opt) {
   if (!n || !regions || regions.length < n * n) return '';
 
   var colors = assignRegionColors(n, regions);
-  var gap = 0.08;   // 一格四周留的缝，露出来的深色底就是格线
+  var gap = 0.12;        // 两个色块之间的缝，露出来的深色底就是色块边界
+  var half = gap / 2;
+
+  /* 取旁边的格子属于哪一块；盘外算「别人家」（-1），这样外沿也留一道缝 */
+  function at(r, c) {
+    if (r < 0 || r >= n || c < 0 || c >= n) return -1;
+    return regions[r * n + c];
+  }
+
   var out = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + n + ' ' + n + '" ' +
     'width="' + n + '" height="' + n + '">' +
     '<rect width="' + n + '" height="' + n + '" fill="' + INK + '"/>';
 
-  /* 同一行里连着的同色格合并成一个矩形：整盘一般能从 n² 个降到一半以下，
-   * 而且同色块内部本来就不该有缝，合并之后看着也更整。 */
+  /* 一块一条 path，缝只留在「和别的色块（或盘外）挨着」的那几条边上：
+   *   · 以前按行合并、每行四周都留缝，上下相邻的同色格之间就横着一道线，
+   *     一整块色块被剁成好几截（46px 上尤其明显，看着像图被切坏了）；
+   *   · 现在同色块内部贴成一片，整块是连续的一块颜色；
+   *   · 而且同一块的所有小矩形写进一条 path（同一种 fill），
+   *     相邻矩形的公共边在一条路径里会互相抵消，不会留下抗锯齿的细缝。 */
+  var paths = {}, order = [];
+
   for (var r = 0; r < n; r++) {
     var c = 0;
     while (c < n) {
-      var g = regions[r * n + c];
+      var g = at(r, c);
+      var tIn = at(r - 1, c) === g ? 0 : half;   // 上边要不要留缝
+      var bIn = at(r + 1, c) === g ? 0 : half;
+      /* 一行里连着的同色格能否并成一个矩形，要看上下两条边是否也一致：
+       * 上面挨着同一块的那几格贴边，挨着别人的那几格留缝，不能混着画。 */
       var c2 = c + 1;
-      while (c2 < n && regions[r * n + c2] === g) c2++;
-      out += '<rect x="' + f(c + gap / 2) + '" y="' + f(r + gap / 2) +
-        '" width="' + f(c2 - c - gap) + '" height="' + f(1 - gap) +
-        '" fill="' + (colors[g] || PAPER) + '"/>';
+      while (c2 < n && at(r, c2) === g &&
+        (at(r - 1, c2) === g ? 0 : half) === tIn &&
+        (at(r + 1, c2) === g ? 0 : half) === bIn) c2++;
+
+      var l = at(r, c - 1) === g ? 0 : half;
+      var rt = at(r, c2) === g ? 0 : half;
+      var w = c2 - c - l - rt;
+      var h = 1 - tIn - bIn;
+      if (w > 0 && h > 0) {
+        if (!paths[g]) { paths[g] = ''; order.push(g); }
+        paths[g] += 'M' + f(c + l) + ' ' + f(r + tIn) +
+          'h' + f(w) + 'v' + f(h) + 'h' + f(-w) + 'z';
+      }
       c = c2;
     }
+  }
+
+  for (var k = 0; k < order.length; k++) {
+    out += '<path d="' + paths[order[k]] + '" fill="' + (colors[order[k]] || PAPER) + '"/>';
   }
 
   if (opt.queens && solution) {

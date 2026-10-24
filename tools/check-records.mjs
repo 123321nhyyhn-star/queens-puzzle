@@ -148,6 +148,54 @@ check('记录行小字含限时与日期', r.meta.includes('不限时') && r.met
 check('行不超出面板', r.inSheet && r.overflow <= 0, `overflow=${r.overflow}`);
 check('默认收起', r.expanded === 'false');
 
+/* ---- 2b. 战绩是全屏页：高度固定一屏，滚的是分页 ---- */
+r = await page.evaluate(() => {
+  const sheet = document.getElementById('recSheet').getBoundingClientRect();
+  const head = document.getElementById('recTitle').getBoundingClientRect();
+  const pane = document.getElementById('paneRecs');
+  return {
+    h: Math.round(sheet.height), vh: window.innerHeight, top: Math.round(sheet.top),
+    headTop: Math.round(head.top),
+    overflowY: getComputedStyle(pane).overflowY,
+    pageOverflow: document.documentElement.scrollHeight - window.innerHeight
+  };
+});
+check('战绩页铺满一屏', r.h === r.vh && r.top === 0 && r.pageOverflow <= 0, JSON.stringify(r));
+check('列表自己滚（高度不跟内容走）', r.overflowY === 'auto', r.overflowY);
+
+/* ---- 2c. 缩略图：同色块内部不能有分割线 ----
+ * 逐条矩形核对「缝只留在和别的色块挨着的边上」：
+ * 上下邻居同块就该贴到边（inset 0），不同块才留半条缝。 */
+r = await page.evaluate(() => {
+  const img = document.querySelector('#recList .rec-thumb img');
+  const svg = decodeURIComponent(img.src.split(',')[1]);
+  const paths = [...svg.matchAll(/<path d="([^"]+)" fill="([^"]+)"/g)];
+  const d = __QUEENS_DEBUG__, n = d.state.size;
+  const rg = Array.from(d.state.regions);
+  const at = (rr, cc) => (rr < 0 || rr >= n || cc < 0 || cc >= n ? -1 : rg[rr * n + cc]);
+  const near = (a, b) => Math.abs(a - b) < 0.004;
+  let rects = 0, bad = 0, sample = '';
+  for (const [, dstr] of paths) {
+    for (const m of dstr.matchAll(/M([-\d.]+) ([-\d.]+)h([-\d.]+)v([-\d.]+)h-[-\d.]+z/g)) {
+      const x = +m[1], y = +m[2], w = +m[3], h = +m[4];
+      const r0 = Math.round(y), c0 = Math.round(x);
+      const g = at(r0, c0);
+      const c1 = Math.round(x + w);                 // 这一行的下一格（run 的右边界）
+      const tGap = at(r0 - 1, c0) === g ? 0 : 0.06;
+      const bGap = at(r0 + 1, c0) === g ? 0 : 0.06;
+      const lGap = at(r0, c0 - 1) === g ? 0 : 0.06;
+      const rGap = at(r0, c1) === g ? 0 : 0.06;
+      rects++;
+      const ok = near(x - c0, lGap) && near(y - r0, tGap) &&
+        near(h, 1 - tGap - bGap) && near(w, c1 - c0 - lGap - rGap);
+      if (!ok) { bad++; if (!sample) sample = `r${r0}c${c0} x=${x} y=${y} w=${w} h=${h}`; }
+    }
+  }
+  return { paths: paths.length, rects, bad, sample, regions: new Set(rg).size };
+});
+check('一块色块一条路径', r.paths === r.regions, `paths=${r.paths} regions=${r.regions}`);
+check('同色块内部没有缝（缝只留在色块之间）', r.rects > 0 && r.bad === 0, `rects=${r.rects} bad=${r.bad} ${r.sample}`);
+
 await page.evaluate(() => document.querySelector('#recList .rec-hit').click());
 await sleep(260);
 r = await page.evaluate(() => ({
@@ -400,6 +448,32 @@ r = await page.evaluate(() => ({
   moreHidden: document.getElementById('btnMoreRecs').hasAttribute('hidden')
 }));
 check('显示更多后 25 条全在', r.rows === 25 && r.moreHidden, `rows=${r.rows}`);
+
+/* 25 条撑满一屏：滚的是分页，头与标签钉着不动 */
+r = await page.evaluate(() => {
+  const top = (id) => Math.round(document.getElementById(id).getBoundingClientRect().top);
+  const pane = document.getElementById('paneRecs');
+  const before = { head: top('recTitle'), tabs: top('tabRecs') };
+  pane.scrollTop = 300;
+  return new Promise((res) => setTimeout(() => res({
+    before,
+    after: { head: top('recTitle'), tabs: top('tabRecs') },
+    scrolled: pane.scrollTop,
+    sheetH: Math.round(document.getElementById('recSheet').getBoundingClientRect().height),
+    vh: window.innerHeight
+  }), 120));
+});
+check('分页能滚，头与标签钉住',
+  r.scrolled > 0 && r.after.head === r.before.head && r.after.tabs === r.before.tabs,
+  JSON.stringify(r));
+
+await openTab('board');
+r = await page.evaluate(() => ({
+  h: Math.round(document.getElementById('recSheet').getBoundingClientRect().height),
+  vh: window.innerHeight,
+  paneTop: Math.round(document.getElementById('paneBoard').getBoundingClientRect().top)
+}));
+check('换成排行榜，面板高度不动', r.h === r.vh, JSON.stringify(r));
 
 await openTab('board');
 // 显式选「不限时」：打开面板时默认跟着当前这局的限时走，不一定是 0
