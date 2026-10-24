@@ -17,12 +17,13 @@
 
 import * as settings from './settings.js';
 import * as info from './info.js';
+import * as newgame from './newgame.js';
 import * as records from './records.js';
 import * as look from './look.js';
 import * as result from './result.js';
 import * as mismatch from './mismatch.js';
 
-export var PANELS = [settings, info, records, look, result, mismatch];
+export var PANELS = [settings, info, newgame, records, look, result, mismatch];
 
 /** 把每个面板的 markup 挂进 #sheets，并把各自的元素引用与事件接好。
  *  必须在 boot() 之前跑：外观面板要按面板里的展位建按钮。 */
@@ -30,4 +31,4 @@ export function mountAll(host) {
   for (var i = 0; i < PANELS.length; i++) PANELS[i].mount(host);
 }
 
-export { settings, info, records, look, result, mismatch };
+export { settings, info, newgame, records, look, result, mismatch };

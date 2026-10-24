@@ -26,6 +26,7 @@
 @import url("./sheet.css");
 
 @import url("./panels/settings.css");
+@import url("./panels/newgame.css");
 @import url("./panels/info.css");
 @import url("./panels/result.css");
 @import url("./panels/mismatch.css");

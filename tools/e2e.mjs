@@ -79,22 +79,12 @@ const tap = async (i, { dbl = false, gap = 90 } = {}) => {
   await sleep(220);
 };
 
-// 设置面板默认只露出「换一局」以上，开关与分享折在「显示更多选项」里；
-// 要动它们先点开——这也顺带验了折叠本身没把谁藏死。
-const openMore = async () => {
-  const hidden = await page.evaluate(() => {
-    const sm = document.getElementById('sheetMore');
-    return !sm || sm.hidden;
-  });
-  if (hidden) { await page.click('#btnMoreOpts'); await sleep(300); }
-};
-
 // 自动打叉的开关只剩设置面板里一处（顶栏那颗按钮已换成「外观」），
 // 所以就着这个面板来回切，顺手把「面板开着时棋盘不动」一并验了。
+// 设置面板现在是一整列摊开的开关，没有折叠。
 const setAutoMark = async (want) => {
   const open = await page.evaluate(() => !document.getElementById('sheetWrap').hidden);
   if (!open) { await page.click('#btnSettings'); await sleep(420); }
-  await openMore();
   const cur = await page.evaluate(() =>
     document.getElementById('swAuto').getAttribute('aria-checked') === 'true');
   if (cur !== want) { await page.click('#swAuto'); await sleep(300); }
@@ -193,7 +183,6 @@ check('顶栏不再有自动打叉按钮（换成外观）', await page.evaluate
 
 await page.click('#btnSettings');
 await sleep(420);
-await openMore();
 await page.click('#swAuto');
 await sleep(300);
 const autoOff = await page.evaluate(() => ({
@@ -508,7 +497,6 @@ check('恢复自动打叉后提示回到 1 格', restored.on === true && restore
 
 await page.click('#btnSettings');
 await sleep(420);
-await openMore();
 await page.click('#swForced');
 await sleep(260);
 const forcedOff = await page.evaluate(() => ({
@@ -558,7 +546,7 @@ check('结果卡文案', win.title.length > 0 && win.sub.includes('8×8'), `${wi
 check('结果卡统计三项', win.stats.length === 3, win.stats.join('|'));
 await page.screenshot({ path: `${OUT}/05-win.png` });
 
-// ---------- 10. 设置面板 ----------
+// ---------- 10. 设置面板 / 换一局面板 ----------
 await page.evaluate(() => document.getElementById('result').setAttribute('hidden', ''));
 await page.click('#btnSettings');
 await sleep(500);
@@ -568,18 +556,46 @@ const sheet = await page.evaluate(() => {
   return {
     open: !document.getElementById('sheetWrap').hasAttribute('hidden'),
     inView: r.top >= 0 && r.bottom <= window.innerHeight + 1,
-    sw: document.querySelectorAll('.switch').length,
-    quick: document.querySelectorAll('#quickRow .chip, #quickRow button').length,
-    sizeVal: document.getElementById('sizeVal').textContent.trim()
+    sw: sh.querySelectorAll('.switch').length,
+    more: !!document.getElementById('btnMoreOpts'),
+    share: !!sh.querySelector('.share'),
+    scrollable: sh.scrollHeight > sh.clientHeight + 4
   };
 });
 check('设置面板打开', sheet.open, `inView=${sheet.inView}`);
 check('设置面板完整可见', sheet.inView);
-// 8 个偏好开关（自动打叉 / 拖动对齐 / 淡化 × / 淡化皇后 / 冲突 / 唯一位置 / 音效 / 震动）
-// + 挑战里的「禁用提示 / 禁用撤销」
-check('开关数量', sheet.sw === 10, `sw=${sheet.sw}`);
-check('快捷尺寸', sheet.quick >= 5, `quick=${sheet.quick}`);
+// 八个偏好开关：自动打叉 / 拖动对齐 / 淡化 × / 淡化皇后 / 冲突 / 唯一位置 / 音效 / 震动。
+// 挑战那两颗跟着「开一局新的」搬去了换一局面板，分享搬去了信息页。
+check('设置面板只剩 8 个开关', sheet.sw === 8, `sw=${sheet.sw}`);
+check('设置面板不再折叠、也没有分享', sheet.more === false && sheet.share === false);
+check('设置面板一屏放得下', !sheet.scrollable);
 await page.screenshot({ path: `${OUT}/06-settings.png` });
+
+// 顶栏那颗「新一局」现在开的是一层浮层：尺寸 / 难度 / 挑战 / 换一局都在里面
+await page.click('#btnCloseSheet');
+await sleep(320);
+await page.click('#btnNew');
+await sleep(500);
+const newUi = await page.evaluate(() => {
+  const sh = document.getElementById('newSheet');
+  const r = sh.getBoundingClientRect();
+  return {
+    open: !document.getElementById('newWrap').hidden,
+    inView: r.top >= 0 && r.bottom <= window.innerHeight + 1,
+    quick: sh.querySelectorAll('#quickRow button').length,
+    sizeVal: document.getElementById('sizeVal').textContent.trim(),
+    limit: sh.querySelectorAll('#limitOpts .lbtn').length,
+    step: sh.querySelectorAll('#stepOpts .lbtn').length,
+    shuffle: !!document.getElementById('btnShuffle'),
+    share: !!sh.querySelector('.share')
+  };
+});
+check('换一局面板从顶栏打开', newUi.open, `inView=${newUi.inView}`);
+check('换一局面板完整可见', newUi.inView);
+check('换一局面板有快捷尺寸', newUi.quick >= 5, `quick=${newUi.quick}`);
+check('换一局面板带着挑战挡位', newUi.limit === 5 && newUi.step === 5, `${newUi.limit}/${newUi.step}`);
+check('换一局面板底部是「换一局」且没有分享', newUi.shuffle && !newUi.share);
+await page.screenshot({ path: `${OUT}/06b-newgame.png` });
 
 // ---------- 11. 改尺寸到 12 ----------
 // 新规则：改尺寸只写「待生效」，点「换一局」才真的开新盘
@@ -642,24 +658,37 @@ check('16×16 正常渲染', big.size === 16 && big.cells === 256, `cells=${big.
 check('16×16 无溢出', big.overflow <= 0 && big.scrollW <= 0, `v=${big.overflow} h=${big.scrollW}`);
 await page.screenshot({ path: `${OUT}/09-16x16.png` });
 
-// ---------- 14. 分享棋盘 ----------
+// ---------- 14. 分享棋盘（住在本局信息页里） ----------
 await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 await page.evaluate(() => __QUEENS_DEBUG__.newGame(8));
 await sleep(900);
-await page.click('#btnSettings');
+await page.click('#btnHud');
 await sleep(420);
-await openMore();
 
 const share = await page.evaluate(() => {
   const d = __QUEENS_DEBUG__, n = d.state.size;
-  const code = document.getElementById('shareCode').value;
+  /* 页面上已经没有代码框了：码是点复制那一刻现算的（share.js 的 currentShareCode）。
+   * 这里用调试口暴露的 encode 算同一串，好核对复制出去的东西。 */
+  const code = d.encode();   // 调试口不带参数：算的就是当前这盘
   const re = new RegExp('^QNS1-' + String(n).padStart(2, '0') + '-[0-9A-F]{' + n * n +
     '}-[0-9A-F]{' + n + '}-[0-9A-Z]{6}$');
   const back = d.decode(code);
+  const btn = document.getElementById('btnCopyCode');
+  const head = document.querySelector('#diffSheet .share-head').getBoundingClientRect();
+  const r = btn.getBoundingClientRect();
   return {
     code, len: code.length, want: 4 + 1 + 2 + 1 + n * n + 1 + n + 1 + 6,
     format: re.test(code),
-    tag: document.getElementById('shareTag').textContent.trim(),
+    /* 「分享这一局」右边换成了复制图标钮：以前那个 8×8 小标签去掉了 */
+    copyIcon: !!btn.querySelector('svg') && btn.classList.contains('icon-btn'),
+    copyW: Math.round(r.width),
+    copyFlush: Math.round(head.right - r.right),
+    oldTag: !!document.querySelector('.share-tag'),
+    oldBtns: !!document.querySelector('#diffSheet .share-btns'),
+    codeBox: !!document.getElementById('shareCode'),
+    /* 分享那一块只剩「说明 + 复制」：不再有输入框，也不该有别的按钮 */
+    shareBtns: document.querySelectorAll('#diffSheet .share button').length,
+    footBtns: { done: !!document.getElementById('btnDiffDone'), setup: !!document.getElementById('btnInfoSetup') },
     ok: back.ok,
     roundTrip: back.ok && back.size === n &&
       Array.from(back.regions).join() === Array.from(d.state.regions).join() &&
@@ -667,10 +696,17 @@ const share = await page.evaluate(() => {
   };
 });
 check('分享代码格式 QNS1-08-…', share.format && share.len === share.want, `len=${share.len} want=${share.want}`);
-check('代码标签跟随棋盘', share.tag === '8×8', share.tag);
+check('分享头右边是复制图标钮（尺寸标签已去掉）',
+  share.copyIcon && share.oldTag === false && share.copyW >= 27 && share.copyFlush <= 2,
+  `w=${share.copyW} flush=${share.copyFlush} tag=${share.oldTag}`);
+check('信息页没有代码框，分享区只剩复制一颗按钮',
+  share.codeBox === false && share.shareBtns === 1, `box=${share.codeBox} btns=${share.shareBtns}`);
+check('底部「复制代码 / 载入代码」两个文字按钮都没了', share.oldBtns === false);
+check('信息页底部不再挂「知道了」「改棋盘大小与难度」',
+  !share.footBtns.done && !share.footBtns.setup, JSON.stringify(share.footBtns));
 check('代码解码后与原盘完全一致', share.ok && share.roundTrip);
 
-// 复制到剪贴板
+// 复制到剪贴板：没有框也要能把这一局的码拿出来
 await page.browserContext().overridePermissions(URL, ['clipboard-read', 'clipboard-write']);
 await page.click('#btnCopyCode');
 await sleep(320);
@@ -684,46 +720,165 @@ check('复制按钮写入剪贴板', copied.clip === share.code, `clip=${copied.
 check('复制后有提示', copied.good && /已复制/.test(copied.text), copied.text);
 await page.screenshot({ path: `${OUT}/10-share-copy.png` });
 
-// 换一局，再用粘贴还原
-await page.click('#btnCloseSheet');
+// 信息页不接受任何输入：这一页没有能粘东西进去的地方
+const noImport = await page.evaluate(() => {
+  const sheet = document.getElementById('diffSheet');
+  return {
+    fields: sheet.querySelectorAll('textarea, input, [contenteditable]').length,
+    /* 难度那五行的问号也是 button（.ds-help），这里只看「有 id 的」那几颗 */
+    buttons: Array.from(sheet.querySelectorAll('button:not(.ds-help)')).map(b => b.id)
+  };
+});
+check('信息页里没有任何输入框', noImport.fields === 0, `fields=${noImport.fields}`);
+check('信息页只有 X 与复制两颗按钮',
+  noImport.buttons.length === 2 && noImport.buttons.indexOf('btnCopyCode') >= 0 &&
+  noImport.buttons.indexOf('btnCloseDiff') >= 0, noImport.buttons.join(','));
+
+// ---------- 14b. 载入代码搬到「新的一局」右上角 ----------
+await page.evaluate(() => document.getElementById('btnCloseDiff').click());
 await sleep(260);
+const preSeed2 = await page.evaluate(() => __QUEENS_DEBUG__.state.seed);
 await page.evaluate(() => __QUEENS_DEBUG__.newGame(10));
-await sleep(1100);
-await page.click('#btnSettings');
+await page.waitForFunction((s) => {
+  const st = __QUEENS_DEBUG__.state;
+  return st.size === 10 && st.regions.length === 100 && st.seed !== s;
+}, { timeout: 30000 }, preSeed2);
+await sleep(320);
+await page.click('#btnNew');
 await sleep(420);
-const pasted = await page.evaluate(async (code) => {
-  const ta = document.getElementById('shareCode');
-  const dt = new DataTransfer();
-  dt.setData('text/plain', code);
-  ta.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
-  await new Promise(r => setTimeout(r, 260));
+
+const loadUi = await page.evaluate(() => {
+  const head = document.querySelector('#newSheet .sheet-head');
+  const load = document.getElementById('btnLoadCode');
+  const close = document.getElementById('btnCloseNew');
+  const lr = load.getBoundingClientRect(), cr = close.getBoundingClientRect();
+  return {
+    inHead: !!head.querySelector('.head-acts #btnLoadCode'),
+    icon: !!load.querySelector('svg') && !load.textContent.trim(),
+    leftOfClose: lr.right <= cr.left,
+    gap: Math.round(cr.left - lr.right),
+    sameSize: Math.round(lr.width) === Math.round(cr.width),
+    label: load.getAttribute('aria-label') || '',
+    inInfo: !!document.querySelector('#diffSheet #btnLoadCode')
+  };
+});
+check('载入代码在「新的一局」右上角、X 的左边，是一颗图标钮',
+  loadUi.inHead && loadUi.icon && loadUi.leftOfClose && loadUi.sameSize && loadUi.gap <= 12,
+  `gap=${loadUi.gap} same=${loadUi.sameSize}`);
+check('载入图标与 X 同一套样子、有无障碍名称', /载入/.test(loadUi.label), loadUi.label);
+check('载入代码已经不在信息页', loadUi.inInfo === false);
+await page.screenshot({ path: `${OUT}/10b-load-icon.png` });
+
+// 剪贴板里那串就是刚才复制的那盘：点一下应当装回来
+await page.evaluate((c) => {
+  try {
+    Object.defineProperty(navigator.clipboard, 'readText', {
+      configurable: true,
+      value: () => Promise.resolve(c)
+    });
+  } catch (e) { /* 老浏览器没有 clipboard 对象，走原生输入框那一路 */ }
+}, share.code);
+await page.click('#btnLoadCode');
+await sleep(900);
+const rowLoad = await page.evaluate((code) => {
   const d = __QUEENS_DEBUG__;
   return {
     size: d.state.size,
     cells: document.querySelectorAll('.cell').length,
-    back: Array.from(d.decode(code).regions).join() === Array.from(d.state.regions).join(),
-    closed: document.getElementById('sheetWrap').hidden,
+    same: Array.from(d.decode(code).regions).join() === Array.from(d.state.regions).join(),
+    sheetClosed: document.getElementById('newWrap').hidden,
     hint: document.getElementById('hint').textContent.trim()
   };
 }, share.code);
-check('粘贴代码自动开局', pasted.size === 8 && pasted.cells === 64, `size=${pasted.size} cells=${pasted.cells}`);
-check('还原成同一副棋盘', pasted.back);
-check('载入后面板收起并提示', pasted.closed && /已载入/.test(pasted.hint), pasted.hint);
+check('点载入图标就用剪贴板那串开局',
+  rowLoad.size === 8 && rowLoad.cells === 64 && rowLoad.same, `size=${rowLoad.size} cells=${rowLoad.cells}`);
+check('载入后面板收起并提示', rowLoad.sheetClosed && /已载入/.test(rowLoad.hint), rowLoad.hint);
 
-// 坏代码被拒
-await page.click('#btnSettings');
+// 坏代码：这一层不会掉，原因说到提示行上（信息页那行字此时是藏着的）
+await page.click('#btnNew');
 await sleep(400);
-await openMore();
-const badIn = await page.evaluate(() => {
-  const ta = document.getElementById('shareCode');
-  ta.value = 'QNS1-08-00112233445566778899AABBCCDDEEFF00112233445566778899AABBCCDDEEFF-01234567-ABCDEF';
-  document.getElementById('btnLoadCode').click();
-  const st = document.getElementById('shareStatus');
-  const d = __QUEENS_DEBUG__;
-  return { text: st.textContent.trim(), bad: st.classList.contains('is-bad'), size: d.state.size, cells: document.querySelectorAll('.cell').length };
+await page.evaluate(() => {
+  try {
+    Object.defineProperty(navigator.clipboard, 'readText', {
+      configurable: true,
+      value: () => Promise.resolve('QNS1-08-00112233445566778899AABBCCDDEEFF00112233445566778899AABBCCDDEEFF-01234567-ABCDEF')
+    });
+  } catch (e) { /* 同上 */ }
 });
-check('坏代码被拒并给出原因', badIn.bad && badIn.text.length > 4, badIn.text);
-check('坏代码不影响当前棋盘', badIn.size === 8 && badIn.cells === 64, `size=${badIn.size} cells=${badIn.cells}`);
+await page.click('#btnLoadCode');
+await sleep(500);
+const rowBad = await page.evaluate(() => {
+  const hint = document.getElementById('hint');
+  return {
+    text: hint.textContent.trim(),
+    alert: hint.classList.contains('is-alert'),
+    sheetOpen: !document.getElementById('newWrap').hidden,
+    size: __QUEENS_DEBUG__.state.size
+  };
+});
+check('坏代码在这条路上也被拒，原因说到提示行',
+  rowBad.alert && /校验|不完整|太短/.test(rowBad.text), rowBad.text);
+check('坏代码不换盘、也不收面板', rowBad.sheetOpen && rowBad.size === 8, `size=${rowBad.size}`);
+
+// 没有剪贴板 API 的浏览器（局域网 http 下就是）：退回原生输入框，取消就当没点过
+await page.evaluate(() => document.getElementById('btnCloseNew').click());
+await sleep(260);
+await page.evaluate(() => __QUEENS_DEBUG__.newGame(6));
+await page.waitForFunction(() => {
+  const st = __QUEENS_DEBUG__.state;
+  return st.size === 6 && st.regions.length === 36;
+}, { timeout: 20000 });
+await sleep(280);
+await page.evaluate(() => {
+  window.__clipOrig = navigator.clipboard;
+  Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined });
+});
+await page.click('#btnNew');
+await sleep(380);
+
+let dlgSeen = '';
+const onDlg = async (d) => { dlgSeen = d.type() + ':' + d.message(); await d.accept(share.code); };
+page.on('dialog', onDlg);
+await page.click('#btnLoadCode');
+await sleep(1000);
+page.removeAllListeners('dialog');
+const noClip = await page.evaluate(() => ({
+  size: __QUEENS_DEBUG__.state.size,
+  cells: document.querySelectorAll('.cell').length,
+  closed: document.getElementById('newWrap').hidden,
+  hint: document.getElementById('hint').textContent.trim()
+}));
+check('没有剪贴板 API 时退到原生输入框，粘进去照样能载入',
+  /^prompt:/.test(dlgSeen) && noClip.size === 8 && noClip.cells === 64 && noClip.closed,
+  `${dlgSeen} size=${noClip.size} closed=${noClip.closed}`);
+
+// 取消那一支：什么都不该发生（不换盘、不报错、层还开着）
+await page.evaluate(() => __QUEENS_DEBUG__.newGame(6));
+await page.waitForFunction(() => {
+  const st = __QUEENS_DEBUG__.state;
+  return st.size === 6 && st.regions.length === 36;
+}, { timeout: 20000 });
+await sleep(280);
+await page.click('#btnNew');
+await sleep(380);
+const onDlgCancel = async (d) => { await d.dismiss(); };
+page.on('dialog', onDlgCancel);
+await page.click('#btnLoadCode');
+await sleep(500);
+page.removeAllListeners('dialog');
+const cancelled = await page.evaluate(() => ({
+  size: __QUEENS_DEBUG__.state.size,
+  open: !document.getElementById('newWrap').hidden,
+  alert: document.getElementById('hint').classList.contains('is-alert')
+}));
+check('输入框里点取消就当没点过', cancelled.size === 6 && cancelled.open && !cancelled.alert,
+  JSON.stringify(cancelled));
+
+await page.evaluate(() => {
+  Object.defineProperty(navigator, 'clipboard', { configurable: true, value: window.__clipOrig });
+});
+await page.evaluate(() => document.getElementById('btnCloseNew').click());
+await sleep(300);
 
 // 抄错一位 / 抄漏一位
 const tamper = await page.evaluate((code) => {
@@ -768,13 +923,22 @@ await p2.close();
 
 // ---------- 难度标签 ----------
 log('\n--- 难度 ---');
-// 前面的分享用例把设置面板留在了打开状态（app 被 inert），先收起来
+// 前面的分享用例把面板留在了打开状态（app 被 inert），先收起来
 await page.evaluate(() => {
-  if (!document.getElementById('sheetWrap').hidden) document.getElementById('btnCloseSheet').click();
+  const closes = { sheetWrap: 'btnCloseSheet', diffWrap: 'btnCloseDiff', newWrap: 'btnCloseNew' };
+  for (const wrap of Object.keys(closes)) {
+    if (!document.getElementById(wrap).hidden) { document.getElementById(closes[wrap]).click(); break; }
+  }
 });
 await sleep(300);
+// newGame 是异步抽盘：上一局也是 8×8，光等 size 会立刻返回（读到的还是旧盘），
+// 必须等 seed 换掉，否则后面 chip 与信息页读的是两盘棋
+const preSeed = await page.evaluate(() => __QUEENS_DEBUG__.state.seed);
 await page.evaluate(() => __QUEENS_DEBUG__.newGame(8));
-await page.waitForFunction('__QUEENS_DEBUG__.state.size === 8 && __QUEENS_DEBUG__.state.vibe', { timeout: 20000 });
+await page.waitForFunction(s => {
+  const st = __QUEENS_DEBUG__.state;
+  return st.size === 8 && st.vibe && st.seed !== s;
+}, { timeout: 20000 }, preSeed);
 await sleep(400);
 
 const chip = await page.evaluate(() => {
@@ -808,6 +972,10 @@ await sleep(350);
 const sheet1 = await page.evaluate(() => {
   const v = __QUEENS_DEBUG__.state.vibe;
   const rows = Array.from(document.querySelectorAll('.diff-step'));
+  const sh = document.getElementById('diffSheet');
+  const sb = sh.getBoundingClientRect();
+  const shareEl = document.querySelector('#diffSheet .share');
+  const sr = shareEl.getBoundingClientRect();
   return {
     open: !document.getElementById('diffWrap').hidden,
     big: document.getElementById('diffBig').textContent,
@@ -818,8 +986,11 @@ const sheet1 = await page.evaluate(() => {
     bars: rows.map(r => r.querySelector('.ds-bar i').style.width),
     steps: v.steps,
     focus: document.activeElement && document.activeElement.id,
-    scrollable: document.getElementById('diffSheet').scrollHeight >
-      document.getElementById('diffSheet').clientHeight + 4
+    // 分享只剩一行（说明 + 复制），代码框与页脚按钮都去掉了——整块就在读数卡片
+    // 正下方，不用滑就看得见；面板在 390×844 上也回到一屏装得下
+    shareVisible: sr.top >= sb.top && sr.bottom <= sb.bottom + 1,
+    shareCopy: !!document.getElementById('btnCopyCode'),
+    over: sh.scrollHeight - sh.clientHeight
   };
 });
 check('信息页打开', sheet1.open);
@@ -834,7 +1005,7 @@ check('条形有长度且不超 100%', sheet1.bars.every(b => {
   return w >= 0 && w <= 100;
 }), sheet1.bars.join(' '));
 check('有一句难度来源说明', /8×8/.test(sheet1.lead) && /试推|推完/.test(sheet1.lead), sheet1.lead);
-check('信息页内容不溢出', !sheet1.scrollable);
+check('分享这一局在首屏就看得见（复制钮在那一行）', sheet1.shareVisible && sheet1.shareCopy);
 check('打开后焦点在弹层里', sheet1.focus === 'diffSheet', `focus=${sheet1.focus}`);
 await page.screenshot({ path: `${OUT}/14-diff-sheet.png` });
 
@@ -868,26 +1039,31 @@ check('底部常显的是差异说明而非名词表',
 const tipOpen = await page.evaluate(() => {
   const row = document.querySelectorAll('.diff-step')[3];
   const btn = row.querySelector('.ds-help');
-  const before = Math.round(document.getElementById('btnDiffDone').getBoundingClientRect().top);
+  const sh = document.getElementById('diffSheet');
+  /* 信息页底下已经没有按钮了，拿「读数与实际的差异」那一块当参照物：
+     它在那几行下面，展开说明不该把它推走 */
+  const before = Math.round(document.getElementById('diffLegend').getBoundingClientRect().top);
+  const overBefore = sh.scrollHeight;
   btn.click();
   const tip = row.querySelector('.ds-tip');
   const r = tip.getBoundingClientRect();
-  const sh = document.getElementById('diffSheet').getBoundingClientRect();
-  const after = Math.round(document.getElementById('btnDiffDone').getBoundingClientRect().top);
+  const box = sh.getBoundingClientRect();
+  const after = Math.round(document.getElementById('diffLegend').getBoundingClientRect().top);
   return {
     display: getComputedStyle(tip).display,
     expanded: btn.getAttribute('aria-expanded'),
     text: tip.textContent,
-    stillFits: document.getElementById('diffSheet').scrollHeight <=
-      document.getElementById('diffSheet').clientHeight + 4,
-    inside: r.left >= sh.left - 1 && r.right <= sh.right + 1 && r.bottom <= sh.bottom + 1,
+    /* 说明是浮层：展开它不该把面板内容撑高（分享搬进来之后面板本来就能滚，
+     * 所以比的是「撑没撑高」而不是「要不要滚」） */
+    noGrow: sh.scrollHeight === overBefore,
+    inside: r.left >= box.left - 1 && r.right <= box.right + 1 && r.bottom <= box.bottom + 1,
     noShift: before === after
   };
 });
 check('点问号展开该行说明', tipOpen.display === 'block' && tipOpen.expanded === 'true', tipOpen.display);
 check('展开的是那一行的解释', /假设/.test(tipOpen.text) && /矛盾/.test(tipOpen.text), tipOpen.text.slice(0, 16));
-check('说明浮在面板内，不撑出滚动条', tipOpen.inside && tipOpen.stillFits);
-check('展开不推走「知道了」', tipOpen.noShift);
+check('说明浮在面板内，不把内容撑高', tipOpen.inside && tipOpen.noGrow);
+check('展开不推走下面的内容', tipOpen.noShift);
 await page.screenshot({ path: `${OUT}/14b-diff-tip.png` });
 
 const tipClosed = await page.evaluate(() => {
@@ -926,10 +1102,10 @@ check('Esc 关闭信息页', afterEsc.hidden);
 check('关闭后焦点回到信息条', afterEsc.focus === 'btnHud', `focus=${afterEsc.focus}`);
 check('aria-expanded 复位', afterEsc.expanded === 'false');
 
-// 点背景关闭（信息页面板盖住了背景中心，点上方空白处）
+// 点背景关闭（信息页面板盖住屏幕下方大半，点最上面那一条背景）
 await page.click('#btnHud');
 await sleep(300);
-await page.mouse.click(195, 80);
+await page.mouse.click(195, 24);
 await sleep(300);
 check('点背景关闭', await page.evaluate(() => document.getElementById('diffWrap').hidden));
 

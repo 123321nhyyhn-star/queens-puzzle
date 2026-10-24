@@ -267,7 +267,7 @@ check('刷新后记录还在', r === 1, `n=${r}`);
 await closeResultIfAny();
 
 /* ---------- 7. 换一盘限时 5 分钟 → 另一个组 ---------- */
-await page.evaluate(() => document.getElementById('btnSettings').click());
+await page.evaluate(() => document.getElementById('btnNew').click());
 await sleep(320);
 await page.evaluate(() => document.querySelector('#limitOpts [data-limit="300000"]').click());
 await page.evaluate(() => document.getElementById('btnShuffle').click());

@@ -10,6 +10,12 @@
  *
  * 信息条上那一段难度读数不在这里（见 ui/difficulty.js）：那是骨架上的东西，
  * 面板关着也得更新。
+ *
+ * 「分享这一局」也住在这里（原先折在设置面板里）：它是「这一局」的属性，不是
+ * 偏好，所以常显、不用折叠——就放在读数卡片下面，想分享的人不用先滑过一整屏分析。
+ * 这一块只有一行：说明 + 一颗复制钮。**没有代码框**：那串码不显示、也不接受输入，
+ * 载入只有一处——「新的一局」面板右上角那颗图标（panels/newgame.js）。
+ * 码本身由 ui/share.js 现算（currentShareCode），这边只管 markup 与交互。
  * ========================================================================== */
 
 import { elapsedMs, limitRemaining } from '../../core/clock.js';
@@ -17,9 +23,12 @@ import { limitLabel } from '../../core/config.js';
 import { btnHud } from '../../core/dom.js';
 import { createSheet } from '../../core/sheet.js';
 import { state, view } from '../../core/state.js';
-import { formatTime } from '../../core/utils.js';
+import { formatTime, announce } from '../../core/utils.js';
+import { sfx, buzz } from '../../core/audio.js';
 import { queenCount } from '../../game/rules.js';
-import { openSettings } from './settings.js';
+import {
+  bindShareUI, clearShareStatus, copyText, currentShareCode, setShareStatus, shareReject
+} from '../share.js';
 
 export var HTML = /* html */ `
 <div class="sheet-wrap" id="diffWrap" hidden>
@@ -65,6 +74,25 @@ export var HTML = /* html */ `
       </div>
     </div>
 
+    <!-- 分享这一局：只剩一行——左边一句说明，右上角一颗**复制**。
+         这一页不显示那串码，也不接受输入（没有代码框、没有粘贴开局）。
+         「拿别人的代码开一局」是换局，那颗载入图标在「新的一局」的右上角，
+         那是全应用唯一的入口。 -->
+    <div class="share">
+      <div class="share-head">
+        <div class="stepper-label">分享这一局<small>复制发给朋友，他在「新的一局」载入就能玩</small></div>
+        <button class="icon-btn share-copy" id="btnCopyCode" type="button"
+          title="复制代码" aria-label="复制这一局的棋盘代码">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="9" y="9" width="11" height="11" rx="2.6"></rect>
+            <path d="M15.5 5.5h-8a3 3 0 0 0-3 3v8"></path>
+          </svg>
+        </button>
+      </div>
+      <p class="share-status" id="shareStatus" aria-live="polite"></p>
+    </div>
+
     <p class="group-title" id="diffGroupTitle">难度构成</p>
 
     <p class="diff-lead" id="diffLead"></p>
@@ -82,8 +110,8 @@ export var HTML = /* html */ `
       </ol>
     </div>
 
-    <button class="btn btn-hint sheet-done" id="btnDiffDone" type="button">知道了</button>
-    <button class="btn-text info-setup" id="btnInfoSetup" type="button">改棋盘大小与难度</button>
+    <!-- 面板底下不再挂按钮：这一页只「读」，改尺寸 / 难度与载入别人代码都在
+         「新的一局」那一层。关掉就靠右上角的 X / Esc / 点背景。 -->
   </div>
 </div>`;
 
@@ -94,6 +122,8 @@ var infoQueens = null, infoQueensSub = null, infoSteps = null, infoStepsSub = nu
 var infoDiffCard = null, infoDiffSub = null;
 var diffGroupTitle = null, diffBig = null, diffBadge = null;
 var diffLead = null, diffSteps = null, diffLegend = null;
+
+var shareStatus = null;
 
 var sheet = null;
 
@@ -304,6 +334,10 @@ export function mount(host) {
   diffLead = document.getElementById('diffLead');
   diffSteps = document.getElementById('diffSteps');
   diffLegend = document.getElementById('diffLegend');
+  shareStatus = document.getElementById('shareStatus');
+
+  /* 分享那一段只剩一行状态字了（没有代码框）：交给 ui/share.js，它不认 id */
+  bindShareUI({ status: shareStatus, sheetWrap: diffWrap });
 
   sheet = createSheet({
     id: 'info',
@@ -313,22 +347,36 @@ export function mount(host) {
     /* 不管从哪儿关（Esc / 关闭按钮 / 点背景 / 知道了），焦点都回信息条：
      * 那是玩家点进来的地方，回去不用重新 Tab 一遍。 */
     focusOpener: true,
-    beforeOpen: function () { renderDiff(); paintInfo(); },
+    /* 每次打开都把上一次那行「已复制」擦掉 */
+    beforeOpen: function () { renderDiff(); paintInfo(); clearShareStatus(); },
     beforeClose: clearDiffTips
   });
 
   btnHud.addEventListener('click', openDiff);
   document.getElementById('btnCloseDiff').addEventListener('click', closeDiff);
-  document.getElementById('btnDiffDone').addEventListener('click', closeDiff);
   diffBackdrop.addEventListener('click', closeDiff);
 
   /* 难度构成每行右端的问号：点开那一行的说明，点面板别处收起。
    * 桌面端另有 :hover（styles/panels/info.css），这里是触屏的唯一一路。 */
   diffSheet.addEventListener('click', function (e) { toggleDiffTip(e.target); });
 
-  /* 信息页底部那句「改棋盘大小与难度」：看完信息想动手改，直接去设置面板——
-   * 这是页面里明写的一个动作，不是又一个「点哪里会怎样」的隐藏入口。 */
-  document.getElementById('btnInfoSetup').addEventListener('click', function () {
-    openSettings();
+  /* ---- 分享这一局：右上角那颗图标负责复制 ---- */
+  document.getElementById('btnCopyCode').addEventListener('click', function () {
+    var val = currentShareCode();
+    if (!val) { shareReject('现在还没有棋盘可以分享'); return; }
+    copyText(val, function (ok) {
+      if (ok) {
+        setShareStatus('已复制，发给朋友就能玩这一局', 'good');
+        sfx('share');
+        buzz(10);
+        announce('棋盘代码已复制');
+      } else {
+        setShareStatus('这个浏览器不让自动复制，换个浏览器再试', 'bad');
+      }
+    });
   });
+
+  /* 代码框是只读的：这一页不接受任何输入，也没有粘贴开局 / Ctrl+Enter 这类暗门。
+   * 载入只有一处——「新的一局」右上角那颗图标（ui/share.js 的
+   * loadShareFromClipboard）。这里只留「选中了就能复制」这一件原生行为。 */
 }

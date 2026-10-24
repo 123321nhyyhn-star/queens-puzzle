@@ -1,6 +1,7 @@
 /* ============================================================================
- * 杂项：设置面板折叠 / 无滚动条 / 淡化 × 默认关 / 拖动对齐与逐格震动 /
- *       唯一位置提示的强度 / 结果层的「重来这局」
+ * 杂项：设置面板只剩一列开关 / 换一局面板 / 分享搬到信息页且框里无滚动条 /
+ *       淡化 × 默认关 / 拖动对齐与逐格震动 / 唯一位置提示的强度 /
+ *       结果层的「重来这局」
  *
  *   python serve.py --no-open
  *   node tools/check-misc.mjs
@@ -51,25 +52,22 @@ async function boot(fresh) {
   await sleep(500);
 }
 
-// ---------- 1. 设置面板：默认收起 / 无滚动条 / 淡化×默认关 ----------
+// ---------- 1. 设置面板：只剩一列开关 / 不折叠 / 无滚动条 ----------
 await boot(true);
 
 const sheet = await page.evaluate(() => {
   document.getElementById('btnSettings').click();
   const s = document.getElementById('sheet');
-  const sm = document.getElementById('sheetMore');
-  const more = document.getElementById('btnMoreOpts');
-  const rows = [...s.querySelectorAll('.sheet-more .switch-row')];
+  const rows = [...s.querySelectorAll('.switch-row')];
   const cs = getComputedStyle(s);
   return {
-    moreHidden: sm.hidden,
-    moreText: document.getElementById('moreOptsLabel').textContent.trim(),
-    moreAria: more.getAttribute('aria-expanded'),
-    visibleRows: rows.filter(r => r.getClientRects().length).length,
-    totalRows: rows.length,
+    open: !document.getElementById('sheetWrap').hidden,
+    moreBtn: !!document.getElementById('btnMoreOpts'),
+    shareInSettings: !!s.querySelector('.share'),
+    total: rows.length,
+    visible: rows.filter(r => r.getClientRects().length).length,
     fadeMark: document.getElementById('swFadeMark').getAttribute('aria-checked'),
     alignDrag: document.getElementById('swAlignDrag').getAttribute('aria-checked'),
-    alignDragVisible: !!document.getElementById('swAlignDrag').getClientRects().length,
     scrollbarWidth: s.offsetWidth - s.clientWidth -
       parseFloat(cs.borderLeftWidth) - parseFloat(cs.borderRightWidth),
     sbCss: cs.scrollbarWidth,
@@ -77,52 +75,100 @@ const sheet = await page.evaluate(() => {
     settingsFade: __QUEENS_DEBUG__.settings.fadeMark
   };
 });
-check('设置面板默认收起更多选项', sheet.moreHidden === true && sheet.moreAria === 'false', sheet.moreText);
-check('收起时偏好开关一个都不露（只留挑战那两行）', sheet.visibleRows === 0, `${sheet.visibleRows} 行`);
+check('设置面板只剩 8 个开关，且全部摊开',
+  sheet.open && sheet.total === 8 && sheet.visible === 8, `${sheet.visible}/${sheet.total}`);
+check('设置面板不再有「显示更多选项」', sheet.moreBtn === false);
+check('分享已经不在设置面板里', sheet.shareInSettings === false);
 check('淡化 × 默认关闭', sheet.fadeMark === 'false' && sheet.settingsFade === false);
-check('拖动对齐开关存在（收起时不露）', sheet.alignDrag === 'true' && !sheet.alignDragVisible);
-check('面板没有垂直滚动条', sheet.scrollbarWidth === 0 && sheet.sbCss === 'none', `sbw=${sheet.scrollbarWidth} css=${sheet.sbCss} overflow=${sheet.overflow}`);
+check('拖动对齐默认开着', sheet.alignDrag === 'true');
+check('设置面板没有垂直滚动条，也不用滚',
+  sheet.scrollbarWidth === 0 && sheet.sbCss === 'none' && sheet.overflow <= 0,
+  `sbw=${sheet.scrollbarWidth} css=${sheet.sbCss} overflow=${sheet.overflow}`);
 await sleep(450);
-await page.screenshot({ path: `${OUT}/misc-sheet-collapsed.png` });
+await page.screenshot({ path: `${OUT}/misc-settings.png` });
+await page.evaluate(() => document.getElementById('btnCloseSheet').click());
+await sleep(260);
 
-// ---------- 2. 展开 / 会话记忆 ----------
-const expanded = await page.evaluate(() => {
-  document.getElementById('btnMoreOpts').click();
-  const sm = document.getElementById('sheetMore');
-  const s = document.getElementById('sheet');
+// ---------- 2. 「开一局新的」搬进了顶栏那颗按钮的面板 ----------
+const ng = await page.evaluate(() => {
+  document.getElementById('btnNew').click();
+  const s = document.getElementById('newSheet');
+  const ch = s.querySelector('.challenge');
+  const sh = s.querySelector('.shuffle-row');
   return {
-    hidden: sm.hidden,
-    text: document.getElementById('moreOptsLabel').textContent.trim(),
-    aria: document.getElementById('btnMoreOpts').getAttribute('aria-expanded'),
-    scrollbarWidth: s.offsetWidth - s.clientWidth -
-      parseFloat(getComputedStyle(s).borderLeftWidth) * 2,
-    rows: [...s.querySelectorAll('.switch-row')].filter(r => r.getClientRects().length).length,
-    shareVisible: !!document.getElementById('shareCode').getClientRects().length,
-    shareH: document.getElementById('shareCode').style.height
+    open: !document.getElementById('newWrap').hidden,
+    stepper: !!s.querySelector('.stepper'),
+    quick: s.querySelectorAll('#quickRow .qbtn').length,
+    diff: s.querySelectorAll('#diffOpts .dbtn').length,
+    limit: s.querySelectorAll('#limitOpts .lbtn').length,
+    step: s.querySelectorAll('#stepOpts .lbtn').length,
+    challengeSw: s.querySelectorAll('.challenge .switch').length,
+    shuffleAfterChallenge: ch.getBoundingClientRect().bottom <= sh.getBoundingClientRect().top + 1,
+    share: !!s.querySelector('.share'),
+    note: document.getElementById('newNote').textContent.trim()
   };
 });
-check('点开后露出更多选项', expanded.hidden === false && expanded.rows >= 8 && expanded.shareVisible, `${expanded.rows} 行 · ${expanded.text}`);
-check('开开后仍然没有滚动条', expanded.scrollbarWidth === 0);
+check('顶栏「新一局」打开的是换一局面板', ng.open);
+check('尺寸 / 难度 / 挑战都在这一层',
+  ng.stepper && ng.quick >= 5 && ng.diff === 5 && ng.limit === 5 && ng.step === 5 && ng.challengeSw === 2,
+  ng);
+check('「换一局」在挑战组的下面', ng.shuffleAfterChallenge === true);
+check('换一局面板里没有分享', ng.share === false);
+check('顶部标出当前这局', /当前这局/.test(ng.note), ng.note);
 await sleep(450);
-await page.screenshot({ path: `${OUT}/misc-sheet-expanded.png` });
+await page.screenshot({ path: `${OUT}/misc-newgame.png` });
+await page.evaluate(() => document.getElementById('btnCloseNew').click());
+await sleep(260);
 
-const stillOpen = await page.evaluate(() => {
-  document.getElementById('btnCloseSheet').click();
-  document.getElementById('btnSettings').click();
-  return !document.getElementById('sheetMore').hidden;
+// ---------- 2b. 分享只剩「说明 + 复制」：没有代码框，也没有输入 ----------
+const shareUi = await page.evaluate(() => {
+  document.getElementById('btnHud').click();
+  const sh = document.getElementById('diffSheet');
+  const sb = sh.getBoundingClientRect();
+  const share = sh.querySelector('.share');
+  const sr = share.getBoundingClientRect();
+  return {
+    open: !document.getElementById('diffWrap').hidden,
+    inSheet: !!share,
+    /* 整块都在首屏里（它就在读数卡片正下方，不用滑） */
+    inViewport: sr.top >= sb.top && sr.bottom <= sb.bottom,
+    fields: sh.querySelectorAll('textarea, input, [contenteditable]').length,
+    codeBox: !!document.getElementById('shareCode'),
+    /* 难度那五行的问号也是 button（.ds-help），这里只看「有 id 的」那几颗 */
+    btns: Array.from(sh.querySelectorAll('button:not(.ds-help)')).map(b => b.id),
+    copy: (() => {
+      const b = document.getElementById('btnCopyCode');
+      const r = b.getBoundingClientRect();
+      const hd = sh.querySelector('.share-head').getBoundingClientRect();
+      return {
+        icon: !!b.querySelector('svg'),
+        w: Math.round(r.width),
+        inHead: r.top >= hd.top - 1 && r.bottom <= hd.bottom + 1
+      };
+    })(),
+    oldTag: !!document.querySelector('.share-tag'),
+    oldBtns: !!sh.querySelector('.share-btns'),
+    footBtns: sh.querySelectorAll('.sheet-done, .info-setup').length,
+    /* 复制出来的就是这一局的码（现算，不靠页面上的框） */
+    code: __QUEENS_DEBUG__.encode()
+  };
 });
-check('会话内重开面板保持展开', stillOpen === true);
-
-await page.reload({ waitUntil: 'networkidle0' });
-await page.waitForFunction('window.__QUEENS_DEBUG__ && __QUEENS_DEBUG__.state.regions.length > 0', { timeout: 20000 });
-await sleep(400);
-const collapsedAgain = await page.evaluate(() => {
-  document.getElementById('btnSettings').click();
-  return document.getElementById('sheetMore').hidden;
-});
-check('刷新后回到收起（不持久化）', collapsedAgain === true);
-await page.evaluate(() => document.getElementById('btnCloseSheet').click());
-await sleep(200);
+check('分享在本局信息页里，且整块不用滑就看得到',
+  shareUi.open && shareUi.inSheet && shareUi.inViewport === true);
+check('信息页里没有代码框、也没有任何输入框',
+  shareUi.codeBox === false && shareUi.fields === 0, `box=${shareUi.codeBox} fields=${shareUi.fields}`);
+check('信息页只剩 X 与复制两颗按钮',
+  shareUi.btns.length === 2 && shareUi.btns.indexOf('btnCopyCode') >= 0 &&
+  shareUi.btns.indexOf('btnCloseDiff') >= 0, shareUi.btns.join(','));
+check('复制图标住在分享头的右边',
+  shareUi.copy.icon && shareUi.copy.inHead && shareUi.copy.w >= 27, shareUi.copy);
+check('尺寸小标签、两个文字按钮、页脚两颗按钮都已去掉',
+  shareUi.oldTag === false && shareUi.oldBtns === false && shareUi.footBtns === 0,
+  `tag=${shareUi.oldTag} btns=${shareUi.oldBtns} foot=${shareUi.footBtns}`);
+check('复制用的码是这一局现算出来的', /^QNS1-\d\d-/.test(shareUi.code), shareUi.code.slice(0, 12));
+await page.screenshot({ path: `${OUT}/misc-share.png` });
+await page.evaluate(() => document.getElementById('btnCloseDiff').click());
+await sleep(260);
 
 // ---------- 3. 拖动：对齐 / 随意 + 每格震动 ----------
 async function dragInBoard(dxCells, dyCells, alignDrag) {

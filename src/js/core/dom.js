@@ -59,7 +59,8 @@ export var diffSeg = $('diffSeg');
 export var diffLevelEl = $('diffLevel');
 export var diffScoreEl = $('diffScore');
 
-/* 顶栏四颗按钮：新一局留在 events.js，另外三颗各自的面板自己认领 */
+/* 顶栏四颗按钮：四颗各自的面板自己认领（新一局 / 设置 / 外观 / 战绩），
+ * 这里只给引用，点的动作在各自的 ui/panels/<名字>.js 里绑。 */
 export var btnNew = $('btnNew');
 export var btnSettings = $('btnSettings');
 export var btnLook = $('btnLook');

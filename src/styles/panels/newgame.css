@@ -1,0 +1,212 @@
+/* panels/newgame.css — 换一局面板：棋盘大小、常用尺寸、目标难度、挑战
+   （限时 / 步数限制 / 禁用提示 / 禁用撤销）、换一局。
+   这三组的落地时机同一条规矩：改了点「换一局」才生效。
+   开关行本身（.switch-row / .switch / .stepper-label）在 base/buttons.css。 */
+
+/* ---- 棋盘尺寸：步进器 + 常用尺寸 ---- */
+.stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 0;
+  border-bottom: 1px dashed rgba(58, 51, 53, .14);
+}
+
+.stepper-ctl {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+}
+
+.step-btn {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  background: var(--bg-card);
+  box-shadow: 0 2px 0 var(--ink);
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform var(--t-fast), box-shadow var(--t-fast), opacity var(--t-fast);
+}
+
+.step-btn:active:not(:disabled) { transform: translateY(2px); box-shadow: none; }
+.step-btn:disabled { opacity: .28; box-shadow: none; cursor: not-allowed; }
+
+.step-val {
+  min-width: 34px;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.quick-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 0 2px;
+  border-bottom: 1px dashed rgba(58, 51, 53, .14);
+}
+
+/* ============================================================
+   挑战：限时 / 步数限制 / 禁用提示 / 禁用撤销
+   ------------------------------------------------------------
+   用虚线框 + 米色底围成一小组，跟上面那些常规选项分开：
+   这一组是「给这局加难度」，不是偏好设置。
+   ============================================================ */
+/* 挑战跟尺寸 / 难度同一个规矩：改了点「换一局」才落地，
+ * 所以有未落地的改动时标题直接说出来，别让人以为已经生效。 */
+.group-title.is-pending {
+  color: #C25A12;
+  letter-spacing: 1.4px;
+}
+
+.challenge {
+  margin-bottom: 10px;
+  padding: 0 12px;
+  border: 2px dashed rgba(58, 51, 53, .24);
+  border-radius: 14px;
+  background: var(--bg-body);
+}
+
+.challenge .limit-row { padding: 10px 0 4px; }
+/* 限时与步数限制是两件事，中间用一条虚线分开，别读成一组按钮 */
+.challenge .limit-row + .limit-row {
+  border-top: 1px dashed rgba(58, 51, 53, .14);
+  padding-top: 12px;
+}
+.challenge .switch-row { padding: 9px 0; border-bottom: 0; }
+.challenge .switch-row:last-child { padding-bottom: 11px; }
+.challenge .switch-row + .switch-row { border-top: 1px dashed rgba(58, 51, 53, .14); }
+
+.limit-opts {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.lbtn {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 30px;
+  padding: 2px;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  background: var(--bg-card);
+  box-shadow: 0 2px 0 var(--ink);
+  font-size: 11.5px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform var(--t-fast), box-shadow var(--t-fast), background var(--t-fast), color var(--t-fast);
+}
+
+.lbtn:active:not(.is-on) { transform: translateY(2px); box-shadow: none; }
+
+/* 「不限」选中还是素色；选了具体的分钟数 / 步数就用橙底——挑战是真开着的。
+ * 限时那排带 data-limit，步数那排带 data-steps，两个「不限」都得排除掉。 */
+.lbtn.is-on { background: var(--bg-neutral); color: var(--ink); }
+.lbtn.is-on:not([data-limit="0"]):not([data-steps="0"]) { background: #F2762E; color: #FFFFFF; }
+
+/* ---- 目标难度 ---- */
+.diff-row {
+  padding: 12px 0 10px;
+  border-bottom: 1px dashed rgba(58, 51, 53, .14);
+}
+
+.diff-opts {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.dbtn {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 30px;
+  padding: 2px 4px;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  background: var(--bg-card);
+  box-shadow: 0 2px 0 var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .02em;
+  cursor: pointer;
+  transition: transform var(--t-fast), box-shadow var(--t-fast), background var(--t-fast), color var(--t-fast);
+}
+
+.dbtn:active:not(.is-on) { transform: translateY(2px); box-shadow: none; }
+.dbtn.is-on { background: var(--ink); color: var(--bg-body); }
+
+.dbtn[data-level="easy"].is-on { background: #22B573; color: #fff; }
+.dbtn[data-level="mid"].is-on { background: var(--accent); color: var(--ink); }
+.dbtn[data-level="hard"].is-on { background: #F2762E; color: #fff; }
+.dbtn[data-level="extreme"].is-on { background: #E23B3B; color: #fff; }
+
+/* 档位不再「接管」尺寸控件：它只开放一段可选区间（见 ui/panels/newgame.js 的 rangeOf）。
+ * 越界的尺寸根本不会出现在快捷行里，步进器也在区间两端禁用。 */
+
+.quick-row .q-label {
+  align-self: center;
+  margin-right: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-faint);
+}
+
+.qbtn {
+  min-height: 28px;
+  padding: 2px 9px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--bg-card);
+  box-shadow: 0 2px 0 var(--ink);
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform var(--t-fast), box-shadow var(--t-fast), background var(--t-fast);
+}
+
+.qbtn:active { transform: translateY(2px); box-shadow: none; }
+.qbtn.is-on { background: var(--accent); }
+
+/* ---- 换一局（面板底下那颗：上面那三组都在这里落地） ---- */
+.shuffle-row {
+  padding: 12px 0 10px;
+}
+
+.shuffle-row .btn {
+  width: 100%;
+  min-height: 42px;
+  letter-spacing: 1px;
+}
+
+.shuffle-row .btn.is-pending {
+  animation: pendingNudge 2.4s ease-in-out infinite;
+}
+
+@keyframes pendingNudge {
+  0%, 100% { box-shadow: var(--shadow-btn); }
+  50% { box-shadow: 0 3px 0 var(--ink), 0 0 0 3px rgba(255, 217, 61, .55); }
+}
+
+.shuffle-hint {
+  margin: 7px 0 0;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--ink-faint);
+  transition: color var(--t-fast);
+}
+
+.shuffle-hint.is-pending { color: var(--ink); }

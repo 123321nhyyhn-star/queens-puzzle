@@ -12,7 +12,7 @@
  *
  * 只给两条路：
  *   · 再抽一局：交给 puzzle 的 onRetry 再抽一批（同一尺寸、同一档）
- *   · 更换设置：打开设置面板并停在这一档上，可以换个更大的尺寸或换档
+ *   · 更换设置：打开「新的一局」面板并停在这一档上，可以换个更大的尺寸或换档
  *
  * 跟结果层一样不许 Esc 关掉：关掉之后既没新盘也没旧盘，只剩一块空棋盘。
  * 「继续尝试」这件事一定得由玩家自己决定——这就是这层的全部意义。
@@ -20,7 +20,7 @@
 
 import { announce } from '../../core/utils.js';
 import { createSheet } from '../../core/sheet.js';
-import { openSheetAt } from './settings.js';
+import { openSheetAt } from './newgame.js';
 
 export var HTML = /* html */ `
 <div class="result is-mismatch" id="mismatch" hidden>

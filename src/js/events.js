@@ -10,7 +10,6 @@
 
 import { canPlay, clearBoard, fillQueens, onCell, placeQueen, setMarks } from './app/actions.js';
 import { pushHistory, redo, undo } from './app/history.js';
-import { newGame } from './app/puzzle.js';
 import { audio, buzz, sfx } from './core/audio.js';
 import { pauseTimer, startTimer } from './core/clock.js';
 import {
@@ -23,6 +22,7 @@ import { save } from './core/storage.js';
 import { endPeek } from './game/board.js';
 import { closeGuide, guideNext, guidePrev, useHint } from './ui/guide.js';
 import { flashHint } from './ui/hint.js';
+import { openNew } from './ui/panels/newgame.js';
 import { render } from './ui/render.js';
 
 // 松手 / 手势被打断 / 窗口失焦，都算结束（指针被捕获在老色卡上时也能兜住）
@@ -234,9 +234,9 @@ coachClose.addEventListener('click', function () {
   flashHint('需要的时候再点「提示」');
 });
 
-btnNew.addEventListener('click', function () {
-  newGame(state.size);
-});
+/* 「新一局」不再是「立刻换盘」：棋盘大小 / 目标难度 / 挑战都在那层浮层里挑，
+ * 点浮层底下的「换一局」才真的换（见 ui/panels/newgame.js）。 */
+btnNew.addEventListener('click', openNew);
 
 /* ==========================================================
    全局
@@ -345,6 +345,6 @@ document.addEventListener('keydown', function (e) {
 
   if (key === 'n' || key === 'N') {
     e.preventDefault();
-    newGame(state.size);
+    openNew();
   }
 });

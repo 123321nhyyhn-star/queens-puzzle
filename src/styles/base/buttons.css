@@ -1,6 +1,8 @@
-/* buttons.css — 底部工具栏，以及两个通用按钮：
+/* buttons.css — 底部工具栏，以及几个跨面板的控件：
    .btn       主按钮（工具栏 / 换一局 / 分享 / 结果卡都在用）
    .btn-text  面板底部的小字按钮（结果层 / 战绩 / 信息页 / 未抽到盘）
+   .switch-row / .switch / .stepper-label
+              设置面板那一列开关，换一局面板的「禁用提示 / 禁用撤销」也在用
    共用的小件写在这里，面板文件里只写自己那个面板的布局。 */
 
 .toolbar {
@@ -60,3 +62,62 @@
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+/* ============================================================
+   开关行（设置里那一列，以及换一局面板的「挑战」）
+   ------------------------------------------------------------
+   一行 = 左边名词 + 一句小字说明 + 右边一颗开关。
+   ============================================================ */
+.stepper-label {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.stepper-label small {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-mute);
+}
+
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 0;
+  border-bottom: 1px dashed rgba(58, 51, 53, .14);
+}
+
+.switch-row:last-of-type { border-bottom: 0; }
+
+.switch {
+  position: relative;
+  flex: 0 0 auto;
+  width: 52px;
+  height: 30px;
+  padding: 0;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--bg-neutral);
+  cursor: pointer;
+  transition: background .18s ease;
+}
+
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  border: 2px solid var(--ink);
+  transition: transform .18s var(--spring);
+}
+
+.switch[aria-checked="true"] { background: var(--ok); }
+.switch[aria-checked="true"]::after { transform: translateX(22px); }

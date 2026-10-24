@@ -49,13 +49,13 @@ async function jsClick(sel) {
   if (done !== 'ok') throw new Error(done);
 }
 async function openSheet() {
-  await jsClick('#btnSettings');
-  await page.waitForFunction(() => !document.getElementById('sheetWrap').hidden, { timeout: 5000 });
+  await jsClick('#btnNew');
+  await page.waitForFunction(() => !document.getElementById('newWrap').hidden, { timeout: 5000 });
   await sleep(420);
 }
 async function closeSheetIfOpen() {
-  const open = await page.evaluate(() => !document.getElementById('sheetWrap').hidden);
-  if (open) { await jsClick('#btnCloseSheet'); await sleep(380); }
+  const open = await page.evaluate(() => !document.getElementById('newWrap').hidden);
+  if (open) { await jsClick('#btnCloseNew'); await sleep(380); }
 }
 const snap = () => page.evaluate(() => ({
   n: __QUEENS_DEBUG__.state.size,
@@ -113,7 +113,7 @@ async function rollOnce(trigger) {
         vibe: __QUEENS_DEBUG__.state.vibe && __QUEENS_DEBUG__.state.vibe.level,
         mmHidden: document.getElementById('mismatch').hidden,
         veil: document.getElementById('veil').hidden,
-        sheet: document.getElementById('sheetWrap').hidden,
+        sheet: document.getElementById('newWrap').hidden,
         setting: __QUEENS_DEBUG__.settings.difficulty
       }));
       throw new Error(err.message + '\n  prev=' + prev + '  ' + JSON.stringify(dump) +
@@ -144,18 +144,18 @@ async function boot() {
   await sleep(450);
 }
 
-/* ---------- 1. 设置面板外观 ---------- */
-console.log('\n[1] 设置面板');
+/* ---------- 1. 换一局面板外观 ---------- */
+console.log('\n[1] 换一局面板');
 await boot();
 await closeSheetIfOpen();
 await openSheet();
 const ui0 = await page.evaluate(() => {
-  const sheet = document.getElementById('sheet');
+  const sheet = document.getElementById('newSheet');
   const kids = Array.from(sheet.children);
   return {
     opts: Array.from(document.querySelectorAll('.dbtn')).map(b => b.textContent.trim()),
     on: Array.from(document.querySelectorAll('.dbtn.is-on')).map(b => b.textContent.trim()),
-    note: document.getElementById('sheetNote').textContent.trim(),
+    note: document.getElementById('newNote').textContent.trim(),
     hint: document.getElementById('diffHint').textContent.trim(),
     hasDone: !!document.getElementById('btnDone'),
     hasRestart: !!document.getElementById('btnRestart'),
@@ -212,7 +212,7 @@ const picked = await page.evaluate(() => ({
   seed: __QUEENS_DEBUG__.state.seed,
   setting: __QUEENS_DEBUG__.settings.difficulty,
   ls: JSON.parse(localStorage.getItem('queens.settings.v1') || '{}').difficulty,
-  sheetClosed: document.getElementById('sheetWrap').hidden
+  sheetClosed: document.getElementById('newWrap').hidden
 }));
 const hardUi = await sheetUi();
 ok('当前局没被换掉', picked.seed === before.seed, { seed: picked.seed, was: before.seed });
@@ -243,7 +243,7 @@ const afterShuffle = await page.evaluate(() => ({
   size: __QUEENS_DEBUG__.settings.size,
   ls: JSON.parse(localStorage.getItem('queens.settings.v1') || '{}'),
   chip: document.getElementById('diffSeg').textContent.replace(/\s+/g, ' ').trim(),
-  sheetClosed: document.getElementById('sheetWrap').hidden
+  sheetClosed: document.getElementById('newWrap').hidden
 }));
 ok('新局是 12×12', hard1.n === 12, hard1);
 ok('困难档分数够 7.0', hard1.score >= 7.0, hard1);
@@ -387,7 +387,7 @@ const keep = await page.evaluate(() => ({
   seed: __QUEENS_DEBUG__.state.seed,
   lvl: __QUEENS_DEBUG__.state.vibe.level,
   setting: __QUEENS_DEBUG__.settings.difficulty,
-  sheetClosed: document.getElementById('sheetWrap').hidden
+  sheetClosed: document.getElementById('newWrap').hidden
 }));
 const extUi = await sheetUi();
 ok('当前局没被换掉', keep.seed === seedKeep && keep.lvl !== '极难', { seed: keep.seed, was: seedKeep, lvl: keep.lvl });
@@ -555,13 +555,13 @@ ok('再抽一批：累计张数接着往上涨', tried2 && Number(tried2) > 4, s
 await jsClick('#btnMmSetup');
 await sleep(460);
 const setup = await page.evaluate(() => ({
-  sheet: !document.getElementById('sheetWrap').hidden,
+  sheet: !document.getElementById('newWrap').hidden,
   mm: document.getElementById('mismatch').hidden,
   on: Array.from(document.querySelectorAll('.dbtn.is-on')).map(b => b.textContent.trim()),
   val: parseInt(document.getElementById('sizeVal').textContent.trim(), 10),
   chips: Array.from(document.querySelectorAll('#quickRow .qbtn')).map(b => parseInt(b.dataset.size, 10))
 }));
-ok('「更换设置」打开设置面板并收起那一层', setup.sheet === true && setup.mm === true, setup);
+ok('「更换设置」打开「新的一局」面板并收起那一层', setup.sheet === true && setup.mm === true, setup);
 ok('面板停在他刚才要的档位与尺寸（不是「不限」）',
   setup.on.length === 1 && setup.on[0] === '极难' && setup.val === 14, [setup.on, setup.val]);
 ok('面板里能挑的尺寸仍是 14–16', same(setup.chips, [14, 15, 16]), setup.chips);
@@ -645,7 +645,7 @@ await page.screenshot({ path: SHOTS + 'diff-mismatch-over.png' });
 await jsClick('#btnMmSetup');
 await sleep(460);
 const hiSetup = await page.evaluate(() => ({
-  sheet: !document.getElementById('sheetWrap').hidden,
+  sheet: !document.getElementById('newWrap').hidden,
   on: Array.from(document.querySelectorAll('.dbtn.is-on')).map(b => b.textContent.trim()),
   val: parseInt(document.getElementById('sizeVal').textContent.trim(), 10),
   hint: document.getElementById('diffHint').textContent.trim()

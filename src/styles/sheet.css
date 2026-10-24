@@ -52,10 +52,29 @@
   letter-spacing: 1px;
 }
 
+/* 右上角那组图标钮：标题用 margin-left: auto 顶开也行，
+   但两颗以上就得有个组，否则 space-between 会把它们拉到中间去。 */
+.sheet-head .head-acts {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
 .sheet-note {
   margin: 0 0 4px;
   font-size: 11.5px;
   font-weight: 600;
+  color: var(--ink-faint);
+}
+
+/* 面板里的一小组标题（挑战 / 难度构成 / 排行榜的分组）。
+   换一局面板另有 .is-pending 那一档，写在 panels/newgame.css。 */
+.group-title {
+  margin: 14px 0 6px;
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: 2.6px;
   color: var(--ink-faint);
 }
 

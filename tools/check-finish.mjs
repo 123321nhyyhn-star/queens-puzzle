@@ -239,7 +239,10 @@ const info = await page.evaluate(() => {
     steps: document.getElementById('infoSteps').textContent,
     sub: document.getElementById('infoStepsSub').textContent,
     cards: document.querySelectorAll('.info-card').length,
-    scrollable: sh.scrollHeight > sh.clientHeight + 4,
+    /* 分享区只剩「说明 + 复制」：没有代码框可滚，也没有输入框 */
+    share: !!sh.querySelector('.share'),
+    copy: !!document.getElementById('btnCopyCode'),
+    fields: sh.querySelectorAll('textarea, input, [contenteditable]').length,
     cardW: Math.round(document.querySelector('.info-card.is-wide').getBoundingClientRect().width),
     gridW: Math.round(document.querySelector('.info-grid').getBoundingClientRect().width)
   };
@@ -248,7 +251,8 @@ check('信息页卡片与信息条一致', info.steps === sCap.text, info.steps)
 check('信息页解释了步数怎么读', /撤销不退/.test(info.sub), info.sub);
 check('信息页五张卡片（步数占满一行）',
   info.cards === 5 && Math.abs(info.cardW - info.gridW) <= 2, `${info.cards} 张 / ${info.cardW} of ${info.gridW}`);
-check('信息页内容不溢出', !info.scrollable);
+check('信息页带分享区（复制钮在、没有输入框）',
+  info.share && info.copy && info.fields === 0, `share=${info.share} copy=${info.copy} fields=${info.fields}`);
 await page.screenshot({ path: `${OUT}/finish-03-info.png` });
 await page.click('#btnCloseDiff');
 await sleep(280);

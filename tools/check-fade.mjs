@@ -76,9 +76,6 @@ console.log('\n--- 设置里的两个开关 ---');
 await page.click('#btnSettings');
 await page.waitForFunction(() => !document.getElementById('sheetWrap').hidden);
 await sleep(300);
-// 开关折在「显示更多选项」里，先展开再点
-await page.click('#btnMoreOpts');
-await sleep(260);
 const ui = await page.evaluate(() => {
   const m = document.getElementById('swFadeMark');
   const q = document.getElementById('swFadeQueen');

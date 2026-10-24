@@ -11,6 +11,7 @@ import { hintEl, sheetsHost, stage } from './core/dom.js';
 import { guide, hasProgress, settings, state, view } from './core/state.js';
 import { doSave, loadGame, loadSettings } from './core/storage.js';
 import * as records from './core/records.js';
+import { closeTopSheet } from './core/sheet.js';
 import { announce } from './core/utils.js';
 import { buildBoard, buildRegionBar } from './game/board.js';
 import { decodeShare, encodeShare } from './game/share-code.js';
@@ -25,7 +26,6 @@ import { closeDiff, openDiff, tick as infoTick } from './ui/panels/info.js';
 import { applyLook, closeLook, openLook } from './ui/panels/look.js';
 import { closeRecords, openRecords } from './ui/panels/records.js';
 import { showResult } from './ui/panels/result.js';
-import { closeSettings } from './ui/panels/settings.js';
 import { render, updateStats } from './ui/render.js';
 import { takeHashCode, tryLoadShare } from './ui/share.js';
 import { checkSteps, checkTimeout } from './ui/win.js';
@@ -100,8 +100,9 @@ function boot() {
   ticker = window.setInterval(function () {
     if (state.status === 'playing') {
       if (checkTimeout()) {
-        // 面板还开着就先收起来，别让失败层背后挂着一张设置
-        closeSettings();
+        // 面板还开着就先收起来，别让失败层背后挂着一张面板
+        // （设置 / 新的一局 / 本局信息都可能开着，收最上面那个就行）
+        closeTopSheet();
         return;
       }
       if (state.runningSince) paintClock();

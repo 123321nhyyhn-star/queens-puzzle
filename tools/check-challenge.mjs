@@ -1,5 +1,5 @@
 /* ============================================================================
- * 挑战（设置面板里的限时 / 步数限制 / 禁用提示 / 禁用撤销）
+ * 挑战（换一局面板里的限时 / 步数限制 / 禁用提示 / 禁用撤销）
  *
  *   python serve.py --no-open
  *   node tools/check-challenge.mjs
@@ -51,20 +51,20 @@ async function jsClick(sel) {
   if (done !== 'ok') throw new Error(done);
 }
 async function openSheet() {
-  await jsClick('#btnSettings');
-  await page.waitForFunction(() => !document.getElementById('sheetWrap').hidden, { timeout: 5000 });
+  await jsClick('#btnNew');
+  await page.waitForFunction(() => !document.getElementById('newWrap').hidden, { timeout: 5000 });
   await sleep(420);
 }
 async function closeSheetIfOpen() {
-  const open = await page.evaluate(() => !document.getElementById('sheetWrap').hidden);
-  if (open) { await jsClick('#btnCloseSheet'); await sleep(380); }
+  const open = await page.evaluate(() => !document.getElementById('newWrap').hidden);
+  if (open) { await jsClick('#btnCloseNew'); await sleep(380); }
 }
 // 点「换一局」并等新盘装好
 async function shuffle(prevSeed) {
   await jsClick('#btnShuffle');
   await page.waitForFunction(s => {
     const st = __QUEENS_DEBUG__.state;
-    return st.seed !== s && st.vibe && document.getElementById('sheetWrap').hidden;
+    return st.seed !== s && st.vibe && document.getElementById('newWrap').hidden;
   }, { timeout: 40000 }, prevSeed);
   await sleep(200);
 }
@@ -102,14 +102,14 @@ const sheetUi = () => page.evaluate(() => {
     stepOn: Array.from(document.querySelectorAll('#stepOpts .lbtn.is-on')).map(b => b.textContent.trim()),
     limitHint: document.getElementById('limitHint').textContent.trim(),
     stepHint: document.getElementById('stepHint').textContent.trim(),
-    note: document.getElementById('sheetNote').textContent.trim(),
+    note: document.getElementById('newNote').textContent.trim(),
     noHint: document.getElementById('swNoHint').getAttribute('aria-checked'),
     noUndo: document.getElementById('swNoUndo').getAttribute('aria-checked'),
     aboveShuffle: gr.bottom <= sr.top + 1,
     shufflePending: document.getElementById('btnShuffle').classList.contains('is-pending'),
     shuffleHint: document.getElementById('shuffleHint').textContent.trim(),
-    switches: document.querySelectorAll('.switch').length,
-    overflowX: document.getElementById('sheet').scrollWidth - document.getElementById('sheet').clientWidth
+    switches: document.querySelectorAll('#newSheet .switch').length,
+    overflowX: document.getElementById('newSheet').scrollWidth - document.getElementById('newSheet').clientWidth
   };
 });
 
@@ -129,7 +129,9 @@ ok('默认选中「不限」', ui.on.length === 1 && ui.on[0] === '不限', ui.o
 ok('步数限制挡位 5 个且首个是「不限」',
   ui.stepLabels.length === 5 && ui.stepLabels[0] === '不限', ui.stepLabels);
 ok('步数限制默认也是「不限」', ui.stepOn.length === 1 && ui.stepOn[0] === '不限', ui.stepOn);
-ok('开关共 10 个（多了「拖动按行列对齐」）', ui.switches === 10, ui.switches);
+// 挑战是「开一局新的」的一部分，跟棋盘大小 / 目标难度一起住在换一局面板里；
+// 设置面板那一列只剩 8 个偏好开关，那 8 个不在这里数。
+ok('换一局面板里只有挑战那两颗开关', ui.switches === 2, ui.switches);
 ok('没有未落地改动时标题是「挑战」', ui.title === '挑战' && !ui.titlePending, ui.title);
 ok('面板不横向溢出', ui.overflowX <= 0, ui.overflowX);
 await page.screenshot({ path: `${SHOTS}/d1-sheet.png` });

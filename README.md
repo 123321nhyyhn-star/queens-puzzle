@@ -4,8 +4,10 @@
 支持 4×4–16×16，每盘唯一解，带难度评估、逐步提示、撤销、分享码与续玩。
 棋盘上方是一条**局内信息条**（棋盘 / 用时 / 步数 / 皇后 / 难度），点哪儿都进同一个「本局信息」页。
 剩最后几只皇后时，提示行会换成一个「补齐」按钮，点一下挨个落子、一段快动画收尾。
-设置里还有「挑战」（限时、步数限制、禁用提示、禁用撤销）与「淡化」（填过的格子整格透成背景色，手停半秒才淡）。
-设置面板默认只摊开「换一局」和它上面那几组，开关与分享折在「显示更多选项」里。
+设置里是一列「拨了立刻生效」的开关；顶栏那颗回旋箭头是**新的一局**——
+棋盘大小、目标难度、挑战（限时 / 步数限制 / 禁用提示 / 禁用撤销）都在那一层里挑，
+点面板底下的「换一局」才落地；右上角那颗下载图标是**载入代码**，读剪贴板里朋友发来的
+那一串，直接开那一盘。分享这一局在本局信息页里（只负责复制）。
 顶栏的奖杯记战绩：每局留一张棋盘缩略图、分享码，排行榜按**限时 × 难度**分开排，
 全存在本机 localStorage 里。
 顶栏的调色盘是**外观**：色块可以换成几何 / 自然 / 天空 / 贴纸四套纹样，叉可以换成点，
@@ -47,8 +49,14 @@
   分数只看边长 / 试推次数 / 开局推进率。
 - 「试推次数」取 `steps.probe`（`explain()` 沿一条路径的记账），与 `假设试推 ×N` 同一个数；
   分数用的是 `analyze()` 另一次统计（上限 600 次），所以面板不给两者画等号。
-- 页脚的「改棋盘大小与难度」是信息页里唯一的一个动作，点到设置面板；
-  信息条本身只负责「读」，不改任何东西。
+- 读数卡片下面是**分享这一局**，只有一行：左边一句说明，右上角一颗**复制**图标钮
+  （跟顶栏那几颗同一个圆钮样式），底下一行状态字（复制成功 / 被浏览器拦下）。
+  **没有代码框**——那串码不显示、也不接受输入，点复制那一刻现算（`currentShareCode()`）。
+  想自己看一眼那串码？不需要：要传给朋友的只有「复制」这一个动作。
+  原来那颗「8×8」小标签也去掉了——尺寸在本页读数卡片上已经有一张。
+- **这一页只负责「读」**：除了右上角的 X 与那颗复制，没有任何按钮。换盘、改难度、
+  载入别人的代码都在「新的一局」那一层，所以底下原来那两颗
+  「知道了」「改棋盘大小与难度」也一并去掉了（X / Esc / 点背景都能关）。
 - 提示文案与信息条装在一个 `.stage-head` 里，两者一起贴在棋盘上方，
   在舞台上算**一块**：`ui/layout.js` 扣的是这一块的高度，开关浮层不会挪动棋盘。
 - 落地：`#btnHud`（整条）→ `ui/difficulty.js` 的 `openDiff()`；
@@ -217,7 +225,7 @@ looks/
 
 ## 淡化
 
-棋盘填到一半以后，满屏的 × 和皇后会跟还没处理的空格抢眼睛。设置面板「显示更多选项」里
+棋盘填到一半以后，满屏的 × 和皇后会跟还没处理的空格抢眼睛。设置面板里
 有两个开关，**即时生效**（跟音效 / 冲突高亮一个规矩，不用换一局），**默认都关着**：
 
 | 选项 | 默认 | 作用 |
@@ -249,7 +257,7 @@ looks/
 
 ## 难度与尺寸
 
-设置面板上半部分是两个绑在一起的旋钮：**目标难度**决定「开放哪些尺寸 + 分数下限」，
+「新的一局」面板上半部分是两个绑在一起的旋钮：**目标难度**决定「开放哪些尺寸 + 分数下限」，
 **棋盘大小**在这个范围里挑。都只写 `pending`，点「换一局」才落地。
 
 | 档位 | 开放尺寸 | 分数下限 | 实际拿得到 |
@@ -277,7 +285,7 @@ looks/
   偏低（`dir='low'`，琥珀）写「还不够困难」+ 这批最高多少 + 劝放大一格尺寸；
   偏高（`dir='high'`，靛蓝）写「超出了困难」+ 这批最低多少 + 劝收小一格尺寸。
   然后只给两条路——**再抽一局**（同一档同一尺寸再来一批，4 → 5 → 6 张）或**更换设置**
-  （打开设置面板并停在这一档上，可以换尺寸或换档）。
+  （打开「新的一局」面板并停在这一档上，可以换尺寸或换档）。
   这一层 Esc 关不掉：关掉之后既没新盘也没旧盘，只剩一块空棋盘。
   道理很简单——目标难度是玩家设的，凑合装上一盘不合档的等于把他的设置当摆设。
 - 档位区间与下限来自实测的可达性矩阵，重跑用 `node tools/scale-matrix.mjs`
@@ -285,12 +293,12 @@ looks/
 - **老战绩**是按旧刻度打的档（13×13 那时算极难），记录里没有 `sq` 字段。
   它们在列表里留着、挂一个「旧刻度」角标，但**不进排行榜**——新旧分数不可比。
 - 落地：`DIFF_BANDS` / `min` / `max`（`core/config.js`）→ `roll()` / `pickBoard`
-  （`app/puzzle.js`）→ `showMismatch()`（`ui/panels/mismatch.js`）+ `syncSheet()`
-  按档位夹尺寸、重建快捷尺寸按钮（`ui/panels/settings.js`）。
+  （`app/puzzle.js`）→ `showMismatch()`（`ui/panels/mismatch.js`）+ `syncNew()`
+  按档位夹尺寸、重建快捷尺寸按钮（`ui/panels/newgame.js`）。
 
 ## 挑战
 
-设置面板里「换一局」上面那一组，目前有四项。**跟棋盘大小、目标难度同一个规矩：
+「新的一局」面板里「换一局」上面那一组，目前有四项。**跟棋盘大小、目标难度同一个规矩：
 只写 `pending`，点「换一局」才落地**——中途改完不换局就等于没改，
 开了限时又反悔也不用担心这局被倒计时追着跑（面板标题会变成「挑战 · 待换一局生效」）。
 
@@ -392,7 +400,7 @@ looks/
 │  ├─ styles/
 │  │  ├─ all.css           唯一入口：加载顺序全在这里（index.html 只引这一个）
 │  │  ├─ base/             骨架与棋盘：令牌 / 页面 / 顶栏 / 舞台 / 棋盘 / 按钮 / 遮罩 / 动画 / 引导
-│  │  ├─ sheet.css         浮层外壳（.sheet-wrap / .sheet / .sheet-done）
+│  │  ├─ sheet.css         浮层外壳（.sheet-wrap / .sheet / .sheet-note / .group-title / .sheet-done）
 │  │  ├─ panels/           每个面板一个文件，跟 src/js/ui/panels/ 同名
 │  │  └─ responsive.css    小屏适配，必须最后
 │  └─ js/
@@ -426,9 +434,11 @@ ui/panels/index.js 是这些面板唯一的清单
 - `events.js` 与 `main.js` 在最上层，可以引用任何模块。
 - 有几处刻意保留的互相依赖，别硬拆（拆了反而更绕）：
   `ui/layout ↔ ui/guide`（重排要重画圈画层，引导翻页要重排）、
-  `ui/panels/settings ↔ ui/share`（面板里要刷新分享码，载入分享码要关面板）、
+  `ui/panels/info ↔ ui/share`（信息页里要刷新分享码，载入分享码要关面板）、
+  `ui/panels/newgame → ui/share`（右上角那颗载入图标读剪贴板，校验与装盘都在 share.js）、
   `ui/guide → app/actions`（点「照做」要落子，落子又要收起面板）、
   `ui/share → app/puzzle`（载入分享码其实就是换一盘棋）、
+  `ui/share → core/sheet`（载入成功后收掉「当前开着的那层」，因为从哪一层发起都有可能）、
   `ui/panels/result ↔ app/puzzle`（结果层的按钮要开新局，换盘时要先收掉结果层）。
   ESM 允许循环引用，**前提是只在函数体内用对方**——不要在模块顶层求值时读对方的值。
 
@@ -465,11 +475,12 @@ ui/panels/index.js 是这些面板唯一的清单
 | `ui/guide.js` | 提示引导面板 + 棋盘圈画层 |
 | `ui/hint.js` | 顶部提示行文案 + 提示行上的「补齐」按钮（露不露、差几只） |
 | `ui/difficulty.js` | 只有信息条上的难度段（骨架上的东西，面板关着也得更新） |
-| `ui/share.js` | 分享码的数据侧：`refreshShareCode` / `tryLoadShare` / `#QNS1-...` 开局。**UI 在设置面板里**，元素由面板 `bindShareUI()` 交进来 |
+| `ui/share.js` | 分享码的数据侧：`currentShareCode`（现算这一局的码）/ `copyText`（含局域网 http 的临时 textarea 兜底）/ `tryLoadShare` / `loadShareFromClipboard` / `#QNS1-...` 开局。信息页只交进来一个状态行元素（`bindShareUI`），载入那颗图标在「新的一局」面板右上角 |
 | `ui/win.js` | 胜利判定、礼花、判负（`failGame(reason)`：超时 / 步数用尽）、记战绩；结果层那张卡在 `ui/panels/result.js` |
 | `ui/panels/index.js` | **浮层清单**：`PANELS` 数组 + `mountAll()`。加面板只改这里一行 |
-| `ui/panels/settings.js` | 设置面板（尺寸/难度/挑战只写 `pending`，点「换一局」才落地）+ 分享那一段 UI |
-| `ui/panels/info.js` | 本局信息页：四张读数卡片 + 步数 + 难度构成（`DIFF_ROWS` 的文案出处） |
+| `ui/panels/settings.js` | 设置面板：一列即时生效的偏好开关（自动打 × / 拖动对齐 / 两个淡化 / 冲突 / 唯一位置 / 音效 / 震动），不折叠 |
+| `ui/panels/newgame.js` | 换一局面板（顶栏那颗回旋箭头）：棋盘大小 / 目标难度 / 挑战只写 `pending`，点面板里的「换一局」才落地。右上角那颗下载图标 = 载入代码（读剪贴板，拿不到就弹原生输入框） |
+| `ui/panels/info.js` | 本局信息页：五张读数卡片 + 分享这一局（一说明 + 一颗复制钮 + 一行状态字，没有代码框）+ 难度构成（`DIFF_ROWS` 的文案出处）。底下不挂按钮，整页没有输入框 |
 | `ui/panels/records.js` | 战绩面板：记录列表（缩略图 / 分享码）、排行榜筛选与名次、删除与清空 |
 | `ui/panels/look.js` | 外观面板：三排展柜 + `applyLook` / `pickLook`（开一局时也要用） |
 | `ui/panels/result.js` | 结果层（解开 / 时间到 / 步数用尽共用一张卡），输掉时 Esc 关不掉 |
@@ -484,7 +495,7 @@ ui/panels/index.js 是这些面板唯一的清单
 
 ```
 base/tokens → page → topbar → stage → board → board-states → regions → buttons → veil
-→ base/animations → sheet.css → panels/(settings → info → result → mismatch)
+→ base/animations → sheet.css → panels/(settings → newgame → info → result → mismatch)
 → base/guide → panels/(records → look) → responsive.css
 ```
 
@@ -493,12 +504,13 @@ base/tokens → page → topbar → stage → board → board-states → regions
 `responsive.css` 必须最后——它就是靠「后来居上」压前面那些固定尺寸的。
 
 新增一段样式：属于哪个面板就写进 `panels/<面板>.css`；跨面板的小件（`.btn` / `.btn-text` /
-`.sheet-done`）才放进 `base/buttons.css` 与 `sheet.css`。顺序默认不用管，
+`.switch-row` / `.switch` / `.stepper-label`）放进 `base/buttons.css`，浮层里共用的排版件
+（`.sheet-note` / `.group-title` / `.sheet-done`）放进 `sheet.css`。顺序默认不用管，
 只有「同一元素上后写的要覆盖先写的」时才需要在 `all.css` 里调整两行 import 的先后。
 
 ### 加一个浮层面板
 
-浮层（设置 / 本局信息 / 战绩 / 外观 / 结果层 / 「没抽到够格的盘」）都是**一个文件**：
+浮层（设置 / 新的一局 / 本局信息 / 战绩 / 外观 / 结果层 / 「没抽到够格的盘」）都是**一个文件**：
 markup、元素引用、事件、开关全在 `src/js/ui/panels/xxx.js` 里。加一个新的只要两步：
 
 1. 照 `ui/panels/look.js` 抄一个文件，导出 `mount(host)`：里面先
@@ -538,7 +550,7 @@ markup、元素引用、事件、开关全在 `src/js/ui/panels/xxx.js` 里。�
 | 改配色 / 圆角 / 阴影 | `src/styles/base/tokens.css` |
 | 改色块底色池 | `src/js/core/palette.js`（用 `node tools/gen-palette.mjs` 生成候选） |
 | 改顶栏 / 信息条 / 棋盘 / 面板外观 | 对应模块的 CSS 文件（信息条在 `styles/base/topbar.css`） |
-| 加一个设置开关 | `core/config.js` 的 `DEFAULT_SETTINGS` + `loadSettings`（老存档给个兜底），然后**全在 `ui/panels/settings.js` 一个文件里**：`HTML` 里加一行 `.switch-row`（放进 `#sheetMore`，默认折在「显示更多选项」里）、`syncSheet()` 里 `setSwitch('swXxx', settings.xxx)`、`mount()` 里那个 `sheet` 的 click 分支加一支。别的文件一个字都不用改 |
+| 加一个设置开关 | `core/config.js` 的 `DEFAULT_SETTINGS` + `loadSettings`（老存档给个兜底），然后**全在 `ui/panels/settings.js` 一个文件里**：`HTML` 的 `.settings-list` 里加一行 `.switch-row`、`SWITCHES` 表里加一项（`syncSheet()` 照它刷 `aria-checked`）、click 分支加一支。别的文件一个字都不用改 |
 | 改唯一位置提示的强度 / 节奏 | `styles/base/board-states.css` 的 `.cell.is-forced`（`forcedGlow` 的峰值亮度与 2.8s 呼吸周期；这里刻意不描边） |
 | 改拖动标 × 的对齐方式 | `events.js` 的 `pointermove`（`settings.alignDrag` 一开一关两条路）、默认值在 `core/config.js` |
 | 改淡化淡成什么样 / 等多久 | `styles/base/board-states.css` 的 `.is-dim`（底色与画的透明度）、`ui/fade.js` 的 `DIM_DELAY`（防抖） |
@@ -547,14 +559,14 @@ markup、元素引用、事件、开关全在 `src/js/ui/panels/xxx.js` 里。�
 | 新加一整套色块主题 | 照 `looks/nature.js` 抄结构：18 枚 `MOTIFS` + 一个 `tone`，要提亮加 `ink: 'tint'`、要整层压淡加 `veil`。面板会自己长出第 6 个展位 |
 | 改限时挡位 | `core/config.js` 的 `LIMIT_OPTIONS`（面板按钮是按它生成的） |
 | 改步数限制挡位 | `core/config.js` 的 `STEP_OPTIONS`（面板按钮是按它生成的） |
-| 加一项挑战 | 照「限时 / 步数限制 / 禁用提示 / 禁用撤销」四件套：`DEFAULT_SETTINGS` + `pending`（`core/state.js`）+ `ui/panels/settings.js` 的 `.challenge` 块 / `syncSheet` / `commitChallenge` + 动作入口里 `settings.xxx` 一拦（要判负就走 `ui/win.js` 的 `failGame(reason)`，别另起一条封盘路径） |
+| 加一项挑战 | 照「限时 / 步数限制 / 禁用提示 / 禁用撤销」四件套：`DEFAULT_SETTINGS` + `pending`（`core/state.js`）+ `ui/panels/newgame.js` 的 `.challenge` 块 / `syncNew` / `commitChallenge` + 动作入口里 `settings.xxx` 一拦（要判负就走 `ui/win.js` 的 `failGame(reason)`，别另起一条封盘路径） |
 | 改超时判负的时机 | `core/clock.js` 的 `limitExpired`、`ui/win.js` 的 `checkTimeout`（由 `main.js` 的 250ms 心跳调用） |
 | 改结果层文案 / 按钮 | `ui/panels/result.js` 的 `HTML` + `paint()`；Esc 关不关得掉由 `canClose` 决定 |
 | 改出题规则 | `src/js/engine/engine.js`（改动后跑 `node tools/test-engine.mjs`） |
 | 改提示措辞 / 推理等级 | `src/js/engine/hint.js`（`node tools/test-hint.mjs`；L4 那套话看 `check-probe-guide.mjs`） |
 | 改难度评分 | `src/js/engine/difficulty.js` + `game/vibe.js` |
 | 改信息条有哪几段 / 什么顺序 | `index.html` 的 `.hud`（每段一个 `.hud-seg`，样式在 `styles/base/topbar.css`），读数由 `ui/render.js` 与 `ui/difficulty.js` 写 |
-| 改信息页的卡片 / 文案 | `ui/panels/info.js` 的 `HTML`（`.info-grid`）+ `paintInfo()` / `renderDiff()`，样式在 `styles/panels/info.css` |
+| 改信息页的卡片 / 文案 / 分享区 | `ui/panels/info.js` 的 `HTML`（`.info-grid` / `.share`）+ `paintInfo()` / `renderDiff()`，样式在 `styles/panels/info.css` |
 | 改「补齐」什么时候露 / 补哪几格 | `game/rules.js` 的 `pendingQueens()`（三条判据都在这儿）；露不露的文案在 `ui/hint.js` 的 `setNudge()`，落子节奏在 `app/actions.js` 的 `fillQueens()` |
 | 改步数怎么算 / 怎么读 | 计数只有一处：`app/history.js` 的 `pushHistory()`（一次落笔一步，只增不减）；读数在 `ui/render.js`（信息条）与 `ui/panels/info.js`（信息页）。**撤销栈的 `UNDO_MAX` 跟它不是一回事**，别拿它当显示上限 |
 | 改战绩记什么 | `core/records.js` 的 `add()` / `tidy()`（加字段记得兼容老数据） |
@@ -571,7 +583,7 @@ markup、元素引用、事件、开关全在 `src/js/ui/panels/xxx.js` 里。�
 先起服务（`python serve.py --no-open`），再跑：
 
 ```bash
-npm test                 # 全量端到端回归（tools/e2e.mjs，100+ 项）
+npm test                 # 全量端到端回归（tools/e2e.mjs，130 项）
 node tools/test-engine.mjs   # 出题引擎（唯一解、连通性）
 node tools/test-hint.mjs     # 提示引擎
 node tools/check-probe-guide.mjs # 试推（L4）那套话：5–8 步 / 假设与结论之间必须讲清 / 玩家的 × 也算约束（不许圈到画过叉的格）/ 盘上有错的 × 先纠错 / 面板高度
@@ -580,9 +592,9 @@ node tools/check-records.mjs     # 战绩：记录写入 / 缩略图 / 分享码
 node tools/check-look.mjs        # 外观：五套色块 / 三排展柜 / 图案落地 / 纱 / 叉与皇后 / 存盘兜底 / 矮屏（76 项）
 node tools/check-fade.mjs        # 淡化：默认关 / 透成纸色 / 边线不动 / 0.5 秒防抖（38 项）
 node tools/check-region-wash.mjs # 摆皇后不许动底色：五套主题逐格比对底色 / 图案色 / 图案 / Δ，色卡照旧 ✓（52 项）
-node tools/check-misc.mjs        # 面板折叠 / 无滚动条 / 拖动对齐与逐格震动 / 重来这局（18 项）
+node tools/check-misc.mjs        # 设置只剩一列开关 / 换一局面板 / 分享在信息页（只有复制、没有代码框与输入框、页脚无按钮）/ 拖动对齐与逐格震动 / 重来这局（26 项）
 node tools/check-finish.mjs      # 步数（一次落笔一步 / 过 60 照实写 / 撤销不退 / 刷新还在）+ 一键补齐（露出条件 / 落子动画 / 只压一个撤销点）（45 项）
-node tools/check-diff-ui.mjs     # 信息条 + 本局信息页：读数 / 难度构成 / 问号说明（点开·悬浮）/ 各尺寸不溢出（截图在 shots/）
+node tools/check-diff-ui.mjs     # 信息条 + 本局信息页：读数 / 难度构成 / 问号说明（点开·悬浮）/ 各尺寸横向不溢出（截图在 shots/）
 ```
 
 `tools/` 里还有一批针对性检查（信息条与难度模型一致性、拖动涂抹、引导面板布局等），

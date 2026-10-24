@@ -74,13 +74,6 @@
   text-align: right;
 }
 
-.info-setup {
-  display: block;
-  /* 上边距与 .btn-text 自带的那条一致：两个类都落在这颗按钮上，
-     别指望「谁排在后面谁说了算」——.btn-text 现在住 base/buttons.css。 */
-  margin: 10px auto 0;
-}
-
 /* ---- 难度构成 ---- */
 .diff-lead {
   margin: 2px 0 10px;
@@ -235,3 +228,38 @@
   font-weight: 900;
   color: var(--ink);
 }
+
+/* ============================================================
+   分享这一局（原先折在设置面板的「显示更多选项」里）
+   ------------------------------------------------------------
+   这一块现在只有一行：左边「分享这一局」两行字，右边一颗**复制**圆钮
+   （.icon-btn，跟顶栏与面板右上角那几颗同一个样子），底下一条状态字。
+   **没有代码框**——那串码不显示也不接受输入（载入在「新的一局」右上角）。
+   以前右边那个「8×8」小标签更早就去掉了——尺寸在这页的读数卡片上有一张。
+   ============================================================ */
+.share {
+  margin-top: 12px;
+}
+
+/* 标签是两行字（标题 + 小字），圆钮比它矮，居中压住，不另外调上边距 */
+.share-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* 状态行常占一行高度（15px）：复制成功 / 被拦下时那句话冒出来，
+   不会把下面的「难度构成」顶下去。 */
+.share-status {
+  margin: 2px 0 0;
+  min-height: 15px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--ink-faint);
+  transition: color var(--t-fast);
+}
+
+.share-status.is-good { color: #17945B; }
+.share-status.is-bad { color: #D8382F; }
