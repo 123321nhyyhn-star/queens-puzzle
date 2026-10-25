@@ -147,6 +147,7 @@ export var DEFAULT_SETTINGS = {
   lifeLimit: 0,     // 本局命数（0 = 不惩罚），放错一次扣一条，扣光判负
   noHint: false,    // 禁用提示
   noUndo: false,    // 禁用撤销
+  noSnap: false,    // 禁用记录点（记下这一刻 / 还原 / 长按清空都不给）
   // 外观（即时生效，跟着存盘）：色块的图案、叉的样式、皇后样式、生命的画法
   // 默认就是各自那一类里的第一套（见 looks/index.js 的 DEFAULT_LOOK）
   surfaceStyle: DEFAULT_LOOK.surface,

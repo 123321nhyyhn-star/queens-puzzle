@@ -107,13 +107,18 @@ export var HTML = /* html */ `
       </div>
 
       <div class="switch-row">
-        <div class="stepper-label">禁用提示<small>这局的「提示」按钮不可用，只能自己推</small></div>
+        <div class="stepper-label">禁用提示<small>这局的提示按钮不可用，只能自己推</small></div>
         <button class="switch" id="swNoHint" type="button" role="switch" aria-checked="false" aria-label="禁用提示"></button>
       </div>
 
       <div class="switch-row">
         <div class="stepper-label">禁用撤销<small>落错子不能退回，也没有重做</small></div>
         <button class="switch" id="swNoUndo" type="button" role="switch" aria-checked="false" aria-label="禁用撤销"></button>
+      </div>
+
+      <div class="switch-row">
+        <div class="stepper-label">禁用记录点<small>不能记下 / 还原，推歪了只能靠撤销</small></div>
+        <button class="switch" id="swNoSnap" type="button" role="switch" aria-checked="false" aria-label="禁用记录点"></button>
       </div>
     </div>
 
@@ -226,6 +231,9 @@ function challengeBits() {
   if (!!pending.noUndo !== !!settings.noUndo) {
     bits.push(pending.noUndo ? '禁用撤销' : '撤销可用');
   }
+  if (!!pending.noSnap !== !!settings.noSnap) {
+    bits.push(pending.noSnap ? '禁用记录点' : '记录点可用');
+  }
   return bits;
 }
 
@@ -240,6 +248,7 @@ export function commitChallenge() {
   settings.lifeLimit = normalizeLives(pending.lifeLimit);
   settings.noHint = !!pending.noHint;
   settings.noUndo = !!pending.noUndo;
+  settings.noSnap = !!pending.noSnap;
   saveSettings();
 }
 
@@ -358,6 +367,7 @@ export function syncNew() {
 
   setSwitch('swNoHint', pending.noHint);
   setSwitch('swNoUndo', pending.noUndo);
+  setSwitch('swNoSnap', pending.noSnap);
 
   // 有没落地的改动就把组标题点亮，别让人以为已经生效了
   var cbits = challengeBits();
@@ -472,6 +482,7 @@ export function mount(host) {
       pending.lifeLimit = settings.lifeLimit || 0;
       pending.noHint = !!settings.noHint;
       pending.noUndo = !!settings.noUndo;
+      pending.noSnap = !!settings.noSnap;
       syncNew();
     }
   });
@@ -576,6 +587,9 @@ export function mount(host) {
     } else if (sw.id === 'swNoUndo') {
       pending.noUndo = !pending.noUndo;
       announce(pending.noUndo ? '挑战：换一局后禁用撤销' : '挑战：换一局后恢复撤销');
+    } else if (sw.id === 'swNoSnap') {
+      pending.noSnap = !pending.noSnap;
+      announce(pending.noSnap ? '挑战：换一局后禁用记录点' : '挑战：换一局后恢复记录点');
     } else {
       return;
     }

@@ -74,6 +74,29 @@
   min-width: 0;
 }
 
+/* ---- 从点击点飞向提示行的光点（ui/hint-focus.js） ----
+   触发点在屏幕下部、话却在顶部时（记录点的「?」最典型），光把字换掉不够用：
+   视线还停在手指上。这颗一次性光点负责把目光带上去了。
+
+   临时节点：fixed 挂在 body 上，动画走完就 remove()；不参与布局，棋盘一格都不挪。
+   芯用墨色而不是绿/红——光点要横穿整块彩色棋盘，只有墨色在哪一块上都看得见，
+   颜色交给外面那圈光晕表达（绿 = 好，红 = 不行）。 */
+.hint-flare {
+  position: fixed;
+  z-index: 45;                 /* 压过棋盘与命数条，但让开浮层（60） */
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--ink);
+  box-shadow: 0 0 0 4px rgba(34, 181, 115, .24), 0 0 10px 4px rgba(34, 181, 115, .16);
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.hint-flare.is-alert {
+  box-shadow: 0 0 0 4px rgba(255, 92, 92, .24), 0 0 10px 4px rgba(255, 92, 92, .16);
+}
+
 /* ---- 「只差皇后」的补齐按钮 ----
    棋盘上除了皇后位全都划掉了的时候，这一行整行让给它：正文藏起来，
    按钮居中。高度还是那 36px，所以棋盘一格都不会挪（见 ui/hint.js）。

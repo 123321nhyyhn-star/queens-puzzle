@@ -140,6 +140,16 @@ export function sfx(name, detail) {
     case 'undo':
       audio.tone('sine', 430, 300, 0.09, 0, 0.3);
       break;
+    case 'snap':
+      /* 记录点：记下这一刻。一声干脆的「合页」，比 undo 亮一档 */
+      audio.noise(0.045, 1700, 1.5, 0, 0.3);
+      audio.tone('triangle', 900, 1010, 0.07, 0, 0.2);
+      break;
+    case 'restore':
+      /* 还原：往回走一个三度，跟「记下」是反方向 */
+      audio.tone('sine', 760, 560, 0.1, 0, 0.26);
+      audio.tone('sine', 520, 420, 0.12, 0.06, 0.2);
+      break;
     case 'new':
       audio.noise(0.2, 600, 0.7, 0, 0.22);
       audio.tone('sine', 300, 520, 0.2, 0, 0.18);

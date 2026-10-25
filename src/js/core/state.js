@@ -42,6 +42,11 @@ export const state = {
   regionCounts: null,
   focus: 0,
   lastTap: null,
+  /* 记录点：手动试推走到一半时「记下这一刻」存的一整盘 marks（null = 还没记）。
+   * 只留一份；还原一次就用掉（回到「记录」那一态），长按按钮可以提前清掉。
+   * 跟撤销快照同一份口径（marks + hints + moves），还原时这几个数一起回去；
+   * 但它跟撤销栈不一样，是**跟着存档走**的——刷新页面回来还认得那一刻。 */
+  snap: null,
   vibe: null,         // 本局难度评估（由 game/vibe.js 算，见 applyBoard）
   diffApplied: 'any', // 本局真正用到的目标难度档（用来判断设置里是否有改动待生效）
   /* 挑战：本局限时（毫秒，0 = 不限）与倒计时起点。
@@ -64,7 +69,8 @@ export const pending = {
   stepLimit: 0,
   lifeLimit: 0,
   noHint: false,
-  noUndo: false
+  noUndo: false,
+  noSnap: false
 };
 
 /* 提示引导的当前进度。提前声明：relayout() 会在 boot() 里先跑，

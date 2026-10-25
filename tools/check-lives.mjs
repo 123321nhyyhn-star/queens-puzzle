@@ -173,7 +173,7 @@ ok('标错惩罚有五档：不惩罚 / 1 / 3 / 5 / 8',
   ui.labels.join() === '不惩罚,1 条,3 条,5 条,8 条', ui.labels);
 ok('默认是「不惩罚」', ui.on.length === 1 && ui.on[0] === '不惩罚', ui.on);
 ok('默认说明是「会扣一条命，扣光判负」', /扣一条命/.test(ui.hint), ui.hint);
-ok('挑战组里现在是三排挡位 + 两颗开关', ui.rows === 3 && ui.switches === 2, `${ui.rows}/${ui.switches}`);
+ok('挑战组里现在是三排挡位 + 三颗开关', ui.rows === 3 && ui.switches === 3, `${ui.rows}/${ui.switches}`);
 ok('挑战组仍在「换一局」上面', ui.aboveShuffle);
 ok('加了这一排之后面板仍然一屏装得下（不滚）', ui.inView && !ui.scrolls, `${ui.inView}/${ui.scrolls}`);
 ok('面板不横向溢出', ui.overflowX <= 0, ui.overflowX);

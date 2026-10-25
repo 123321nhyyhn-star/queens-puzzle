@@ -77,6 +77,13 @@ export var btnRecords = $('btnRecords');
 export var btnUndo = $('btnUndo');
 export var btnHint = $('btnHint');
 export var btnClear = $('btnClear');
+/* 记录点：工具栏第二颗（撤销与提示之间）。空着是「记录」（白底），
+ * 记下了是「还原」（墨底）。按钮上的字与可用状态由 ui/render.js 的 updateStats()
+ * 统一刷，手势（点 / 长按）在 ui/snap.js。 */
+export var btnSnap = $('btnSnap');
+export var snapLabel = $('snapLabel');
+/* 挂在记录点右上角的「?」：只负责解释（点一下 / 按住两种手势） */
+export var btnSnapHelp = $('snapHelp');
 
 export var veil = $('veil');
 export var veilTitle = $('veilTitle');

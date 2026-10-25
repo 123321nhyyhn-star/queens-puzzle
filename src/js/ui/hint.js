@@ -10,6 +10,7 @@ import { listOf } from '../looks/index.js';
 import { btnFinish, finishText, hintEl, hintRowEl } from '../core/dom.js';
 import { settings, state, view } from '../core/state.js';
 import { pendingQueens, queenCount } from '../game/rules.js';
+import { focusHint } from './hint-focus.js';
 
 /* 临时提示的计时器：非 null 表示提示行正被一句临时文案占着，
  * 这期间 render() 触发的 updateHint() 不应该把话抢回去。 */
@@ -92,13 +93,22 @@ export function updateHint() {
   else hintEl.textContent = '每行每列每个色块，各一只皇后';
 }
 
-export function flashHint(text, ok, ms) {
+/**
+ * 临时在提示行说一句，ms 之后自动回到常态文案。
+ *
+ * 第 4 个参数 opt 只有一项：`from` —— 触发这次提示的元素。
+ * 传了就播一段「从点击点飞一颗光点到提示行 + 文字对上焦」的引导
+ * （见 ui/hint-focus.js）。凡是**触发点在屏幕下部**、话却出现在顶部的场合
+ * 都该传：不传的话，玩家的视线还停在手指上，会以为没点着。
+ */
+export function flashHint(text, ok, ms, opt) {
   /* 临时那句话优先：它写进的是提示行的正文，而正文在「补齐」露着的时候是藏起来的。
    * 所以先把按钮收回去，等这句话过期，updateHint() 自己会把按钮放回来。 */
   setNudge(0);
   hintEl.textContent = text;
   hintEl.classList.remove('is-alert', 'is-ok');
   hintEl.classList.add(ok ? 'is-ok' : 'is-alert');
+  if (opt && opt.from) focusHint(opt.from, ok);
   if (hintTimer) window.clearTimeout(hintTimer);
   hintTimer = window.setTimeout(function () {
     hintTimer = null;

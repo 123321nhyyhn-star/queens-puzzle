@@ -218,6 +218,9 @@ export function applyBoard(n, regions, solution, seed, preVibe) {
   state.lostBy = null;
   state.focus = 0;
   state.lastTap = null;
+  /* 记录点是「这一刻的这张盘」上的锚点：换上另一张盘就没有意义了，
+   * 一律清掉（按钮随之回到「记录」）。 */
+  state.snap = null;
   state.conflicts = { pairs: [], cells: new Set(), count: 0 };
   state.forced = null;
   // 记下这盘实际用到的难度档，用来判断设置面板里选的东西「是否还没生效」

@@ -6,6 +6,7 @@
 import './events.js';   // 事件接线（纯副作用模块，必须早于 boot 执行）
 import { clearBoard } from './app/actions.js';
 import { applyBoard, newGame, retryGame } from './app/puzzle.js';
+import { clearSnap, restoreSnap, saveSnap } from './app/snap.js';
 import { limitRemaining, paintClock, pauseTimer, startTimer } from './core/clock.js';
 import { hintEl, sheetsHost, stage } from './core/dom.js';
 import { guide, hasProgress, settings, state, view } from './core/state.js';
@@ -147,6 +148,18 @@ window.__QUEENS_DEBUG__ = {
   checkLives: checkLives,
   // 命数（挑战「标错惩罚」）：面板上换挡位走 newgame.js，这里是只读探针
   lives: function () { return { left: state.lives, limit: state.lifeLimit }; },
+  // 记录点：手上那一份（null = 还没记）+ 三个动作，只给 tools/ 里的自动化测试用
+  snap: function () {
+    if (!state.snap) return null;
+    return {
+      marks: Array.prototype.slice.call(state.snap.marks),
+      moves: state.snap.moves,
+      hints: state.snap.hints
+    };
+  },
+  saveSnap: saveSnap,
+  restoreSnap: restoreSnap,
+  clearSnap: clearSnap,
   // 引导相关的探针，只给 tools/ 里的自动化测试用
   guide: function () {
     return { open: guide.open, at: guide.at, plan: guide.plan };

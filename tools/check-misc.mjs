@@ -110,7 +110,7 @@ const ng = await page.evaluate(() => {
 });
 check('顶栏「新一局」打开的是换一局面板', ng.open);
 check('尺寸 / 难度 / 挑战都在这一层',
-  ng.stepper && ng.quick >= 5 && ng.diff === 5 && ng.limit === 5 && ng.step === 5 && ng.challengeSw === 2,
+  ng.stepper && ng.quick >= 5 && ng.diff === 5 && ng.limit === 5 && ng.step === 5 && ng.challengeSw === 3,
   ng);
 check('「换一局」在挑战组的下面', ng.shuffleAfterChallenge === true);
 check('换一局面板里没有分享', ng.share === false);

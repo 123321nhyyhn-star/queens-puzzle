@@ -39,6 +39,7 @@ export function loadSettings() {
     settings.lifeLimit = normalizeLives(s.lifeLimit);
     settings.noHint = s.noHint === true;
     settings.noUndo = s.noUndo === true;
+    settings.noSnap = s.noSnap === true;
     // 外观：老存档没这几个字段、认不出来的 id（插件被删了）也退回默认，不至于把棋盘画空
     settings.surfaceStyle = styleId('surface', s.surfaceStyle);
     settings.markStyle = styleId('mark', s.markStyle);
@@ -90,6 +91,13 @@ export function doSave() {
        * 命用尽的那局存档里是 0，恢复后会被 main.js 的 checkLives() 再判一次负。 */
       lives: state.lives,
       lifeLimit: state.lifeLimit,
+      /* 记录点：关掉页面再回来还认得那一刻。只留一份，尺寸一变就当没有
+       * （读盘时按 marks 长度核对，见 loadGame）。 */
+      snap: state.snap ? {
+        marks: Array.prototype.slice.call(state.snap.marks),
+        moves: state.snap.moves | 0,
+        hints: state.snap.hints | 0
+      } : null,
       lostBy: state.lostBy || '',
       elapsed: Math.round(elapsedMs()),
       status: state.status,
@@ -150,6 +158,16 @@ export function loadGame() {
       ? (g.lives == null ? state.lifeLimit : clamp(parseInt(g.lives, 10) || 0, 0, state.lifeLimit))
       : 0;
     state.lostBy = null;   // 超时 / 步数 / 命用尽的那局恢复成 playing，心跳会再判一次负
+    /* 记录点（「记下这一刻」存的那一盘）：长度对不上就不要——换了尺寸的旧档或者
+     * 半截数据都属这一类，装上去等于给玩家一盘错位的棋。没有就是 null（回到「记录」）。 */
+    state.snap = null;
+    if (g.snap && Array.isArray(g.snap.marks) && g.snap.marks.length === n * n) {
+      state.snap = {
+        marks: Uint8Array.from(g.snap.marks),
+        moves: clamp(parseInt(g.snap.moves, 10) || 0, 0, 99999),
+        hints: clamp(parseInt(g.snap.hints, 10) || 0, 0, 999)
+      };
+    }
     state.elapsed = Math.max(0, parseInt(g.elapsed, 10) || 0);
     state.status = g.status === 'won' ? 'won' : 'playing';
     state.runningSince = 0;

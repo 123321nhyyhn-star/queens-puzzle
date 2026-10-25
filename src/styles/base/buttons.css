@@ -1,13 +1,21 @@
 /* buttons.css — 底部工具栏，以及几个跨面板的控件：
    .btn       主按钮（工具栏 / 换一局 / 分享 / 结果卡都在用）
+   .btn-snap  工具栏第二颗「记录点」：两副面孔（记录 / 还原）+ 长按清空的红环
+   .snap-help 挂在它右上角的「?」
    .btn-text  面板底部的小字按钮（结果层 / 战绩 / 信息页 / 未抽到盘）
    .switch-row / .switch / .stepper-label
-              设置面板那一列开关，换一局面板的「禁用提示 / 禁用撤销」也在用
+              设置面板那一列开关，换一局面板的三颗「禁用 X」也在用
    共用的小件写在这里，面板文件里只写自己那个面板的布局。 */
 
+/* 工具栏用网格排，不用 flex：
+ *   `.btn` 的 flex 基准是「内边距 + 描边」（内容 0，边框盒却有 24px），
+ *   而记录点外面还套着一层壳（要挂「?」角标）。flex 下这层壳的基准是 0，
+ *   会比隔壁三颗窄一整圈内边距；等宽网格不讲这套，加第五颗也不用改这里。 */
 .toolbar {
   flex: 0 0 auto;
-  display: flex;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   gap: 8px;
   width: min(100%, 420px);
 }
@@ -47,6 +55,160 @@
   opacity: .55;
   background-image: repeating-linear-gradient(-45deg,
     transparent 0 5px, rgba(58, 51, 53, .07) 5px 10px);
+}
+
+/* ============================================================
+   记录点（工具栏第二颗：撤销与提示之间）
+   ------------------------------------------------------------
+   两种状态必须一眼分开：
+     空着   —— 白底 + 墨线书签轮廓 + 「记录」
+     记下了 —— 整颗翻成墨底、字写「还原」、图标实心
+   长按清空是同一个按钮上的第三种手势：按住期间描边上一圈红环走满，
+   走完就清空（手势在 ui/snap.js，环靠 --hold 这个数推进）。
+   右上角那枚「?」只在解释手势，不参与记录 / 还原。
+   ============================================================ */
+/* 壳：只负责给「?」一个定位基准，里面那颗按钮自己撑满一格 */
+.snap-wrap {
+  position: relative;
+  display: flex;
+  min-width: 0;
+}
+
+.btn-snap {
+  --hold: 0;
+  position: relative;   /* ::after 那圈红环挂在这上面 */
+  gap: 4px;
+  padding: 0 6px;
+  font-size: 13px;
+  letter-spacing: 0;
+  /* 长按是这个按钮的正经手势：别让系统弹出「选择 / 拷贝」那套菜单 */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.snap-ico { flex: 0 0 auto; }
+.snap-lb { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 记下了：反白。深底 + 浅字跟其它三颗一眼就分得开，
+   比换个浅色底更稳（棋盘上已经够花了，底下这一排要有个「重」的压住）。 */
+.btn-snap.is-filled {
+  background: var(--ink);
+  color: var(--bg-card);
+}
+
+.btn-snap.is-filled .snap-ico path { fill: currentColor; }
+
+/* 刚记下 / 刚还原那一下：弹一弹，让人知道这一下点到了 */
+.btn-snap.is-pop { animation: snapPop .34s var(--spring); }
+
+@keyframes snapPop {
+  0% { transform: scale(1); }
+  40% { transform: scale(.9); }
+  100% { transform: scale(1); }
+}
+
+/* ---- 长按清空：红环沿描边走一圈 ---- */
+/* 先登记这个自定义属性：conic-gradient 要按数插值，得知道它是个 <number>。
+   inherits 必须留着 true —— 环画在伪元素上，它得从按钮身上继承这个数。 */
+@property --hold {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
+/* 两枚伪元素各画一圈，都正好盖在描边那一圈上（inset -2 让开 2px 描边，圆角 +2）：
+ *   ::before  底圈，淡红，告诉人「这一圈走完就清空」
+ *   ::after   进度环，conic-gradient 按 --hold 走
+ * 只画进度环的话，还没走到的那一段没有描边，按钮的轮廓会断开。 */
+.btn-snap::before,
+.btn-snap::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 16px;
+  padding: 2.5px;              /* 环的粗细 */
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .12s ease;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+
+.btn-snap::before { background: rgba(255, 92, 92, .22); }
+
+.btn-snap::after {
+  background: conic-gradient(from -90deg,
+    var(--danger) calc(var(--hold) * 100%), transparent 0);
+}
+
+/* 按住时：描边让给那两圈红环，整颗退成白底红字（就算原来是墨底的「还原」也一样）
+   —— 这只手已经不在「记 / 还原」上了，它在拆掉这个点。 */
+.btn-snap.is-holding,
+.btn-snap.is-filled.is-holding {
+  background: var(--bg-card);
+  color: var(--danger);
+  border-color: transparent;
+}
+
+.btn-snap.is-holding .snap-ico path { fill: none; }
+.btn-snap.is-holding::before,
+.btn-snap.is-holding::after { opacity: 1; }
+
+/* ---- 「?」：贴在记录点右上角，往外借一圈热区 ---- */
+.snap-help {
+  position: absolute;
+  top: -7px;
+  right: -5px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  padding: 0;
+  border: 1.5px solid var(--ink);
+  border-radius: 50%;
+  background: var(--bg-card);
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--ink-mute);
+  cursor: help;
+}
+
+.snap-help::before {
+  content: "";
+  position: absolute;
+  inset: -7px;   /* 17px 的圆圈按不准，热区放大到 31px */
+  border-radius: 50%;
+}
+
+/* 点下去荡一圈涟漪：这颗角标只有 17px，按住的反馈几乎看不见，
+ * 而它触发的提示出现 400px 开外，没有这一下会觉得「点了没反应」。 */
+.snap-help::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1.5px solid var(--ink-mute);
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.snap-help.is-ping::after { animation: helpPing .46s cubic-bezier(.2,.8,.3,1); }
+
+@keyframes helpPing {
+  from { opacity: .55; transform: scale(1); }
+  to { opacity: 0; transform: scale(2.2); }
+}
+
+.snap-help:active { transform: translateY(1px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-snap.is-pop { animation: none; }
 }
 
 /* 小字按钮：没有边框、没有底色，靠下划线表示「还能点」 */

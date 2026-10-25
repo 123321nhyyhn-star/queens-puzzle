@@ -150,8 +150,22 @@
 
     <div class="regions" id="regions" aria-hidden="true"></div>
 
+    <!-- 工具栏：撤销 / 记录点 / 提示 / 清空。
+         记录点是「记下这一刻、回头再来」的锚点（见 app/snap.js）：
+         空着时写「记录」，记下了整颗翻成墨底、写「还原」。
+         右上角那枚「?」只说三句话——长按清空这件事没法写在按钮上。 -->
     <div class="toolbar" id="toolbar">
       <button class="btn" id="btnUndo" type="button">撤销</button>
+      <div class="snap-wrap">
+        <button class="btn btn-snap" id="btnSnap" type="button" aria-pressed="false" title="记下这一刻（S）">
+          <svg class="snap-ico" width="13" height="13" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6.5 3.6h11v16.9l-5.5-3.9-5.5 3.9z" fill="none" stroke="currentColor"
+              stroke-width="2.2" stroke-linejoin="round"></path>
+          </svg>
+          <span class="snap-lb" id="snapLabel">记录</span>
+        </button>
+        <button class="snap-help" id="snapHelp" type="button" aria-label="记录点怎么用" title="记录点怎么用">?</button>
+      </div>
       <button class="btn btn-hint" id="btnHint" type="button">提示</button>
       <button class="btn" id="btnClear" type="button">清空</button>
     </div>

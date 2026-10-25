@@ -5,8 +5,8 @@
 
 import { buzz, sfx } from '../core/audio.js';
 import { paintClock } from '../core/clock.js';
-import { boardEl, btnClear, btnHint, btnUndo, hudSize, linksEl, queenCountEl, queenPill, rbEl,
-  rlBad, rlEl, stepCountEl, stepPill, stepUnitEl } from '../core/dom.js';
+import { boardEl, btnClear, btnHint, btnSnap, btnUndo, hudSize, linksEl, queenCountEl, queenPill,
+  rbEl, rlBad, rlEl, snapLabel, stepCountEl, stepPill, stepUnitEl } from '../core/dom.js';
 import { settings, state, view } from '../core/state.js';
 import { pulseClass, svgEl } from '../core/utils.js';
 import { cellSize, regionPath } from '../game/geometry.js';
@@ -340,12 +340,36 @@ export function updateStats() {
   btnHint.setAttribute('title', settings.noHint ? '挑战模式：这局不能用提示' : '提示（H）');
   btnClear.disabled = !playing;
 
+  syncSnap(playing);
+
   /* 命数（挑战「标错惩罚」）：惩罚没开时这一条整块收起来，棋盘一像素都不挪。
    * 这里只负责「画成什么样」，碎心那一下由 ui/lives.js 自己在扣命时点名播。 */
   syncLives();
 
   paintClock();
 }
+
+/* ---- 记录点那一颗 ----
+ * 两副面孔：空着 = 白底「记录」，记下了 = 墨底「还原」（外加图标填实）。
+ * 靠 state.snap 一个字段判断，别在按钮上另存一份。
+ * 挑战「禁用记录点」跟「禁用提示 / 撤销」同一个读法：灰掉 + 斜纹 + 一句为什么。 */
+function syncSnap(playing) {
+  if (!btnSnap) return;
+  var filled = !!state.snap;
+  var locked = !!settings.noSnap;
+  btnSnap.classList.toggle('is-filled', filled);
+  btnSnap.classList.toggle('is-locked', locked);
+  btnSnap.disabled = locked || !playing;
+  btnSnap.setAttribute('aria-pressed', filled ? 'true' : 'false');
+  if (snapLabel) snapLabel.textContent = filled ? '还原' : '记录';
+  btnSnap.setAttribute('aria-label', locked
+    ? '记录点（本局被挑战禁用）'
+    : filled ? '还原到记录点，按住可清空' : '记下这一刻');
+  btnSnap.setAttribute('title', locked
+    ? '挑战模式：这局不能用记录点'
+    : filled ? '回到记下的那一刻（S）· 按住清空（Shift+S）' : '记下这一刻（S）');
+}
+
 /** 布局重排后，如果红框正亮着，按新格子尺寸重画（否则横屏一转就错位）。 */
 export function refreshBad() {
   if (badVisible) drawBadRegions(state.badShown || []);

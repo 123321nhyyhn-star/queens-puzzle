@@ -26,14 +26,26 @@ function snapshot() {
   };
 }
 
-export function pushHistory() {
+function pushEntry() {
   view.undo.push(snapshot());
   if (view.undo.length > UNDO_MAX) view.undo.shift();
   view.redo.length = 0;
+}
+
+export function pushHistory() {
+  pushEntry();
   /* 步数在这里涨：一次落笔 = 一步（拖动连涂一整行也只走这一处，所以算一步）。
    * 只增不减——撤销 / 重做是「回到走过的位置」，不是又走了一步；
    * 所以这个数跟撤销栈的深度不是一回事（栈还有 UNDO_MAX 封顶、刷新后会清空）。 */
   state.steps++;
+}
+
+/* 记录点的「还原」走的也是这一条：**占一个撤销位，但不算一步**。
+ * 它没有往棋盘上落笔，跟撤销 / 重做是同一类动作（回到走过的位置），
+ * 所以走 pushEntry 而不是 pushHistory —— 开了步数限制的局不该因为
+ * 「回到记下的那一刻」被罚掉一步。 */
+export function pushRestorePoint() {
+  pushEntry();
 }
 
 export function undo() {

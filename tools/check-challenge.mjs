@@ -131,7 +131,7 @@ ok('步数限制挡位 5 个且首个是「不限」',
 ok('步数限制默认也是「不限」', ui.stepOn.length === 1 && ui.stepOn[0] === '不限', ui.stepOn);
 // 挑战是「开一局新的」的一部分，跟棋盘大小 / 目标难度一起住在换一局面板里；
 // 设置面板那一列只剩 8 个偏好开关，那 8 个不在这里数。
-ok('换一局面板里只有挑战那两颗开关', ui.switches === 2, ui.switches);
+ok('换一局面板里三颗挑战开关（禁用提示 / 撤销 / 记录点）', ui.switches === 3, ui.switches);
 ok('没有未落地改动时标题是「挑战」', ui.title === '挑战' && !ui.titlePending, ui.title);
 ok('面板不横向溢出', ui.overflowX <= 0, ui.overflowX);
 await page.screenshot({ path: `${SHOTS}/d1-sheet.png` });

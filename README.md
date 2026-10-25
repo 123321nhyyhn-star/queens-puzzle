@@ -1,11 +1,13 @@
 # 皇后 Queens
 
 打开即玩的皇后推理小游戏：每行、每列、每个色块各放一只皇后，皇后之间不能相邻。
-支持 4×4–16×16，每盘唯一解，带难度评估、逐步提示、撤销、分享码与续玩。
+支持 4×4–16×16，每盘唯一解，带难度评估、逐步提示、撤销、记录点、分享码与续玩。
 棋盘上方是一条**局内信息条**（棋盘 / 用时 / 步数 / 皇后 / 难度），点哪儿都进同一个「本局信息」页。
+棋盘底下是四颗按钮：**撤销 / 记录点 / 提示 / 清空**——记录点把这一刻的棋盘存一份，推歪了点一下就回来，
+按住不放清空（按钮右上角那颗「?」会说这三句话）。
 剩最后几只皇后时，提示行会换成一个「补齐」按钮，点一下挨个落子、一段快动画收尾。
 设置里是一列「拨了立刻生效」的开关；顶栏那颗回旋箭头是**新的一局**——
-棋盘大小、目标难度、挑战（限时 / 步数限制 / 标错惩罚 / 禁用提示 / 禁用撤销）都在那一层里挑，
+棋盘大小、目标难度、挑战（限时 / 步数限制 / 标错惩罚 / 禁用提示 / 禁用撤销 / 禁用记录点）都在那一层里挑，
 点面板底下的「换一局」才落地；右上角那颗下载图标是**载入代码**，读剪贴板里朋友发来的
 那一串，直接开那一盘。分享这一局在本局信息页里（只负责复制）。
 顶栏的奖杯记战绩：每局留一张棋盘缩略图、分享码，排行榜按**限时 × 难度**分开排，
@@ -238,6 +240,43 @@ looks/
 - 落地：判据 `game/rules.js` 的 `pendingQueens()` → 露不露 `ui/hint.js` 的 `setNudge()` →
   点击 `app/actions.js` 的 `fillQueens()`；样式在 `styles/base/stage.css`（`.finish-nudge`）。
 
+## 记录点
+
+手动假设推演最难的地方不是推，是**推着推着忘了棋盘原来长什么样**。工具栏第二颗
+（`撤销` 与 `提示` 之间）就是给这件事准备的：把这一刻的整盘标记抄一份存着，推歪了
+点一下就回来。
+
+| 手上是什么 | 按钮长什么样 | 点它做什么 |
+| --- | --- | --- |
+| 还没记 | 白底、墨线书签、「记录」 | 记下这一刻（不动棋盘、不压撤销点、不涨步数） |
+| 记下了 | **墨底反白**、书签填实、「还原」 | 回到记下的那一刻，记录点**用完即清**，按钮退回「记录」 |
+
+- **只留一份，存取交替**：记 → 取 → 记 → 取。不编号、不列清单——试推的时候心里只有
+  「刚才那一步之前」这一个位置，多一份记录点反而要选。
+- **整个还原算撤销里的一步**（`app/history.js` 的 `pushRestorePoint()`）：撤销一下退回还原之前。
+  但它**不算一步**——它没有往棋盘上落笔，跟撤销 / 重做是同一类「回到走过的位置」，
+  所以开了步数限制的局不会因为回头看被罚。步数的唯一计数点仍然只有 `pushHistory()` 一处。
+- **长按清空**：按住 620ms，描边上一圈红环走满（`::before` 是淡红底圈、`::after` 是
+  `conic-gradient` 进度环，靠 `--hold` 推进），走满那一刻震一下、提示行说「记录点已清空」，
+  按钮回到「记录」。环没走满就松手，算一次普通的点按（慢一点的点按还是点按）。
+  清空只丢记录，棋盘一个字都不动。
+- **「?」角标**贴在按钮右上角：点开一句话说明三种手势（长按这件事在按钮上写不下）。
+  它不参与记录 / 还原，挑战禁用时点它得到的是「这局不能用记录点」。
+- **说给眼睛听**：这颗角标在屏幕最底部，三句说明却写在棋盘上方的提示行里，中间隔着一整块
+  棋盘（390×844 上量出来是 655px）。只把字换上去的话，视线还停在手指上，会觉得「点了没反应」。
+  所以点它时有两个动作一起走：一颗光点从角标飞向提示行（380ms，先加速后减速的弧线，
+  落在文字正中就化掉），同时提示行从模糊放大收到清晰（400ms）。角标自己也荡一圈涟漪，
+  确认这一下按到了。光点是一次性节点（`position: fixed` 挂 body，用完 `remove()`），
+  不参与布局；开了「减少动效」整段跳过，但话照样说。
+- **跟存档一起落盘**：刷新页面回来还认得那一刻（撤销栈则根本不落盘）。长度对不上
+  （换了尺寸的旧档 / 半截数据）一律当没有；换一局 / 重试这一局会把它清掉
+  （`applyBoard()` 里 `state.snap = null`）——记录点是「这张盘上的这一刻」，换盘就没意义了。
+- **不是什么都能存**：`canPlay()` 为 false 时（浮层开着、这局已封盘、补齐动画在跑）按钮是灰的。
+  挑战里勾了「禁用记录点」也是灰的，并挂一层斜纹（跟禁用提示 / 禁用撤销同一个读法）。
+- 存的是 `marks` + `hints` + `moves`，跟撤销快照同一份口径；还原时这几个数一起回去。
+- 落地：状态 `state.snap`（`core/state.js`）→ 动作 `app/snap.js`（`saveSnap` / `restoreSnap` /
+  `clearSnap`）→ 手势 `ui/snap.js`（点 / 长按 / 「?」）→ 按钮外观 `ui/render.js` 的 `syncSnap()`。
+
 ## 淡化
 
 棋盘填到一半以后，满屏的 × 和皇后会跟还没处理的空格抢眼睛。设置面板里
@@ -313,7 +352,7 @@ looks/
 
 ## 挑战
 
-「新的一局」面板里「换一局」上面那一组，目前有五项。**跟棋盘大小、目标难度同一个规矩：
+「新的一局」面板里「换一局」上面那一组，目前有六项。**跟棋盘大小、目标难度同一个规矩：
 只写 `pending`，点「换一局」才落地**——中途改完不换局就等于没改，
 开了限时又反悔也不用担心这局被倒计时追着跑（面板标题会变成「挑战 · 待换一局生效」）。
 
@@ -324,6 +363,7 @@ looks/
 | 标错惩罚 | 不惩罚 / 1 / 3 / 5 / 8 条命（`LIFE_OPTIONS`）。**皇后放到不是解位的格子上**：那一手不落成（格子还原成空的、不进撤销栈、不涨步数）、红 X 拍一下、扣一条命、震一下；扣到 0 判负，结果层标题「命用完了」 |
 | 禁用提示 | 「提示」按钮灰掉，键盘 `H` 也被拦住；只剩皇后时的「补齐」也不露 |
 | 禁用撤销 | 「撤销」按钮灰掉，`Z` / `Ctrl+Z` 也撤不动（「清空」不受影响） |
+| 禁用记录点 | 「记录点」按钮灰掉，`S` / `Shift+S` 也不接；推歪了只能一路撤销回去 |
 
 几个刻意的取舍：
 
@@ -502,25 +542,28 @@ ui/panels/index.js 是这些面板唯一的清单
 | `game/share-code.js` | 分享码编解码（纯函数，可单测） |
 | `game/preview.js` | 战绩里的棋盘缩略图：把一盘棋画成 SVG 字符串（塞进 `<img src="data:...">`） |
 | `game/vibe.js` | 本局难度评估（转调 `engine/difficulty.js`） |
-| `ui/render.js` | 把 state 画到 DOM：格子状态、描边、连线、红框防抖；信息条上的棋盘 / 步数（`12 步` 或 `12/100`）/ 皇后与工具栏按钮的可用状态；末尾顺手调 `syncLives()`（只画命数，不播动画） |
+| `ui/render.js` | 把 state 画到 DOM：格子状态、描边、连线、红框防抖；信息条上的棋盘 / 步数（`12 步` 或 `12/100`）/ 皇后与工具栏按钮的可用状态（含记录点那两副面孔 `syncSnap()`）；末尾顺手调 `syncLives()`（只画命数，不播动画） |
 | `ui/lives.js` | 命数（挑战「标错惩罚」）的唯一实现：`build()` 画红心与血条刻度、`syncLives()` 按 `state.lives` 打类名与 `--life-ratio`、`loseLife(i)` 扣一条命（红 X 闪一下 + 碎心 + `sfx('miss')` + 震动 + 播报 + 存盘）。红心与血条两套节点同时在 DOM 里，只由 `data-life` 切显示 |
 | `ui/fade.js` | 淡化：整格透成背景色 + 0.5 秒防抖，拨开关时 `applyFadeNow()` 立刻落地 |
 | `ui/layout.js` | 棋盘尺寸计算（提示行 + 信息条算一块，浮层开关不许挪动棋盘） |
 | `ui/guide.js` | 提示引导面板 + 棋盘圈画层 |
-| `ui/hint.js` | 顶部提示行文案 + 提示行上的「补齐」按钮（露不露、差几只） |
+| `ui/hint.js` | 顶部提示行文案 + 提示行上的「补齐」按钮（露不露、差几只）；`flashHint()` 第 4 个参数 `{ from }` 用来指认「这话是被哪里点出来的」 |
+| `ui/hint-focus.js` | 命中「触发点在屏幕下部、话却在顶部」才用：光点从点击点飞向提示行 + 提示行从糊到清的对焦。临时节点用完即删，`prefers-reduced-motion` 时整段跳过 |
+| `ui/snap.js` | 记录点那颗按钮的手势：点（记下 / 还原）、按住 620ms 清空（红环靠 `--hold` 推进）、右上角「?」的一句说明。`snapTap()` 也给键盘 `S` 用 |
 | `ui/difficulty.js` | 只有信息条上的难度段（骨架上的东西，面板关着也得更新） |
 | `ui/share.js` | 分享码的数据侧：`currentShareCode`（现算这一局的码）/ `copyText`（含局域网 http 的临时 textarea 兜底）/ `tryLoadShare` / `loadShareFromClipboard` / `#QNS1-...` 开局。信息页只交进来一个状态行元素（`bindShareUI`），载入那颗图标在「新的一局」面板右上角 |
 | `ui/win.js` | 胜利判定、礼花、判负（`failGame(reason)`：超时 / 步数用尽 / 命用尽）、记战绩；`checkSteps()` 与 `checkLives()` 是给读档用的（刷新不能把已输的局救回来）。结果层那张卡在 `ui/panels/result.js` |
 | `ui/panels/index.js` | **浮层清单**：`PANELS` 数组 + `mountAll()`。加面板只改这里一行 |
 | `ui/panels/settings.js` | 设置面板：一列即时生效的偏好开关（自动打 × / 拖动对齐 / 两个淡化 / 冲突 / 唯一位置 / 音效 / 震动），不折叠 |
-| `ui/panels/newgame.js` | 换一局面板（顶栏那颗回旋箭头）：棋盘大小 / 目标难度 / 挑战只写 `pending`，点面板里的「换一局」才落地。右上角那颗下载图标 = 载入代码（读剪贴板，拿不到就弹原生输入框） |
+| `ui/panels/newgame.js` | 换一局面板（顶栏那颗回旋箭头）：棋盘大小 / 目标难度 / 挑战（限时 / 步数 / 标错惩罚 / 三颗「禁用」开关）只写 `pending`，点面板里的「换一局」才落地。右上角那颗下载图标 = 载入代码（读剪贴板，拿不到就弹原生输入框） |
 | `ui/panels/info.js` | 本局信息页：五张读数卡片 + 分享这一局（一说明 + 一颗复制钮 + 一行状态字，没有代码框）+ 难度构成（`DIFF_ROWS` 的文案出处）。底下不挂按钮，整页没有输入框 |
 | `ui/panels/records.js` | 战绩面板：记录列表（缩略图 / 分享码）、排行榜筛选与名次、删除与清空 |
 | `ui/panels/look.js` | 外观面板：四排展柜（色块 / 叉 / 皇后 / 生命）+ `applyLook` / `pickLook`（开一局时也要用） |
 | `ui/panels/result.js` | 结果层（解开 / 时间到 / 步数用尽 / 命用尽共用一张卡），输掉时 Esc 关不掉 |
 | `ui/panels/mismatch.js` | 「没抽到够格的盘」那一层：不装盘，只给「再抽一局 / 更换设置」（Esc 关不掉）。`dir='low'` 说不够、`'high'` 说超了，标题/读数/建议都跟着翻 |
 | `app/actions.js` | 玩家动作：点格语义、落子、清空、一键补齐 `fillQueens()`；标错惩罚的拦截在 `rejectQueen()`（判在 `pushHistory()` 之前，双击那条路把第一下那笔也一起作废） |
-| `app/history.js` | 撤销 / 重做（整盘快照，最多 `UNDO_MAX` 步；挑战里禁用时直接拦下）。**步数的唯一计数点**也在这（`pushHistory()` 里 `state.steps++`） |
+| `app/history.js` | 撤销 / 重做（整盘快照，最多 `UNDO_MAX` 步；挑战里禁用时直接拦下）。**步数的唯一计数点**也在这（`pushHistory()` 里 `state.steps++`）；记录点的还原走 `pushRestorePoint()`——占一个撤销位、不涨步数 |
+| `app/snap.js` | 记录点：`saveSnap()` 抄一份整盘 marks、`restoreSnap()` 还原（占一个撤销位、不算一步、用完即清）、`clearSnap()`（长按 / `Shift+S`）。按钮长什么样不在这里 |
 | `app/puzzle.js` | 出题与换盘：按档位夹尺寸 → `roll()` 里 `pickBoard()` 抽最多 4 张、取第一张落进 `[min, max)` 的，一张都没落进去就交给 `ui/panels/mismatch.js` 问玩家 → 生成遮罩 → 装上棋盘；`retryGame()` 原盘重开 |
 
 ### 样式
@@ -538,7 +581,7 @@ base/tokens → page → topbar → stage → lives → board → board-states �
 `responsive.css` 必须最后——它就是靠「后来居上」压前面那些固定尺寸的。
 
 新增一段样式：属于哪个面板就写进 `panels/<面板>.css`；跨面板的小件（`.btn` / `.btn-text` /
-`.switch-row` / `.switch` / `.stepper-label`）放进 `base/buttons.css`，浮层里共用的排版件
+`.switch-row` / `.switch` / `.stepper-label` / 工具栏与记录点那几颗）放进 `base/buttons.css`，浮层里共用的排版件
 （`.sheet-note` / `.group-title` / `.sheet-done`）放进 `sheet.css`。顺序默认不用管，
 只有「同一元素上后写的要覆盖先写的」时才需要在 `all.css` 里调整两行 import 的先后。
 
@@ -594,7 +637,7 @@ markup、元素引用、事件、开关全在 `src/js/ui/panels/xxx.js` 里。�
 | 改限时挡位 | `core/config.js` 的 `LIMIT_OPTIONS`（面板按钮是按它生成的） |
 | 改步数限制挡位 | `core/config.js` 的 `STEP_OPTIONS`（面板按钮是按它生成的） |
 | 改命数挡位 | `core/config.js` 的 `LIFE_OPTIONS`（上限 `LIFE_MAX`，面板按钮是按它生成的） |
-| 加一项挑战 | 照「限时 / 步数限制 / 标错惩罚 / 禁用提示 / 禁用撤销」五件套：`DEFAULT_SETTINGS` + `pending`（`core/state.js`）+ `ui/panels/newgame.js` 的 `.challenge` 块 / `syncNew` / `commitChallenge` + 动作入口里 `settings.xxx` 一拦（要判负就走 `ui/win.js` 的 `failGame(reason)`，别另起一条封盘路径） |
+| 加一项挑战 | 照「限时 / 步数限制 / 标错惩罚 / 禁用提示 / 禁用撤销 / 禁用记录点」六件套：`DEFAULT_SETTINGS` + `pending`（`core/state.js`）+ `ui/panels/newgame.js` 的 `.challenge` 块 / `syncNew` / `commitChallenge` + 动作入口里 `settings.xxx` 一拦（要判负就走 `ui/win.js` 的 `failGame(reason)`，别另起一条封盘路径） |
 | 改超时判负的时机 | `core/clock.js` 的 `limitExpired`、`ui/win.js` 的 `checkTimeout`（由 `main.js` 的 250ms 心跳调用） |
 | 改结果层文案 / 按钮 | `ui/panels/result.js` 的 `HTML` + `paint()`；Esc 关不关得掉由 `canClose` 决定 |
 | 改出题规则 | `src/js/engine/engine.js`（改动后跑 `node tools/test-engine.mjs`） |
@@ -608,6 +651,8 @@ markup、元素引用、事件、开关全在 `src/js/ui/panels/xxx.js` 里。�
 | 改排行榜怎么分组 / 排序 | `core/records.js` 的 `group()`；筛选项在 `ui/panels/records.js` 的 `renderBoard()` |
 | 改战绩行 / 排行榜长什么样 | `ui/panels/records.js` 的 `rowHtml()` / `lbRow()` + `styles/panels/records.css` |
 | 改棋盘缩略图 | `game/preview.js`（纯字符串，改完看 `tools/check-records.mjs`） |
+| 改记录点怎么存 / 怎么还原 | `app/snap.js`（动作）、`ui/snap.js`（点 / 长按手势）、`ui/render.js` 的 `syncSnap()`（按钮两副面孔）、`styles/base/buttons.css`（`.btn-snap`） |
+| 改「?」点下去怎么引来目光 | `ui/hint-focus.js`（光点轨迹 / 时长 / 对焦曲线）、`styles/base/stage.css` 的 `.hint-flare`（光点长相）、`styles/base/buttons.css` 的 `helpPing`（角标涟漪） |
 | 加键位 / 手势 | `src/js/events.js` |
 
 不要在两个模块里各建一份状态：跨模块要读的加进 `core/state.js`，需要可变引用就挂到 `view` 上。
@@ -630,6 +675,7 @@ node tools/check-fade.mjs        # 淡化：默认关 / 透成纸色 / 边线不
 node tools/check-region-wash.mjs # 摆皇后不许动底色：五套主题逐格比对底色 / 图案色 / 图案 / Δ，色卡照旧 ✓（52 项）
 node tools/check-misc.mjs        # 设置只剩一列开关 / 换一局面板 / 分享在信息页（只有复制、没有代码框与输入框、页脚无按钮）/ 拖动对齐与逐格震动 / 重来这局（26 项）
 node tools/check-finish.mjs      # 步数（一次落笔一步 / 过 60 照实写 / 撤销不退 / 刷新还在）+ 一键补齐（露出条件 / 落子动画 / 只压一个撤销点）（45 项）
+node tools/check-snap.mjs        # 记录点：记下 / 还原（只占一个撤销位、不算一步）/ 长按清空的红环 / 挑战禁用 / 刷新后还在 / 320 窄屏 / 点「?」的注视引导（50 项）
 node tools/check-diff-ui.mjs     # 信息条 + 本局信息页：读数 / 难度构成 / 问号说明（点开·悬浮）/ 各尺寸横向不溢出（截图在 shots/）
 ```
 
@@ -652,7 +698,8 @@ node tools/check-diff-ui.mjs     # 信息条 + 本局信息页：读数 / 难度
 
 ## 约定
 
-- 键盘：`X` 标叉、`Q`/`Enter` 放皇后、`Z` 撤销、`Shift+Z` 重做、`H` 提示、`N` 新局、`Esc` 关浮层。
+- 键盘：`X` 标叉、`Q`/`Enter` 放皇后、`Z` 撤销、`Shift+Z` 重做、`S` 记录点（有就还原、没有就记下）、
+  `Shift+S` 清空记录点、`H` 提示、`N` 新局、`Esc` 关浮层。
   挑战里禁用撤销 / 提示时，`Z` 与 `H` 只会换一句「挑战模式：这局不能…」。
 - 存档键：`queens.settings.v1` / `queens.game.v1` / `queens.records.v1`（改结构要升版本号）。
 - 外观存在 `settings.surfaceStyle` / `markStyle` / `pieceStyle` / `lifeStyle`，页面上表现为

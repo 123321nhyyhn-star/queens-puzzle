@@ -10,6 +10,7 @@
 
 import { canPlay, clearBoard, fillQueens, onCell, placeQueen, setMarks } from './app/actions.js';
 import { pushHistory, redo, undo } from './app/history.js';
+import { clearSnap } from './app/snap.js';
 import { audio, buzz, sfx } from './core/audio.js';
 import { pauseTimer, startTimer } from './core/clock.js';
 import {
@@ -24,6 +25,7 @@ import { closeGuide, guideNext, guidePrev, useHint } from './ui/guide.js';
 import { flashHint } from './ui/hint.js';
 import { openNew } from './ui/panels/newgame.js';
 import { render } from './ui/render.js';
+import { bindSnap, snapTap } from './ui/snap.js';
 
 // 松手 / 手势被打断 / 窗口失焦，都算结束（指针被捕获在老色卡上时也能兜住）
 window.addEventListener('pointerup', endPeek, true);
@@ -223,6 +225,8 @@ gridEl.addEventListener('click', function (e) {
 btnUndo.addEventListener('click', undo);
 btnHint.addEventListener('click', useHint);
 btnClear.addEventListener('click', function () { clearBoard(false); });
+/* 记录点：点一下记下 / 再点一下还原，按住清空（手势都在 ui/snap.js 里绑） */
+bindSnap();
 /* 提示行上的「补齐」：只剩皇后没标时才露出来（见 ui/hint.js），
  * 点一下把剩下的皇后挨个落上去（见 app/actions.js 的 fillQueens） */
 btnFinish.addEventListener('click', function () { fillQueens(); });
@@ -334,6 +338,14 @@ document.addEventListener('keydown', function (e) {
   if (key === 'z' || key === 'Z') {
     e.preventDefault();
     if (e.shiftKey) redo(); else undo();
+    return;
+  }
+
+  /* S 记录点（有就还原、没有就记下），Shift+S 清空——
+   * 跟 Z / Shift+Z 一套读法。长按是触屏的说法，键盘这边给它一个等价键。 */
+  if (key === 's' || key === 'S') {
+    e.preventDefault();
+    if (e.shiftKey) clearSnap(); else snapTap();
     return;
   }
 

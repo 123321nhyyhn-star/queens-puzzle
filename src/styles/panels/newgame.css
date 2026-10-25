@@ -1,7 +1,11 @@
 /* panels/newgame.css — 换一局面板：棋盘大小、常用尺寸、目标难度、挑战
-   （限时 / 步数限制 / 禁用提示 / 禁用撤销）、换一局。
+   （限时 / 步数限制 / 标错惩罚 / 三颗「禁用 X」）、换一局。
    这三组的落地时机同一条规矩：改了点「换一局」才生效。
-   开关行本身（.switch-row / .switch / .stepper-label）在 base/buttons.css。 */
+   开关行本身（.switch-row / .switch / .stepper-label）在 base/buttons.css。
+
+   **这一页的行距是按「390×844 一屏装得下」量出来的**（第六项「禁用记录点」
+   进来时整体收了 30 来像素）：动这里的 padding / margin 之前先量一遍
+   `#newSheet` 的 scrollHeight，别把「换一局」顶出屏幕。 */
 
 /* ---- 棋盘尺寸：步进器 + 常用尺寸 ---- */
 .stepper {
@@ -9,7 +13,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  padding: 10px 0;
+  padding: 8px 0;
   border-bottom: 1px dashed rgba(58, 51, 53, .14);
 }
 
@@ -52,7 +56,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  padding: 10px 0 2px;
+  padding: 8px 0 2px;
   border-bottom: 1px dashed rgba(58, 51, 53, .14);
 }
 
@@ -70,28 +74,40 @@
 }
 
 .challenge {
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   padding: 0 12px;
   border: 2px dashed rgba(58, 51, 53, .24);
   border-radius: 14px;
   background: var(--bg-body);
 }
 
-.challenge .limit-row { padding: 10px 0 4px; }
+.challenge .limit-row { padding: 8px 0 3px; }
+/* 挑战那组标题离上面近一点（比 sheet.css 里那档少 3px）：
+ * 这一页要塞进一屏，标题多出来的那点空白只能是这儿的。 */
+#newSheet .group-title { margin: 12px 0 5px; }
 /* 限时 / 步数限制 / 标错惩罚是三件事，中间用一条虚线分开，别读成一组按钮。
  * 间隔从 12 收到 9：加了第三排之后，390×844 上面板正好差这十来像素才不用滚。 */
 .challenge .limit-row + .limit-row {
   border-top: 1px dashed rgba(58, 51, 53, .14);
   padding-top: 9px;
 }
-.challenge .switch-row { padding: 9px 0; border-bottom: 0; }
-.challenge .switch-row:last-child { padding-bottom: 11px; }
+.challenge .switch-row { padding: 7px 0; border-bottom: 0; }
+.challenge .switch-row:last-child { padding-bottom: 9px; }
 .challenge .switch-row + .switch-row { border-top: 1px dashed rgba(58, 51, 53, .14); }
+
+/* 三排「禁用 X」的小字跟在标题后面**同一行**：
+   一行读下来是「禁用提示 · 这局的提示按钮不可用」，比标题上面一行、小字下面一行
+   省 13px；三排加起来正好把第六项（禁用记录点）塞回一屏（390×844 不滚）。
+   设置面板里的开关行不受影响——它们不带 .challenge 前缀。 */
+.challenge .switch-row .stepper-label small {
+  display: inline;
+  margin: 0 0 0 6px;
+}
 
 .limit-opts {
   display: flex;
   gap: 6px;
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .lbtn {
@@ -122,7 +138,7 @@
 
 /* ---- 目标难度 ---- */
 .diff-row {
-  padding: 12px 0 10px;
+  padding: 10px 0 8px;
   border-bottom: 1px dashed rgba(58, 51, 53, .14);
 }
 
@@ -185,7 +201,7 @@
 
 /* ---- 换一局（面板底下那颗：上面那三组都在这里落地） ---- */
 .shuffle-row {
-  padding: 10px 0 8px;
+  padding: 9px 0 7px;
 }
 
 .shuffle-row .btn {
@@ -204,7 +220,7 @@
 }
 
 .shuffle-hint {
-  margin: 7px 0 0;
+  margin: 6px 0 0;
   text-align: center;
   font-size: 11px;
   font-weight: 700;
