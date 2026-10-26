@@ -6,7 +6,7 @@
 import { buzz, sfx } from '../core/audio.js';
 import { REDUCE_MOTION } from '../core/config.js';
 import { startTimer } from '../core/clock.js';
-import { guide, settings, state, view } from '../core/state.js';
+import { guide, state, view } from '../core/state.js';
 import { save } from '../core/storage.js';
 import { announce } from '../core/utils.js';
 import { closeGuide } from '../ui/guide.js';
@@ -177,7 +177,7 @@ export function clearBoard(silent) {
    ========================================================== */
 export function fillQueens() {
   if (!canPlay()) return false;
-  if (settings.noHint) return false;   // 挑战里禁用提示，这条捷径也不给
+  if (state.noHint) return false;   // 挑战里禁用提示，这条捷径也不给
   var list = pendingQueens();
   if (!list || !list.length) return false;
 

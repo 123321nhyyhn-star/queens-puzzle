@@ -126,6 +126,53 @@ try {
   await settled(page);
   check('刷新续玩也翻格，并保留进度', await page.evaluate(() => window.__QUEENS_DEBUG__.state.marks[0] === 1 && window.__QUEENS_DEBUG__.state.steps === 1));
 
+  const dailyContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const dailyPage = await dailyContext.newPage();
+  dailyPage.on('pageerror', e => errors.push(e.message));
+  await dailyPage.goto(url);
+  await ready(dailyPage);
+  await settled(dailyPage);
+  const preferences = await dailyPage.evaluate(() => JSON.stringify(window.__QUEENS_DEBUG__.settings));
+  await dailyPage.evaluate(() => window.__QUEENS_DEBUG__.startDaily('easy'));
+  await dailyPage.waitForSelector('.board.is-flipping');
+  check('每日挑战开局同样逐格翻面', await dailyPage.locator('.flip-card').count() === 25);
+  await settled(dailyPage);
+  const dailyBoard = await dailyPage.evaluate(() => {
+    const s = window.__QUEENS_DEBUG__.state;
+    return { seed: s.seed, regions: [...s.regions], daily: s.daily };
+  });
+  check('翻面后保留每日挑战规则，不改写偏好', await dailyPage.evaluate(preferences => {
+    const d = window.__QUEENS_DEBUG__, s = d.state;
+    return s.daily.tier === 'easy' && s.limit === 180000 && s.lifeLimit === 3 && s.lives === 3 &&
+      s.noHint && s.noSnap && !s.noUndo && JSON.stringify(d.settings) === preferences;
+  }, preferences));
+  await solve(dailyPage);
+  await dailyPage.waitForSelector('.board-flip[data-direction="bottom-left"]');
+  check('每日通关翻图前已正确记账，礼炮仍等待图片', await dailyPage.evaluate(() => window.__QUEENS_DEBUG__.daily().done.easy) && await dailyPage.locator('.confetti').count() === 0);
+  await dailyPage.waitForSelector('.board.has-reward');
+  await dailyPage.waitForSelector('#result:not([hidden])');
+  check('每日通关显示奖励图片和成绩', await dailyPage.locator('.board-flip[role="img"]').count() === 1);
+  await dailyPage.reload();
+  await ready(dailyPage);
+  await dailyPage.waitForSelector('.board.has-reward');
+  check('刷新每日通关对局保留身份与奖励图', await dailyPage.evaluate(expected => JSON.stringify(window.__QUEENS_DEBUG__.state.daily) === JSON.stringify(expected), dailyBoard.daily));
+  await dailyPage.evaluate(() => window.__QUEENS_DEBUG__.retry());
+  await settled(dailyPage);
+  check('每日重试保留同盘、日期及固定规则', await dailyPage.evaluate(expected => {
+    const s = window.__QUEENS_DEBUG__.state;
+    return s.seed === expected.seed && JSON.stringify([...s.regions]) === JSON.stringify(expected.regions) &&
+      JSON.stringify(s.daily) === JSON.stringify(expected.daily) && s.noHint && s.noSnap && s.lives === 3;
+  }, dailyBoard));
+  await solve(dailyPage);
+  await dailyPage.waitForSelector('.board-flip[data-direction="bottom-left"]');
+  await dailyPage.evaluate(() => window.__QUEENS_DEBUG__.newGame(4));
+  await settled(dailyPage);
+  await dailyPage.waitForTimeout(1250);
+  check('每日翻图中切回自定义取消旧结算并恢复自定义规则', await dailyPage.evaluate(() => {
+    const d = window.__QUEENS_DEBUG__;
+    return !d.state.daily && d.state.noHint === d.settings.noHint && d.state.noSnap === d.settings.noSnap;
+  }) && await dailyPage.locator('.board.has-reward, #result:not([hidden])').count() === 0);
+
   const reduced = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
   const quiet = await reduced.newPage();
   quiet.on('pageerror', e => errors.push(e.message));

@@ -329,14 +329,16 @@ await waitNudge(true);
 check('重来一盘仍然能露', (await nudgeState()).hidden === false);
 
 // 挑战里禁用提示 → 这条捷径也不给
+/* 那一档的开关现在记在**这一局的状态**上（state.noHint），不再是设置里的偏好：
+ * 每日挑战会把提示锁死，而玩家自己的设置可能开着（见 core/state.js）。 */
 const noHint = await page.evaluate(() => {
-  __QUEENS_DEBUG__.settings.noHint = true;
+  __QUEENS_DEBUG__.state.noHint = true;
   __QUEENS_DEBUG__.render();
   document.getElementById('btnSettings').click();
   const b = document.getElementById('btnFinish');
   const closed = b.hidden;
   document.getElementById('btnCloseSheet').click();
-  __QUEENS_DEBUG__.settings.noHint = false;
+  __QUEENS_DEBUG__.state.noHint = false;
   __QUEENS_DEBUG__.render();
   return { closed };
 });

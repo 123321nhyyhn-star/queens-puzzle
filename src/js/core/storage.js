@@ -6,6 +6,7 @@
 import { elapsedMs } from './clock.js';
 import { DEFAULT_SETTINGS, DIFF_ORDER, normalizeLives, normalizeLimit, normalizeSteps,
   SETTINGS_VERSION, SIZE_MAX, SIZE_MIN, STORE_GAME, STORE_SETTINGS } from './config.js';
+import { parseDaily, rulesFor } from './daily.js';
 import { styleId } from '../looks/index.js';
 import { settings, state } from './state.js';
 import { clamp } from './utils.js';
@@ -101,6 +102,14 @@ export function doSave() {
       lostBy: state.lostBy || '',
       elapsed: Math.round(elapsedMs()),
       status: state.status,
+      /* 本局的三把锁（禁用提示 / 撤销 / 记录点）：每日挑战会把提示与记录点锁死，
+       * 刷新回来还得是锁着的，所以它们跟着存档走，不复读 settings。 */
+      noHint: !!state.noHint,
+      noUndo: !!state.noUndo,
+      noSnap: !!state.noSnap,
+      /* 每日挑战：day + tier。读档时按它重新生成那一包规矩（见 loadGame），
+       * 这样「今天这一盘」刷新回来还是同一盘、同一个日期。 */
+      daily: state.daily || null,
       // 限时也跟着存：关掉页面再回来，倒计时接着走，不会白捡时间
       limit: state.limit,
       limitFrom: Math.round(state.limitFrom || 0)
@@ -145,18 +154,29 @@ export function loadGame() {
     state.marks = marks;
     state.hints = clamp(parseInt(g.hints, 10) || 0, 0, 999);
     state.moves = clamp(parseInt(g.moves, 10) || 0, 0, 99999);
+    /* 每日挑战：规矩是写死的，读档时按 day + tier 重新算一包（见 core/daily.js 的
+     * rulesFor）。存档里那几项也照样存了，但以这份为准——它是唯一真源，
+     * 免得哪天有人把存档改坏了一个字段，就把「禁用提示」这条给漏了。 */
+    state.daily = parseDaily(g.daily);
+    var dr = state.daily ? rulesFor(state.daily.day, state.daily.tier) : null;
     /* 步数：老存档没这个字段，先按 0 起——那时没记过，编一个数比 0 更糟。
      * 步数限制同理：存档里有就用存档的（这一局的规则），没有就按当前设置。 */
     state.steps = clamp(parseInt(g.steps, 10) || 0, 0, 999999);
-    state.stepLimit = normalizeSteps(g.stepLimit != null ? g.stepLimit : settings.stepLimit);
+    state.stepLimit = dr ? dr.stepLimit
+      : normalizeSteps(g.stepLimit != null ? g.stepLimit : settings.stepLimit);
     /* 命数：老存档没有这两个字段，就按当前设置补满（那时还没有标错惩罚，
      * 补一个满格等于「这局没扣过血」）。正常存档里两样都有。 */
-    state.lifeLimit = normalizeLives(g.lifeLimit != null ? g.lifeLimit : settings.lifeLimit);
+    state.lifeLimit = dr ? dr.lifeLimit
+      : normalizeLives(g.lifeLimit != null ? g.lifeLimit : settings.lifeLimit);
     /* 缺 lives 字段（只可能是升级途中的存档）就按满格算：编一个 0 出来
      * 等于一读盘就判负。 */
     state.lives = state.lifeLimit
       ? (g.lives == null ? state.lifeLimit : clamp(parseInt(g.lives, 10) || 0, 0, state.lifeLimit))
       : 0;
+    /* 三把锁：每日挑战按规矩来，自定义按存档里那一局（老存档没有，就照设置）。 */
+    state.noHint = dr ? dr.noHint : (g.noHint != null ? g.noHint === true : !!settings.noHint);
+    state.noUndo = dr ? dr.noUndo : (g.noUndo != null ? g.noUndo === true : !!settings.noUndo);
+    state.noSnap = dr ? dr.noSnap : (g.noSnap != null ? g.noSnap === true : !!settings.noSnap);
     state.lostBy = null;   // 超时 / 步数 / 命用尽的那局恢复成 playing，心跳会再判一次负
     /* 记录点（「记下这一刻」存的那一盘）：长度对不上就不要——换了尺寸的旧档或者
      * 半截数据都属这一类，装上去等于给玩家一盘错位的棋。没有就是 null（回到「记录」）。 */
@@ -174,9 +194,12 @@ export function loadGame() {
     /* 限时：老存档没这两个字段，就按当前设置补上。
      * 超时的那局照样恢复成 playing，下一帧 checkTimeout 会再判一次负——
      * 刷新页面不能把已经输掉的局救回来。 */
-    state.limit = normalizeLimit(g.limit != null ? g.limit : settings.timeLimit);
+    state.limit = dr ? dr.timeLimit
+      : normalizeLimit(g.limit != null ? g.limit : settings.timeLimit);
     state.limitFrom = clamp(parseInt(g.limitFrom, 10) || 0, 0, state.elapsed);
-    settings.size = n;
+    /* 每日挑战的尺寸是写死的，别让它顶掉玩家自己挑的那个尺寸
+     * （换一局面板回自定义时要照着 settings.size 起算，见 applyMode） */
+    if (!state.daily) settings.size = n;
     return true;
   } catch (e) {
     return false;

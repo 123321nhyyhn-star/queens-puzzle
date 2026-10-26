@@ -7,10 +7,11 @@
 
 import { buzz, sfx } from '../core/audio.js';
 import { limitExpired, stopTimer } from '../core/clock.js';
-import { REDUCE_MOTION } from '../core/config.js';
+import { DIFF_BANDS, REDUCE_MOTION } from '../core/config.js';
 import { boardEl, fxEl } from '../core/dom.js';
+import { mark as markDaily } from '../core/daily.js';
 import { add as addRecord } from '../core/records.js';
-import { guide, settings, state, view } from '../core/state.js';
+import { guide, state, view } from '../core/state.js';
 import { save } from '../core/storage.js';
 import { announce, formatTime } from '../core/utils.js';
 import { queenCount, regionCounts } from '../game/rules.js';
@@ -37,7 +38,8 @@ export function checkWin() {
   stopTimer();
   updateStats();
   updateHint();
-  announce('解开了！用时 ' + formatTime(state.elapsed));
+  announce('解开了！用时 ' + formatTime(state.elapsed) +
+    (state.daily ? '，今日挑战「' + DIFF_BANDS[state.daily.tier].name + '」记上了' : ''));
 
   boardEl.classList.add('is-won');
   for (var i = 0; i < view.cells.length; i++) {
@@ -86,10 +88,17 @@ function recordFinish(won) {
     stepLimit: state.stepLimit || 0,
     lostBy: won ? '' : (state.lostBy || ''),
     won: won,
-    noHint: !!settings.noHint,
-    noUndo: !!settings.noUndo
+    noHint: !!state.noHint,
+    noUndo: !!state.noUndo,
+    daily: state.daily
   });
   if (saved) view.lastFinish = { rank: saved.rank, total: saved.total };
+
+  /* 每日挑战：解开了才记进日历（输的那局只留在战绩里）。
+   * 同一挡只留最快的一次——第二遍是刷时间，不是刷新记录。 */
+  if (won && state.daily) {
+    markDaily(state.daily.day, state.daily.tier, state.elapsed, state.steps);
+  }
 }
 
 /* ==========================================================

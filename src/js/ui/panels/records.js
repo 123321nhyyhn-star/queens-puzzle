@@ -7,12 +7,17 @@
  * 列表分页：一条记录一张缩略图，20 条一屏画完就停，剩下的点「显示更多」。
  * 上限 300 条的时候一次性全画会把面板卡住，而绝大多数时候没人往下翻那么多。
  *
- * 面板自己的临时视图（看的是哪一页、哪个筛选、哪条展开着）放在这个文件里，
- * 不进 core/state.js——只有这一个面板会读它，每次打开重置，不写盘。
+ * 第三栏「每日挑战」是一本日历：每天一格，格子里四个小点表示这一天的四挡打到
+ * 哪几挡了（打了任意一挡就算完成今日挑战，格子会整块点亮）。数据来自 core/daily.js，
+ * 跟战绩是分开两份账 ——「清空全部记录」不该把日历一起清掉。日历只是读，不改。
+ *
+ * 面板自己的临时视图（看的是哪一页、哪个筛选、哪条展开着、日历翻到哪个月）放在
+ * 这个文件里，不进 core/state.js——只有这一个面板会读它，每次打开重置，不写盘。
  * ========================================================================== */
 
 import { buzz, sfx } from '../../core/audio.js';
 import { DIFF_BANDS, LIMIT_OPTIONS, RECORD_PAGE, RECORD_TOP, limitLabel } from '../../core/config.js';
+import * as daily from '../../core/daily.js';
 import { btnRecords } from '../../core/dom.js';
 import * as recs from '../../core/records.js';
 import { createSheet } from '../../core/sheet.js';
@@ -38,6 +43,7 @@ export var HTML = /* html */ `
     <div class="rec-tabs" role="tablist" aria-label="战绩视图">
       <button class="rtab is-on" id="tabRecs" type="button" role="tab" aria-selected="true" aria-controls="paneRecs">记录<i id="recTotal"></i></button>
       <button class="rtab" id="tabBoard" type="button" role="tab" aria-selected="false" aria-controls="paneBoard">排行榜</button>
+      <button class="rtab" id="tabDaily" type="button" role="tab" aria-selected="false" aria-controls="paneDaily">每日挑战<i id="dailyTabBadge"></i></button>
     </div>
 
     <div class="rec-pane" id="paneRecs" role="tabpanel" aria-labelledby="tabRecs">
@@ -57,6 +63,25 @@ export var HTML = /* html */ `
       <p class="rec-empty" id="boardEmpty" hidden>这组还没有成绩。</p>
     </div>
 
+    <!-- 每日挑战：一本日历。每天一格，四颗小点就是四挡（容易→极难），
+         打了任意一挡那格就整块点亮 —— 「今天这盘算不算数」一眼就看得出来。 -->
+    <div class="rec-pane" id="paneDaily" role="tabpanel" aria-labelledby="tabDaily" hidden>
+      <p class="daily-status" id="dailyStatus"></p>
+      <div class="cal-head">
+        <button class="cal-nav" id="calPrev" type="button" aria-label="上个月">‹</button>
+        <b class="cal-title" id="calTitle"></b>
+        <button class="cal-nav" id="calNext" type="button" aria-label="下个月">›</button>
+      </div>
+      <div class="cal-week" aria-hidden="true">
+        <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+      </div>
+      <div class="cal-grid" id="calGrid" role="grid" aria-label="每日挑战日历"></div>
+      <div class="cal-legend" id="calLegend" aria-hidden="true"></div>
+      <p class="cal-month" id="calMonth"></p>
+      <p class="cal-detail" id="calDetail"></p>
+      <p class="rec-empty" id="dailyEmpty" hidden>还没有每日挑战的记录。完成一局就会记在当天的格子里。</p>
+    </div>
+
     <p class="rec-status" id="recStatus" aria-live="polite"></p>
     <button class="btn-text rec-clear" id="btnClearRecs" type="button" hidden>清空全部记录</button>
   </div>
@@ -66,17 +91,27 @@ var recWrap = null, recSheet = null, recBackdrop = null;
 var tabRecs = null, tabBoard = null, recTotal = null;
 var paneRecs = null, paneBoard = null, recList = null, recEmpty = null, btnMoreRecs = null;
 var limChips = null, lvChips = null, boardNote = null, boardList = null, boardEmpty = null;
+var tabDaily = null, paneDaily = null, dailyStatus = null, dailyTabBadge = null;
+var calTitle = null, calPrev = null, calNext = null, calGrid = null, calLegend = null;
+var calDetail = null, calMonth = null, dailyEmpty = null;
 var recStatus = null, btnClearRecs = null;
 
 var sheet = null;
 
-/* 面板自己的临时视图：看的是哪一页、哪个筛选、哪条展开着。
- * 每次打开重置，不写盘。 */
-var v = { tab: 'list', limit: 0, level: 'mid', openId: '', shown: RECORD_PAGE };
+/* 面板自己的临时视图：看的是哪一页、哪个筛选、哪条展开着、日历翻到哪个月、
+ * 选中了哪一天。每次打开重置，不写盘。 */
+var v = {
+  tab: 'list', limit: 0, level: 'mid', openId: '', shown: RECORD_PAGE,
+  calY: 0, calM: 0, calSel: ''
+};
+
+/* 日历里的四挡顺序（跟解锁顺序一致）：格子里的四颗小点按这个从左到右排。 */
+var CAL_TONES = daily.DAILY_TIERS;
 
 /* ==========================================================
    小工具
    ========================================================== */
+/* 时分与日历日期键都用这两位补齐，跟 core/daily.js 的 dayKey 一个口径 */
 function pad2(n) { return n < 10 ? '0' + n : String(n); }
 
 /** 「今天 21:04」/「昨天 09:12」/「10月20日 21:04」——最近的更爱说相对时间。 */
@@ -228,17 +263,25 @@ export function isRecordsOpen() { return !!sheet && sheet.isOpen(); }
    渲染
    ========================================================== */
 function syncTabs() {
-  var board = v.tab === 'board';
+  var tab = v.tab;
   var n = recs.total();
 
   recTotal.textContent = n ? String(n) : '';
-  tabRecs.classList.toggle('is-on', !board);
-  tabRecs.setAttribute('aria-selected', board ? 'false' : 'true');
-  tabBoard.classList.toggle('is-on', board);
-  tabBoard.setAttribute('aria-selected', board ? 'true' : 'false');
+  tabRecs.classList.toggle('is-on', tab === 'list');
+  tabRecs.setAttribute('aria-selected', tab === 'list' ? 'true' : 'false');
+  tabBoard.classList.toggle('is-on', tab === 'board');
+  tabBoard.setAttribute('aria-selected', tab === 'board' ? 'true' : 'false');
+  tabDaily.classList.toggle('is-on', tab === 'daily');
+  tabDaily.setAttribute('aria-selected', tab === 'daily' ? 'true' : 'false');
 
-  paneRecs.hidden = board;
-  paneBoard.hidden = !board;
+  /* 第三颗标签上的角标是今天的进度：打完了换成 ✓（跟换一局面板那颗一个口径） */
+  var today = daily.dayKey();
+  dailyTabBadge.textContent = daily.complete(today)
+    ? '✓' : daily.countDone(today) + '/' + CAL_TONES.length;
+
+  paneRecs.hidden = tab !== 'list';
+  paneBoard.hidden = tab !== 'board';
+  paneDaily.hidden = tab !== 'daily';
   btnClearRecs.hidden = n === 0;
 }
 
@@ -246,6 +289,7 @@ export function renderRecords() {
   if (!sheet || !sheet.isOpen()) return;
   syncTabs();
   if (v.tab === 'board') renderBoard();
+  else if (v.tab === 'daily') renderDaily();
   else renderList();
 }
 
@@ -253,6 +297,7 @@ export function renderRecords() {
 function resetScroll() {
   if (paneRecs) paneRecs.scrollTop = 0;
   if (paneBoard) paneBoard.scrollTop = 0;
+  if (paneDaily) paneDaily.scrollTop = 0;
 }
 
 function renderList() {
@@ -280,6 +325,7 @@ function rowHtml(rec) {
           '<b class="rec-time">' + formatTime(rec.ms) + '</b>' +
           '<span class="rec-size">' + rec.n + '×' + rec.n + '</span>' +
           lvChip(rec) +
+          (rec.dy ? '<span class="rec-daily" title="' + daily.dayLabel(rec.dy) + '的每日挑战">每日</span>' : '') +
           (rec.won ? '' : '<span class="rec-lost">未完成</span>') +
         '</span>' +
         metaLine(rec, 'rec-l2', false) +
@@ -364,16 +410,145 @@ function lbRow(rec, i) {
 }
 
 /* ==========================================================
+   每日挑战：一本日历
+   ----------------------------------------------------------
+   一天一格，格子里四颗小点就是四挡（容易 → 极难）：打了哪几挡就亮几颗。
+   打了任意一挡的那天整格点亮 + 一个 ✓ ——「今天这盘算不算数」一眼看得出来。
+   数据只读 core/daily.js，这一页不改任何东西。
+   ========================================================== */
+function monthKey(y, m) {
+  return y + '-' + pad2(m + 1);
+}
+
+/* 一天的文字读数：「10月26日 · 容易 02:31 · 中等 04:12 · 完成今日挑战」 */
+function dayDetail(key) {
+  var rec = daily.days()[key] || null;
+  if (!rec) return daily.dayLabel(key) + ' · 这天的每日挑战没打过';
+  var bits = [];
+  for (var i = 0; i < CAL_TONES.length; i++) {
+    var t = CAL_TONES[i];
+    if (rec[t]) bits.push(DIFF_BANDS[t].name + ' ' + formatTime(rec[t].ms));
+  }
+  /* 有记录就等于当天至少打过一挡，而任意一挡即完成 —— 不用再分情况说「还差某某」 */
+  return daily.dayLabel(key) + ' · ' + bits.join(' · ') + ' · 完成今日挑战';
+}
+
+export function renderDaily() {
+  var today = daily.dayKey();
+  var n = daily.countDone(today);
+
+  dailyStatus.textContent = '今天 · ' + daily.dayLabel(today) + ' · ' +
+    (n ? '已完成 ' + n + '/' + CAL_TONES.length + '（今日挑战已完成）'
+       : '还没开始 · 打任意一挡就算完成');
+
+  /* 月份标题：翻到哪个月说哪个月，「回到本月」在标题上点一下 */
+  var now = new Date();
+  calTitle.textContent = v.calY + ' 年 ' + (v.calM + 1) + ' 月';
+  calTitle.classList.toggle('is-now', v.calY === now.getFullYear() && v.calM === now.getMonth());
+  calNext.disabled = v.calY === now.getFullYear() && v.calM === now.getMonth();
+
+  /* 一号落在周几：getDay() 是 0=周日，这里把周一挪到第一列 */
+  var lead = (new Date(v.calY, v.calM, 1).getDay() + 6) % 7;
+  var total = new Date(v.calY, v.calM + 1, 0).getDate();
+  var all = daily.days();
+
+  var html = '';
+  for (var b = 0; b < lead; b++) html += '<span class="cal-cell is-blank"></span>';
+  for (var d = 1; d <= total; d++) {
+    var key = monthKey(v.calY, v.calM) + '-' + pad2(d);
+    var rec = all[key] || null;
+    var done = 0, dots = '';
+    for (var i = 0; i < CAL_TONES.length; i++) {
+      var tone = CAL_TONES[i];
+      var on = !!(rec && rec[tone]);
+      if (on) done++;
+      dots += '<i data-tone="' + tone + '"' + (on ? ' class="is-on"' : '') + '></i>';
+    }
+    var cls = 'cal-cell';
+    if (key === today) cls += ' is-today';
+    if (key === v.calSel) cls += ' is-sel';
+    /* 打过任意一挡就算完成，所以「有记录」与「点亮整格」是同一件事，
+     * 不再有「只打了一部分」的中间态（以前那颗 is-part 样式已用不上了）。 */
+    if (daily.complete(key)) cls += ' is-done';
+    if (key > today) cls += ' is-future';
+    html += '<button class="' + cls + '" type="button" role="gridcell" data-day="' + key +
+      '" aria-label="' + daily.dayLabel(key) + '，完成 ' + done + ' 挡' +
+      (daily.complete(key) ? '，完成今日挑战' : '') + '">' +
+      '<span class="cal-d">' + d + '</span>' +
+      '<span class="cal-dots">' + dots + '</span>' +
+      (daily.complete(key) ? '<span class="cal-check" aria-hidden="true">✓</span>' : '') +
+    '</button>';
+  }
+  calGrid.innerHTML = html;
+
+  var legend = '';
+  for (var k = 0; k < CAL_TONES.length; k++) {
+    legend += '<span class="cal-key"><i data-tone="' + CAL_TONES[k] + '"></i>' +
+      DIFF_BANDS[CAL_TONES[k]].name + '</span>';
+  }
+  calLegend.innerHTML = legend;
+
+  /* 本月小结：翻回上个月时，「那阵子打了多少」比某一天更有意思。
+   * 天数按「完成今日挑战」的天数算（打过任意一挡就算一天），局数按记下的挡位算。 */
+  var mDone = 0, mTiers = 0, prefix = monthKey(v.calY, v.calM);
+  for (var key2 in all) {
+    if (key2.indexOf(prefix) !== 0) continue;
+    if (daily.complete(key2)) mDone++;
+    var rec2 = all[key2];
+    for (var t2 = 0; t2 < CAL_TONES.length; t2++) if (rec2[CAL_TONES[t2]]) mTiers++;
+  }
+  calMonth.textContent = (v.calM + 1) + ' 月' +
+    (mDone ? '完成 ' + mDone + ' 天，记下 ' + mTiers + ' 挡' : '还没有记录');
+
+  calDetail.textContent = dayDetail(v.calSel || today);
+  dailyEmpty.hidden = Object.keys(all).length > 0;
+}
+
+/* 点月份标题回到本月（顺带选中今天）：翻回几个月之前，不用一格一格点回来 */
+export function calToday() {
+  var now = new Date();
+  v.calY = now.getFullYear();
+  v.calM = now.getMonth();
+  v.calSel = daily.dayKey(now);
+  renderDaily();
+  sfx('x');
+  buzz(3);
+}
+
+/* 翻月 / 选日期都只是改面板自己的临时视图，然后重画这一页 */
+export function calShift(delta) {
+  var y = v.calY, m = v.calM + delta;
+  if (m < 0) { y--; m = 11; } else if (m > 11) { y++; m = 0; }
+  var now = new Date();
+  if (y > now.getFullYear() || (y === now.getFullYear() && m > now.getMonth())) return;  // 未来的月份不给翻
+  v.calY = y;
+  v.calM = m;
+  renderDaily();
+  sfx('x');
+  buzz(3);
+}
+
+export function pickDay(e) {
+  var cell = e.target && e.target.closest ? e.target.closest('[data-day]') : null;
+  if (!cell) return;
+  var key = cell.dataset.day;
+  if (!key || key === v.calSel) return;
+  v.calSel = key;
+  renderDaily();
+  announce(dayDetail(key));
+}
+
+/* ==========================================================
    交互：点了然后呢
    ========================================================== */
 export function switchTab(tab) {
-  if (tab !== 'list' && tab !== 'board') return;
+  if (tab !== 'list' && tab !== 'board' && tab !== 'daily') return;
   if (v.tab === tab) return;
   v.tab = tab;
   disarm(btnClearRecs);
   renderRecords();
   resetScroll();
-  announce(tab === 'board' ? '排行榜' : '战绩记录');
+  announce(tab === 'board' ? '排行榜' : tab === 'daily' ? '每日挑战日历' : '战绩记录');
 }
 
 export function pickChip(e) {
@@ -491,7 +666,7 @@ export function requestClearAll() {
  * 方向键 / PageUp / PageDown 得手动转给当前这一页（浏览器只认焦点所在的那条链）。 */
 function recKey(e) {
   if (document.activeElement !== recSheet) return;   // 焦点在按钮上：那是按钮的键
-  var el = v.tab === 'board' ? paneBoard : paneRecs;
+  var el = v.tab === 'board' ? paneBoard : v.tab === 'daily' ? paneDaily : paneRecs;
   if (!el) return;
   var page = el.clientHeight * 0.9, step = 0;
   if (e.key === 'PageDown') step = page;
@@ -525,6 +700,18 @@ export function mount(host) {
   boardNote = document.getElementById('boardNote');
   boardList = document.getElementById('boardList');
   boardEmpty = document.getElementById('boardEmpty');
+  tabDaily = document.getElementById('tabDaily');
+  paneDaily = document.getElementById('paneDaily');
+  dailyStatus = document.getElementById('dailyStatus');
+  dailyTabBadge = document.getElementById('dailyTabBadge');
+  calTitle = document.getElementById('calTitle');
+  calPrev = document.getElementById('calPrev');
+  calNext = document.getElementById('calNext');
+  calGrid = document.getElementById('calGrid');
+  calLegend = document.getElementById('calLegend');
+  calDetail = document.getElementById('calDetail');
+  calMonth = document.getElementById('calMonth');
+  dailyEmpty = document.getElementById('dailyEmpty');
   recStatus = document.getElementById('recStatus');
   btnClearRecs = document.getElementById('btnClearRecs');
 
@@ -543,6 +730,11 @@ export function mount(host) {
       v.level = (state.vibe && state.vibe.tone) || recs.toneOfSize(state.size);
       v.openId = '';
       v.shown = RECORD_PAGE;
+      /* 日历默认停在今天这一格、这个月 */
+      var today = new Date();
+      v.calY = today.getFullYear();
+      v.calM = today.getMonth();
+      v.calSel = daily.dayKey(today);
       setStatus('');
     },
     afterOpen: function () { resetScroll(); renderRecords(); },
@@ -556,6 +748,11 @@ export function mount(host) {
 
   tabRecs.addEventListener('click', function () { switchTab('list'); });
   tabBoard.addEventListener('click', function () { switchTab('board'); });
+  tabDaily.addEventListener('click', function () { switchTab('daily'); });
+  calPrev.addEventListener('click', function () { calShift(-1); });
+  calNext.addEventListener('click', function () { calShift(1); });
+  calTitle.addEventListener('click', calToday);
+  calGrid.addEventListener('click', pickDay);
   limChips.addEventListener('click', pickChip);
   lvChips.addEventListener('click', pickChip);
   recList.addEventListener('click', recAction);

@@ -6,12 +6,13 @@
 import './events.js';   // 事件接线（纯副作用模块，必须早于 boot 执行）
 import { clearBoard } from './app/actions.js';
 import { redo, undo } from './app/history.js';
-import { applyBoard, lastRoll, newGame, retryGame } from './app/puzzle.js';
+import { applyBoard, lastRoll, newDaily, newGame, retryGame } from './app/puzzle.js';
 import { clearSnap, restoreSnap, saveSnap } from './app/snap.js';
 import { limitRemaining, paintClock, pauseTimer, startTimer } from './core/clock.js';
 import { hintEl, sheetsHost, stage } from './core/dom.js';
 import { guide, hasProgress, settings, state, view } from './core/state.js';
 import { doSave, loadGame, loadSettings } from './core/storage.js';
+import * as daily from './core/daily.js';
 import * as records from './core/records.js';
 import { closeTopSheet } from './core/sheet.js';
 import { announce } from './core/utils.js';
@@ -194,6 +195,23 @@ window.__QUEENS_DEBUG__ = {
   recordClear: records.clear,
   openRecords: openRecords,
   closeRecords: closeRecords,
+  // 每日挑战：今天的日期键、四挡规矩、哪几挡打完了、哪几挡锁着。
+  // 只给 tools/ 里的自动化测试用（正常游玩都走换一局面板与战绩页）
+  daily: function () {
+    var day = daily.dayKey();
+    var out = { day: day, done: {}, unlocked: {}, complete: daily.complete(day) };
+    for (var i = 0; i < daily.DAILY_TIERS.length; i++) {
+      var t = daily.DAILY_TIERS[i];
+      out.done[t] = daily.isDone(day, t);
+      out.unlocked[t] = daily.unlocked(day, t);
+      out[t] = daily.ruleOf(t);
+    }
+    return out;
+  },
+  dailyAll: daily.days,
+  dailyMark: daily.mark,
+  dailyClear: daily.clear,
+  startDaily: newDaily,
   // 外观：面板开关 + 当前样式，只给 tools/ 里的自动化测试用
   look: function () {
     return {

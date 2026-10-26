@@ -78,6 +78,8 @@ export function toneOfSize(n) {
  *   h   提示次数  mv 落子次数（放了几只皇后，不是步数）
  *   won 是否解开  lr 输的原因（time / steps / lives，解开时为空）
  *   nh 禁用提示  nu 禁用撤销
+ *   dy 每日挑战的日期（'2026-10-26'，不是每日挑战就没有这个字段）
+ *   dt 每日挑战的档位（easy/mid/hard/extreme，跟 dy 一起出现）
  *
  *   st 与 mv 都留着：老记录没有 st（那时还没记真步数），列表里退回用 mv；
  *   mv 现在仍然进战绩，答的是「落了几只皇后」。
@@ -112,8 +114,17 @@ function tidy(raw) {
     won: raw.won === true || raw.won === 1,
     lr: raw.lr === 'time' || raw.lr === 'steps' || raw.lr === 'lives' ? raw.lr : '',
     nh: raw.nh === true,
-    nu: raw.nu === true
+    nu: raw.nu === true,
+    /* 每日挑战：日期 + 档位。日期形状不对就当不是每日挑战——战绩列表只靠它
+     * 挂「每日」角标，日历另有自己那份账（core/daily.js），坏一个字段不至于连累别的。 */
+    dy: dayOk(raw.dy) ? raw.dy : '',
+    dt: dayOk(raw.dy) && RECORD_TONES.indexOf(raw.dt) >= 0 ? raw.dt : ''
   };
+}
+
+/* 日期键只有一种形状：YYYY-MM-DD（本地日期，不是 UTC）。 */
+function dayOk(v) {
+  return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
 }
 
 /* ==========================================================
@@ -165,7 +176,9 @@ export function add(f) {
     won: !!f.won,
     lr: f.lostBy || '',
     nh: !!f.noHint,
-    nu: !!f.noUndo
+    nu: !!f.noUndo,
+    dy: f.daily && f.daily.day,
+    dt: f.daily && f.daily.tier
   });
   if (!rec) return null;
 

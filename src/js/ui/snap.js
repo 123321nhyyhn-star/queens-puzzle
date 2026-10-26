@@ -29,7 +29,7 @@ var HOLD_MS = 620;
  * 挑战禁用时不接（按钮本来就是灰的，键盘也在这里拦一道）。 */
 export function snapTap() {
   if (!canPlay()) return false;
-  if (settings.noSnap) {
+  if (state.noSnap) {
     flashHint('挑战模式：这局不能记下或还原局面');
     buzz(6);
     return false;
@@ -77,7 +77,7 @@ export function bindSnap() {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     /* 只有「手上有记录点」的时候才进入长按：空着的时候按住什么也不发生，
      * 环也不出现——那会让人以为按住能记下什么。 */
-    if (btnSnap.disabled || settings.noSnap || !state.snap) return;
+    if (btnSnap.disabled || state.noSnap || !state.snap) return;
     swallowClick = false;
     pointerId = e.pointerId;
     t0 = performance.now();
@@ -117,7 +117,7 @@ export function bindSnap() {
     btnSnapHelp.addEventListener('click', function () {
       var opt = { from: btnSnapHelp };
       pulseClass(btnSnapHelp, 'is-ping', 480);
-      if (settings.noSnap) {
+      if (state.noSnap) {
         flashHint('挑战模式：这局不能记下或还原局面', false, 2600, opt);
         return;
       }

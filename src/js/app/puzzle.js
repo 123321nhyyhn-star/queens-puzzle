@@ -5,10 +5,12 @@
 
 import { sfx } from '../core/audio.js';
 import { DIFF_BANDS, limitLabel, SIZE_MAX, SIZE_MIN } from '../core/config.js';
+import { dayKey, ruleOf, rulesFor } from '../core/daily.js';
 import { boardEl, veil, veilTitle } from '../core/dom.js';
 import { guide, settings, state, view } from '../core/state.js';
 import { save, saveSettings } from '../core/storage.js';
 import { announce, clamp } from '../core/utils.js';
+import { buildDaily } from './daily.js';
 import { buildBoard, buildRegionBar } from '../game/board.js';
 import { computeVibe } from '../game/vibe.js';
 import { updateDiffChip } from '../ui/difficulty.js';
@@ -256,13 +258,19 @@ function roll(n, band, tried) {
   }
 }
 
-/* 把一副已经确定的棋盘装上（新生成 / 载入分享码 / 恢复存档 / 重试共用） */
-export function applyBoard(n, regions, solution, seed, preVibe) {
+/* 把一副已经确定的棋盘装上（新生成 / 载入分享码 / 恢复存档 / 重试 / 每日挑战共用）。
+ *
+ * rules 是「这一局的规矩」：限时 / 步数 / 命数 / 三把禁用的锁 / 是不是每日挑战。
+ * 不传就照 settings 抄（自定义开新局的常规路径）。传了就不碰 settings ——
+ * 每日挑战的规矩是写死的，不该顺手改写玩家自己的偏好。
+ * 之所以要把 noHint / noUndo / noSnap 也收进 state：那三样以前直接读 settings，
+ * 每日挑战一开就会把玩家的设置顶掉。 */
+export function applyBoard(n, regions, solution, seed, preVibe, rules) {
   const previous = captureBoard();
   cancelBoardFlip();
   if (isOpen('result')) closeSheet('result', { force: true });
   dismissMismatch();   // 真装上了，那张「不够格」的卡就不该还挂着
-  /* 手上这一盘由别人（分享码 / 存档 / 重试）拍板了：还在抽的那一轮立刻作废，
+  /* 手上这一盘由别人（分享码 / 存档 / 重试 / 每日挑战）拍板了：还在抽的那一轮立刻作废，
    * 否则几秒后它醒来会把刚装上的盘又顶掉。 */
   rollToken++;
   view.rolling = false;
@@ -270,6 +278,8 @@ export function applyBoard(n, regions, solution, seed, preVibe) {
   paintGl(null);
   resetBad();          // 上局的红框 / 待提醒计时一起作废
   boardEl.classList.remove('is-won', 'is-lost');
+
+  var r = rules || null;
 
   state.size = n;
   state.seed = seed || 0;
@@ -295,12 +305,17 @@ export function applyBoard(n, regions, solution, seed, preVibe) {
   state.diffApplied = settings.difficulty;
   /* 挑战：限时从这一局的第一笔操作起算（新局 / 重试都把起算点归零）；
    * 步数限制看的是这一局走了几步，也一并从设置里取；
-   * 命数同理——重试这一局就是把命补满，不是接着上回剩下的往下扣。 */
-  state.limit = settings.timeLimit || 0;
+   * 命数同理——重试这一局就是把命补满，不是接着上回剩下的往下扣。
+   * 有 rules 就按 rules（每日挑战），没有才照设置抄。 */
+  state.limit = r ? (r.timeLimit || 0) : (settings.timeLimit || 0);
   state.limitFrom = 0;
-  state.stepLimit = settings.stepLimit || 0;
-  state.lifeLimit = settings.lifeLimit || 0;
+  state.stepLimit = r ? (r.stepLimit || 0) : (settings.stepLimit || 0);
+  state.lifeLimit = r ? (r.lifeLimit || 0) : (settings.lifeLimit || 0);
   state.lives = state.lifeLimit;
+  state.noHint = r ? !!r.noHint : !!settings.noHint;
+  state.noUndo = r ? !!r.noUndo : !!settings.noUndo;
+  state.noSnap = r ? !!r.noSnap : !!settings.noSnap;
+  state.daily = r && r.daily ? r.daily : null;
   view.lastConflictCount = 0;
   view.undo = [];
   view.redo = [];
@@ -312,8 +327,12 @@ export function applyBoard(n, regions, solution, seed, preVibe) {
   view.filling = false;
   view.lastFinish = null;   // 上一局的成绩别飘到这一局的结果卡上
 
-  settings.size = n;
-  saveSettings();
+  /* 每日挑战不改写玩家自己的偏好（尺寸 / 难度 / 挑战那几项都是写死的），
+   * 所以 settings.size 只在自定义开局时跟着走。 */
+  if (!r) {
+    settings.size = n;
+    saveSettings();
+  }
 
   buildBoard();
   buildRegionBar();
@@ -327,11 +346,76 @@ export function applyBoard(n, regions, solution, seed, preVibe) {
 }
 
 /* 重试这一局：同一盘棋原样重开（不重新出题），用时、标记、撤销栈一起归零。
- * 限时的那局重试后重新计时——挑战里输了不该被按住不动。 */
+ * 限时的那局重试后重新计时——挑战里输了不该被按住不动。
+ * 每日挑战重试还是那一盘，而且仍然算在同一个日期 / 档位上（否则解开了也不记账）。 */
 export function retryGame() {
   if (!state.regions) { newGame(state.size); return; }
-  applyBoard(state.size, state.regions, state.solution, state.seed, state.vibe);
+  var rules = state.daily ? {
+    timeLimit: state.limit,
+    stepLimit: state.stepLimit,
+    lifeLimit: state.lifeLimit,
+    noHint: state.noHint,
+    noUndo: state.noUndo,
+    noSnap: state.noSnap,
+    daily: state.daily
+  } : null;
+  applyBoard(state.size, state.regions, state.solution, state.seed, state.vibe, rules);
   var msg = state.limit ? '重新开始，限时 ' + limitLabel(state.limit) : '重新开始这一局';
   flashHint(msg, true, 2000);
   announce(msg);
+}
+
+/* ==========================================================
+   每日挑战
+   ----------------------------------------------------------
+   棋盘由 app/daily.js 按「日期 + 档位」算种子生成，同一档永远是同一盘。
+   出题这几百毫秒里棋盘同样只读（view.rolling），跟 roll() 一个规矩：
+   遮罩挡得住鼠标，挡不住键盘。
+   ========================================================== */
+export function newDaily(tier) {
+  var rule = ruleOf(tier);
+  if (!rule) return;
+  var day = dayKey();
+  var band = DIFF_BANDS[tier];
+
+  cancelBoardFlip(true);
+  if (isOpen('result')) closeSheet('result', { force: true });
+  dismissMismatch();
+  boardEl.classList.remove('is-won', 'is-lost');
+
+  var token = ++rollToken;
+  var t0 = performance.now();
+  /* 大棋盘光出一张就要上百毫秒，遮罩得立刻露脸（delay=0）；
+   * 小棋盘先等 90ms，算得快就当没这回事。 */
+  showVeil(rule.size, '正在准备今日挑战 · ' + band.name, veilDelayFor(rule.size, 90));
+  view.rolling = true;
+
+  var run = function () {
+    if (token !== rollToken) return;          // 期间又换了一局，这一轮作废
+    var got = buildDaily(tier, day);
+    if (token !== rollToken) return;
+    view.rolling = false;
+    if (!got) {
+      hideVeil();
+      flashHint('生成失败，请再试一次');
+      return;
+    }
+    var taken = Math.round(performance.now() - t0);
+    blockCost[rule.size] = Math.max(blockCost[rule.size] || 0, taken);
+
+    applyBoard(got.board.size, got.board.regions, got.board.solution,
+      got.board.seed, got.vibe, rulesFor(day, tier));
+
+    sfx('new');
+    announce('今日挑战：' + band.name + ' ' + rule.size + '×' + rule.size +
+      '，限时 ' + limitLabel(rule.limit) + '，一天只有这一盘');
+    if (rule.size >= 13 && taken > 320) {
+      flashHint('这局生成用了 ' + (taken / 1000).toFixed(1) + ' 秒', true, 1400);
+    }
+  };
+
+  /* 先让遮罩画出来再做重活：直接算的话那一层要等到算完才出现 */
+  window.requestAnimationFrame(function () {
+    window.setTimeout(run, 30);
+  });
 }
