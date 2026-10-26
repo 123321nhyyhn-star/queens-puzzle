@@ -54,6 +54,17 @@ async function openSheet() {
   await jsClick('#btnNew');
   await page.waitForFunction(() => !document.getElementById('newWrap').hidden, { timeout: 5000 });
   await sleep(420);
+  /* 挑战组默认是收起的（省一屏），要点里面的挡位 / 开关就得先摊开 */
+  await expandChallenge();
+}
+async function expandChallenge() {
+  const open = await page.evaluate(() => {
+    if (!document.getElementById('challengeBody').hidden) return true;
+    document.getElementById('btnChallenge').click();
+    return false;
+  });
+  if (!open) await sleep(280);
+  return open;
 }
 async function closeSheetIfOpen() {
   const open = await page.evaluate(() => !document.getElementById('newWrap').hidden);
@@ -134,7 +145,50 @@ ok('步数限制默认也是「不限」', ui.stepOn.length === 1 && ui.stepOn[0
 ok('换一局面板里三颗挑战开关（禁用提示 / 撤销 / 记录点）', ui.switches === 3, ui.switches);
 ok('没有未落地改动时标题是「挑战」', ui.title === '挑战' && !ui.titlePending, ui.title);
 ok('面板不横向溢出', ui.overflowX <= 0, ui.overflowX);
+/* 折叠：关掉面板再打开，还是上一次的开合状态（只在这一页里有效，不落盘） */
+await jsClick('#btnChallenge');
+await sleep(240);
+ok('点标题能把挑战组收起来', await page.evaluate(() => document.getElementById('challengeBody').hidden));
+await jsClick('#btnChallenge');
+await sleep(240);
+ok('再点一下摊开', await page.evaluate(() => !document.getElementById('challengeBody').hidden));
 await page.screenshot({ path: `${SHOTS}/d1-sheet.png` });
+
+/* 挑战组要「看得出来是另一件事、而且能点」：以前它是一行 10.5px 的灰字
+ * （比周围的 14px 标签还小），没人觉得那是个按钮。这几条钉住现在的样子，
+ * 免得以后又悄悄改回小灰字。 */
+const tg = await page.evaluate(() => {
+  const b = document.getElementById('btnChallenge');
+  const t = document.getElementById('challengeTitle');
+  const chev = b.querySelector('.group-chev');
+  const bs = getComputedStyle(b), ts = getComputedStyle(t), cs = getComputedStyle(chev);
+  const r = b.getBoundingClientRect();
+  return {
+    h: Math.round(r.height),
+    titleSize: parseFloat(ts.fontSize),
+    titleWeight: parseInt(ts.fontWeight, 10),
+    titleColor: ts.color,
+    borderW: parseFloat(bs.borderTopWidth),
+    bg: bs.backgroundColor,
+    padTop: parseFloat(bs.paddingTop),
+    chevW: Math.round(chev.getBoundingClientRect().width),
+    chevBg: cs.backgroundColor,
+    rotated: getComputedStyle(chev).transform,
+    expanded: b.getAttribute('aria-expanded')
+  };
+});
+ok('标题比周围 14px 的标签还大', tg.titleSize >= 15, tg.titleSize);
+ok('标题是墨色加粗（不是 --ink-faint 的浅灰）',
+  tg.titleWeight >= 900 && /rgb\(58, 51, 53\)/.test(tg.titleColor), `${tg.titleWeight}/${tg.titleColor}`);
+ok('整行是一块带墨边的按钮（不再是裸文字）',
+  tg.borderW >= 2 && tg.bg !== 'rgba(0, 0, 0, 0)' && tg.padTop >= 3,
+  `${tg.borderW}/${tg.bg}/${tg.padTop}`);
+ok('整行比裸文字高（>=28px）', tg.h >= 28, tg.h);
+ok('chevron 是带底色的圆形按钮', tg.chevW >= 18 && tg.chevBg !== 'rgba(0, 0, 0, 0)',
+  `${tg.chevW}/${tg.chevBg}`);
+/* 摊开时 chevron 转半圈：rotate(180deg) 的矩阵是 (-1, 0, 0, -1, 0, 0) */
+ok('摊开时箭头翻过来', tg.expanded === 'true' && /^matrix\(-1/.test(tg.rotated),
+  `${tg.expanded}/${tg.rotated}`);
 
 console.log('\n--- 2. 只写 pending：这一局不动、不存盘 ---');
 const seed0 = await snap();

@@ -1,11 +1,58 @@
-/* panels/newgame.css — 换一局面板：棋盘大小、常用尺寸、目标难度、挑战
-   （限时 / 步数限制 / 标错惩罚 / 三颗「禁用 X」）、换一局。
-   这三组的落地时机同一条规矩：改了点「换一局」才生效。
+/* panels/newgame.css — 换一局面板：玩法标签（自定义 / 每日挑战）、棋盘大小、
+   常用尺寸、目标难度、挑战（可折叠：限时 / 步数限制 / 标错惩罚 / 三颗「禁用 X」）、
+   换一局。
+   自定义那三组的落地时机同一条规矩：改了点「换一局」才生效。
    开关行本身（.switch-row / .switch / .stepper-label）在 base/buttons.css。
 
-   **这一页的行距是按「390×844 一屏装得下」量出来的**（第六项「禁用记录点」
-   进来时整体收了 30 来像素）：动这里的 padding / margin 之前先量一遍
-   `#newSheet` 的 scrollHeight，别把「换一局」顶出屏幕。 */
+   **这一页的行距是按「390×844 一屏装得下」量出来的**：动这里的 padding / margin
+   之前先量一遍 `#newSheet` 的 scrollHeight，别把「换一局」顶出屏幕。
+   挑战组能折叠就是为这件事：摊开时它有三排挡位 + 三颗开关，收起时只剩一行。 */
+
+/* ---- 玩法标签：自定义 / 每日挑战 ----
+   跟战绩面板那两颗标签（.rec-tabs / .rtab）是同一副样子，尺寸压小一号：
+   这一页比战绩页挤。 */
+.mode-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 6px 0;
+  padding: 3px;
+  border: 2px solid var(--ink);
+  border-radius: 13px;
+  background: var(--bg-neutral);
+}
+
+.mtab {
+  flex: 1 1 0;
+  min-height: 28px;
+  padding: 0 6px;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  background: none;
+  color: var(--ink-mute);
+  font-size: 12.5px;
+  font-weight: 900;
+  letter-spacing: .4px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--t-fast), color var(--t-fast), box-shadow var(--t-fast);
+}
+
+.mtab.is-on {
+  border-color: var(--ink);
+  background: var(--accent);
+  box-shadow: 0 2px 0 var(--ink);
+  color: var(--ink);
+}
+
+/* 角标是今天的进度（2/4）。打完了换成 ✓，一眼看得出今天收工了。 */
+.mtab i {
+  margin-left: 5px;
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  opacity: .62;
+}
 
 /* ---- 棋盘尺寸：步进器 + 常用尺寸 ---- */
 .stepper {
@@ -13,7 +60,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  padding: 8px 0;
+  padding: 6px 0;
   border-bottom: 1px dashed rgba(58, 51, 53, .14);
 }
 
@@ -56,7 +103,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  padding: 8px 0 2px;
+  padding: 6px 0 2px;
   border-bottom: 1px dashed rgba(58, 51, 53, .14);
 }
 
@@ -66,33 +113,108 @@
    用虚线框 + 米色底围成一小组，跟上面那些常规选项分开：
    这一组是「给这局加难度」，不是偏好设置。
    ============================================================ */
+/* 挑战组是可折叠的：标题那一行就是开关（整行可点），右边挂着当前设定的摘要，
+   收起来也知道这局加了什么规矩。chevron 翻个身表示开合。
+
+   这一行以前是一行灰色小字（10.5px、--ink-faint），混在偏好设置里根本看不出
+   它是另一件事，也没人觉得它能点。现在做成一块**带墨边的暖黄条**：
+   跟上面那些控件一样的「卡片按钮」语言（2px 墨边 + 硬阴影 + 按下位移），
+   标题放大到 15px 用墨色，右边那颗 chevron 装进墨色小圆里 —— 一眼就知道
+   「这里有一组东西，能开」。 */
+.group-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin: 12px 0 6px;
+  padding: 4px 6px 4px 10px;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  background: var(--accent-soft);
+  box-shadow: 0 2px 0 var(--ink);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--t-fast), box-shadow var(--t-fast), transform var(--t-fast);
+}
+
+.group-toggle:hover { background: var(--accent); }
+.group-toggle:active { transform: translateY(2px); box-shadow: 0 0 0 var(--ink); }
+
+/* 这一页要塞进一屏，标题多出来的那点空白只能是这儿的：
+   比 sheet.css 里那档（14 / 6）少 2 和 1。 */
+#newSheet .group-toggle .group-title { margin: 0; }
+
+.group-toggle .group-title {
+  flex: 0 0 auto;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 1.6px;
+  color: var(--ink);
+  transition: color var(--t-fast), letter-spacing var(--t-fast);
+}
+
+/* 摘要占满剩下的宽度，太长就省略 —— 摘要只用来「扫一眼」，详情在摊开的那一组里。
+   底色浅，字得比 --ink-faint 沉一档，不然黄底上直接糊了。 */
+.group-sum {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-align: right;
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(58, 51, 53, .62);
+}
+
+/* chevron 装进墨色小圆：箭头用暖黄，方向一眼看得见；摊开时转半圈。 */
+.group-chev {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--accent);
+  transition: transform var(--t-fast), background var(--t-fast);
+}
+
+.group-toggle[aria-expanded="true"] .group-chev { transform: rotate(180deg); }
+.group-toggle:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+  border-radius: 14px;
+}
+
 /* 挑战跟尺寸 / 难度同一个规矩：改了点「换一局」才落地，
- * 所以有未落地的改动时标题直接说出来，别让人以为已经生效。 */
+ * 所以有未落地的改动时标题直接说出来，别让人以为已经生效。
+ * 底色是暖黄，这里用深橙（黄底上比墨色更「跳」），并把字距收回来一点示意「变了」。 */
 .group-title.is-pending {
-  color: #C25A12;
-  letter-spacing: 1.4px;
+  color: #B8480A;
+  letter-spacing: .6px;
 }
 
 .challenge {
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   padding: 0 12px;
   border: 2px dashed rgba(58, 51, 53, .24);
   border-radius: 14px;
   background: var(--bg-body);
+  animation: fadeIn .14s ease both;
 }
 
-.challenge .limit-row { padding: 8px 0 3px; }
-/* 挑战那组标题离上面近一点（比 sheet.css 里那档少 3px）：
- * 这一页要塞进一屏，标题多出来的那点空白只能是这儿的。 */
-#newSheet .group-title { margin: 12px 0 5px; }
-/* 限时 / 步数限制 / 标错惩罚是三件事，中间用一条虚线分开，别读成一组按钮。
- * 间隔从 12 收到 9：加了第三排之后，390×844 上面板正好差这十来像素才不用滚。 */
+/* 标题条变成 32px 高的卡片后，这一组比原来高了 14px；下面这些行距就是从
+ * 展开的那一组里抠回来的（只影响摊开时，收起来的样子没变），
+ * 让 390×844 上摊开也不至于要滚动。改这几个数之前先跑 dbg 量一遍。 */
+.challenge .limit-row { padding: 4px 0 1px; }
+/* 限时 / 步数限制 / 标错惩罚是三件事，中间用一条虚线分开，别读成一组按钮。 */
 .challenge .limit-row + .limit-row {
   border-top: 1px dashed rgba(58, 51, 53, .14);
-  padding-top: 9px;
+  padding-top: 7px;
 }
-.challenge .switch-row { padding: 7px 0; border-bottom: 0; }
-.challenge .switch-row:last-child { padding-bottom: 9px; }
+.challenge .switch-row { padding: 4px 0; border-bottom: 0; }
+.challenge .switch-row:last-child { padding-bottom: 6px; }
 .challenge .switch-row + .switch-row { border-top: 1px dashed rgba(58, 51, 53, .14); }
 
 /* 三排「禁用 X」的小字跟在标题后面**同一行**：
@@ -113,7 +235,7 @@
 .lbtn {
   flex: 1 1 0;
   min-width: 0;
-  min-height: 30px;
+  min-height: 28px;
   padding: 2px;
   border: 2px solid var(--ink);
   border-radius: 10px;
@@ -138,7 +260,7 @@
 
 /* ---- 目标难度 ---- */
 .diff-row {
-  padding: 10px 0 8px;
+  padding: 8px 0 7px;
   border-bottom: 1px dashed rgba(58, 51, 53, .14);
 }
 
@@ -201,7 +323,7 @@
 
 /* ---- 换一局（面板底下那颗：上面那三组都在这里落地） ---- */
 .shuffle-row {
-  padding: 9px 0 7px;
+  padding: 8px 0 6px;
 }
 
 .shuffle-row .btn {
@@ -230,3 +352,38 @@
 }
 
 .shuffle-hint.is-pending { color: var(--ink); }
+
+/* ============================================================
+   每日挑战：锁住的样子
+   ------------------------------------------------------------
+   选了「每日挑战」以后，尺寸 / 限时 / 步数 / 标错 / 三颗开关全由难度决定，
+   玩家改不了。灰掉 + 去掉投影 = 「这不是给你点的」，别做成「点下去没反应」。
+   挑战组那一层虚线框不跟着灰：框还在，说明这一组仍然是这一局的一部分。
+   ============================================================ */
+.dbtn.is-locked,
+.lbtn.is-locked {
+  opacity: .38;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.dbtn.is-locked:active,
+.lbtn.is-locked:active,
+.dbtn:disabled:active,
+.lbtn:disabled:active {
+  transform: none;
+  box-shadow: none;
+}
+
+.switch.is-locked {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+/* 锁着的时候指针别变成小手，也别弹 title 之外的任何反应 */
+.dbtn:disabled,
+.lbtn:disabled,
+.switch:disabled { cursor: not-allowed; }
+
+/* 每日挑战里「不限」那一颗根本不出现（难度必须选一挡才开局） */
+.dbtn[hidden] { display: none; }

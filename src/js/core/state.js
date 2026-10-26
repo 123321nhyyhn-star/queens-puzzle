@@ -49,6 +49,16 @@ export const state = {
   snap: null,
   vibe: null,         // 本局难度评估（由 game/vibe.js 算，见 applyBoard）
   diffApplied: 'any', // 本局真正用到的目标难度档（用来判断设置里是否有改动待生效）
+  /* 本局的三把「不给用」的锁。它们是**这一局的规矩**，不是偏好：
+   * 每日挑战把提示与记录点锁死，而玩家自己的设置里那两个开关可能开着，
+   * 所以要跟着局面走（存档也带着）。自定义开新局时从 settings 抄一遍。
+   * 读它们的地方一律读 state.*，别再回头读 settings。 */
+  noHint: false,
+  noUndo: false,
+  noSnap: false,
+  /* 这一局是不是每日挑战：{ day: '2026-10-26', tier: 'hard' }，不是就是 null。
+   * 解开时据此记账（core/daily.js 的 mark），战绩也据此挂「每日」角标。 */
+  daily: null,
   /* 挑战：本局限时（毫秒，0 = 不限）与倒计时起点。
    * limitFrom 记的是「起算那一刻的已用时」，所以剩余 = limit - (已用时 - limitFrom)，
    * 中途改限时不会因为之前耗掉的时间直接判负。 */

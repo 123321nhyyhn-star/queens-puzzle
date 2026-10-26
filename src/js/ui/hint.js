@@ -82,7 +82,7 @@ export function updateHint() {
 
   /* 只剩皇后没标：这一行让给「补齐」，其他文案都不用说了。
    * 挑战里禁用提示时不给这条路——那档挑战的意思就是「全自己来」。 */
-  var rest = settings.noHint ? null : pendingQueens();
+  var rest = state.noHint ? null : pendingQueens();
   setNudge(rest ? rest.length : 0);
   if (rest) return;
 

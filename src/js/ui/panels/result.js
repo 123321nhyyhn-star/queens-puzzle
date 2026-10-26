@@ -13,6 +13,7 @@
  * ========================================================================== */
 
 import { newGame, retryGame } from '../../app/puzzle.js';
+import { openNewDaily } from './newgame.js';
 import { limitLabel } from '../../core/config.js';
 import { boardEl } from '../../core/dom.js';
 import { createSheet } from '../../core/sheet.js';
@@ -88,13 +89,16 @@ function paint() {
   /* 解开的那屏另外报一句「错了几次」：开了标错惩罚的局，失掉几条命就是错了几次 */
   var missText = !lost && state.lifeLimit
     ? ' · 标错 ' + Math.max(0, state.lifeLimit - state.lives) + ' 次' : '';
+  /* 每日挑战那一局在副标题前面挂一句：这是「今天的盘」，不是随手换的一盘
+   * （它到底算不算完成，换一局面板与战绩里的日历会说） */
+  var dailyLead = state.daily ? '今日挑战 · ' : '';
   resultSub.textContent = lost
-    ? state.size + '×' + state.size +
+    ? dailyLead + state.size + '×' + state.size +
       (byLives ? ' · 标错 ' + state.lifeLimit + ' 次'
         : bySteps ? ' · 限步 ' + state.stepLimit + ' 步'
           : ' · 限时 ' + limitLabel(state.limit) + stepsText) +
       ' · 还差 ' + Math.max(0, state.size - queenCount()) + ' 只皇后'
-    : state.size + '×' + state.size + ' · 用时 ' + formatTime(state.elapsed) + stepsText +
+    : dailyLead + state.size + '×' + state.size + ' · 用时 ' + formatTime(state.elapsed) + stepsText +
       missText +
       (state.vibe ? ' · ' + state.vibe.level + ' ' + state.vibe.score.toFixed(1) : '') +
       rankText();
@@ -109,6 +113,15 @@ export function showResult() {
   if (sheet.isOpen()) return;
   paint();
   sheet.open();
+}
+
+/* 「下一局」在这一层只分两种：
+ *   每日挑战 → 回换一局面板（还停在每日挑战那一路）：下一盘打哪一挡由玩家挑，
+ *              而且今天打过的挡位会显示成「再打一遍」，不会糊里糊涂开一盘自定义；
+ *   自定义   → 照旧直接换一盘新棋（跟以前一样，一下就到）。 */
+function nextGame() {
+  if (state.daily) { openNewDaily(); return; }
+  newGame(state.size);
 }
 
 /* 换盘、重开这类真的要收掉的地方传 force = true；
@@ -155,14 +168,14 @@ export function mount(host) {
       e.preventDefault();
       var lost = state.status === 'lost';
       sheet.close({ force: true });
-      if (lost) retryGame(); else newGame(state.size);
+      if (lost) retryGame(); else nextGame();
     }
   });
 
   btnAgain.addEventListener('click', function () {
     var lost = state.status === 'lost';
     sheet.close({ force: true });
-    if (lost) retryGame(); else newGame(state.size);
+    if (lost) retryGame(); else nextGame();
   });
   /* 重来这局：同一盘棋从零再下一遍（解开后才会露出来）。
    * 输了那一屏的主按钮本来就是「重试这一局」，这里就不重复了。 */
@@ -174,7 +187,7 @@ export function mount(host) {
     var lost = state.status === 'lost';
     sheet.close({ force: true });
     // 解开时是「看看棋盘」（结果层收掉就行）；输了就只有「换一局新的」这条路
-    if (lost) newGame(state.size);
+    if (lost) nextGame();
   });
   el.addEventListener('click', function (e) {
     if (e.target === el) sheet.close();

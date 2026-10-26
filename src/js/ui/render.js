@@ -332,17 +332,17 @@ export function updateStats() {
 
   /* 挑战里禁用的按钮跟「暂时没得撤」是两回事：
    * 前者要多一句话说明为什么点了没反应，所以单独挂 is-locked + title。 */
-  btnUndo.disabled = settings.noUndo || view.undo.length === 0;
-  btnUndo.classList.toggle('is-locked', !!settings.noUndo);
-  btnUndo.setAttribute('title', settings.noUndo ? '挑战模式：这局不能撤销' : '撤销（Z）');
+  btnUndo.disabled = state.noUndo || view.undo.length === 0;
+  btnUndo.classList.toggle('is-locked', !!state.noUndo);
+  btnUndo.setAttribute('title', state.noUndo ? '挑战模式：这局不能撤销' : '撤销（Z）');
   /* 重做跟撤销同一套读法：判据从「有得撤」换成「有得重做」（view.redo 在
    * 新的一笔落下时就被 pushEntry 清空，所以「改了主意」这条路自然断开）。 */
-  btnRedo.disabled = settings.noUndo || view.redo.length === 0;
-  btnRedo.classList.toggle('is-locked', !!settings.noUndo);
-  btnRedo.setAttribute('title', settings.noUndo ? '挑战模式：这局不能重做' : '重做（Shift+Z）');
-  btnHint.disabled = !playing || settings.noHint;
-  btnHint.classList.toggle('is-locked', !!settings.noHint);
-  btnHint.setAttribute('title', settings.noHint ? '挑战模式：这局不能用提示' : '提示（H）');
+  btnRedo.disabled = state.noUndo || view.redo.length === 0;
+  btnRedo.classList.toggle('is-locked', !!state.noUndo);
+  btnRedo.setAttribute('title', state.noUndo ? '挑战模式：这局不能重做' : '重做（Shift+Z）');
+  btnHint.disabled = !playing || state.noHint;
+  btnHint.classList.toggle('is-locked', !!state.noHint);
+  btnHint.setAttribute('title', state.noHint ? '挑战模式：这局不能用提示' : '提示（H）');
   btnClear.disabled = !playing;
 
   syncSnap(playing);
@@ -361,7 +361,7 @@ export function updateStats() {
 function syncSnap(playing) {
   if (!btnSnap) return;
   var filled = !!state.snap;
-  var locked = !!settings.noSnap;
+  var locked = !!state.noSnap;
   btnSnap.classList.toggle('is-filled', filled);
   btnSnap.classList.toggle('is-locked', locked);
   btnSnap.disabled = locked || !playing;

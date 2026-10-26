@@ -12,7 +12,7 @@
 
 import { canPlay } from './actions.js';
 import { buzz, sfx } from '../core/audio.js';
-import { guide, settings, state, UNDO_MAX, view } from '../core/state.js';
+import { guide, state, UNDO_MAX, view } from '../core/state.js';
 import { save } from '../core/storage.js';
 import { announce } from '../core/utils.js';
 import { closeGuide } from '../ui/guide.js';
@@ -59,7 +59,7 @@ export function pushRestorePoint() {
 
 export function undo() {
   if (!canPlay()) return;
-  if (settings.noUndo) { lockedHint(); return; }
+  if (state.noUndo) { lockedHint(); return; }
   if (!view.undo.length) return;
   if (guide.open) closeGuide();
   var before = state.marks;      // 退回之前的那一盘（下面要拿它比出「刚撤掉的是哪几格」）
@@ -90,7 +90,7 @@ function undoSpeech(cells) {
 
 export function redo() {
   if (!canPlay()) return;
-  if (settings.noUndo) { lockedHint('重做'); return; }
+  if (state.noUndo) { lockedHint('重做'); return; }
   if (!view.redo.length) return;
   if (guide.open) closeGuide();
   view.undo.push(snapshot());

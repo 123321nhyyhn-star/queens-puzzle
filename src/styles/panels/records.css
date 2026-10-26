@@ -481,3 +481,214 @@
   color: #C62828;
   font-weight: 900;
 }
+
+/* ============================================================
+   18. 每日挑战角标 + 日历
+   ------------------------------------------------------------
+   记录列表里，每日挑战那一局的难度胶囊旁边挂一枚「每日」；
+   第三栏是一本日历：一天一格，四颗小点就是四挡（容易 → 极难），
+   打了任意一挡的那天整格点亮 + 一个 ✓。
+   ============================================================ */
+.rec-daily {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border: 1.5px solid #C25A12;
+  border-radius: 999px;
+  background: #FFEBD9;
+  color: #C25A12;
+  font-size: 10px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.daily-status {
+  margin: 0 0 10px;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.5;
+  color: var(--ink-mute);
+}
+
+/* ---- 月份导航 ---- */
+.cal-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.cal-nav {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 2px solid var(--ink);
+  border-radius: 9px;
+  background: var(--bg-card);
+  box-shadow: 0 2px 0 var(--ink);
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform var(--t-fast), box-shadow var(--t-fast), opacity var(--t-fast);
+}
+
+.cal-nav:active:not(:disabled) { transform: translateY(2px); box-shadow: none; }
+.cal-nav:disabled { opacity: .25; box-shadow: none; cursor: not-allowed; }
+
+/* 标题点一下回到本月：翻回几个月之前，不用一格一格点回来 */
+.cal-title {
+  flex: 1 1 auto;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: .1px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+/* ---- 星期表头与格子 ---- */
+.cal-week,
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.cal-week { margin-bottom: 4px; }
+
+.cal-week span {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--ink-faint);
+}
+
+.cal-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-height: 42px;
+  padding: 4px 0 3px;
+  border: 2px solid rgba(58, 51, 53, .16);
+  border-radius: 9px;
+  background: var(--bg-card);
+  cursor: pointer;
+  transition: background var(--t-fast), border-color var(--t-fast);
+}
+
+.cal-cell.is-blank {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: default;
+}
+
+.cal-d {
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-mute);
+}
+
+/* 四颗小点：从左到右 容易 / 中等 / 困难 / 极难 */
+.cal-dots {
+  display: flex;
+  gap: 2px;
+}
+
+.cal-dots i {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(58, 51, 53, .16);
+}
+
+.cal-dots i.is-on[data-tone="easy"] { background: #22B573; }
+.cal-dots i.is-on[data-tone="mid"] { background: #E0A81E; }
+.cal-dots i.is-on[data-tone="hard"] { background: #F2762E; }
+.cal-dots i.is-on[data-tone="extreme"] { background: #E23B3B; }
+
+/* 完成今日挑战的那天：整格点亮（这是日历里最想让人看见的一眼）。
+ * 「打了任意一挡」就算完成，所以没有「打了一半」的中间态样式。 */
+.cal-cell.is-done {
+  border-color: var(--ink);
+  background: var(--accent-soft);
+  box-shadow: 0 2px 0 var(--ink);
+}
+
+.cal-cell.is-done .cal-d { color: var(--ink); font-weight: 900; }
+
+.cal-cell.is-today { border-color: #F2762E; }
+.cal-cell.is-today .cal-d { color: #C25A12; font-weight: 900; }
+
+/* 选中的那格：一圈实线。放在最后，压过上面几个背景色 */
+.cal-cell.is-sel {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+
+.cal-cell.is-future {
+  opacity: .4;
+  cursor: default;
+}
+
+.cal-check {
+  position: absolute;
+  top: 1px;
+  right: 3px;
+  font-size: 8px;
+  font-weight: 900;
+  color: #C25A12;
+}
+
+/* ---- 图例与当天的读数 ---- */
+.cal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 11px 0 8px;
+}
+
+.cal-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--ink-faint);
+}
+
+.cal-key i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.cal-key i[data-tone="easy"] { background: #22B573; }
+.cal-key i[data-tone="mid"] { background: #E0A81E; }
+.cal-key i[data-tone="hard"] { background: #F2762E; }
+.cal-key i[data-tone="extreme"] { background: #E23B3B; }
+
+/* 本月小结：图例下面那行小字 */
+.cal-month {
+  margin: 0 0 9px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--ink-faint);
+}
+
+.cal-detail {
+  margin: 0;
+  padding: 8px 10px;
+  border: 2px dashed rgba(58, 51, 53, .22);
+  border-radius: 10px;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.55;
+  color: var(--ink-mute);
+}
