@@ -12,6 +12,7 @@ import { announce, clamp } from '../core/utils.js';
 import { buildBoard, buildRegionBar } from '../game/board.js';
 import { computeVibe } from '../game/vibe.js';
 import { updateDiffChip } from '../ui/difficulty.js';
+import { cancelBoardFlip, captureBoard, flipBoard } from '../ui/board-flip.js';
 import { closeGuide, paintGl } from '../ui/guide.js';
 import { flashHint } from '../ui/hint.js';
 import { relayout } from '../ui/layout.js';
@@ -184,6 +185,7 @@ export function lastRoll() { return lastRollInfo; }
  * tried 是「这次换局之前已经抽掉多少张」——再抽时累加上去，
  * 好让那一层照实说「13×13 找了 3.0 秒、抽了 26 张」。 */
 function roll(n, band, tried) {
+  cancelBoardFlip(true);
   if (isOpen('result')) closeSheet('result', { force: true });
   dismissMismatch();
   boardEl.classList.remove('is-won', 'is-lost');
@@ -256,6 +258,8 @@ function roll(n, band, tried) {
 
 /* 把一副已经确定的棋盘装上（新生成 / 载入分享码 / 恢复存档 / 重试共用） */
 export function applyBoard(n, regions, solution, seed, preVibe) {
+  const previous = captureBoard();
+  cancelBoardFlip();
   if (isOpen('result')) closeSheet('result', { force: true });
   dismissMismatch();   // 真装上了，那张「不够格」的卡就不该还挂着
   /* 手上这一盘由别人（分享码 / 存档 / 重试）拍板了：还在抽的那一轮立刻作废，
@@ -311,13 +315,14 @@ export function applyBoard(n, regions, solution, seed, preVibe) {
   settings.size = n;
   saveSettings();
 
-  buildBoard(true);
+  buildBoard();
   buildRegionBar();
   relayout();
   render();
   hideVeil();
   updateStats();
   updateDiffChip();
+  flipBoard(previous);
   save();
 }
 
