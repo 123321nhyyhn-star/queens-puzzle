@@ -94,6 +94,7 @@ try {
   await page.waitForSelector('.board.look-has-reward');
   await page.screenshot({ path: shots + '03-reward.png' });
   check('翻完合为完整图片，移除切片接缝', await page.locator('.look-tiles[role="img"]').count() === 1 && await page.locator('.look-tile-card').count() === 0);
+  check('猫咪拼图使用独立的皇冠猫咪图片', await page.locator('.look-tiles.is-reward').evaluate(el => el.dataset.picture.endsWith('/victory-kitten.webp')));
   await page.waitForSelector('#result:not([hidden])');
   check('图片 → 礼炮 → 成绩的顺序正确', await page.evaluate(() => window.flipEvents.join(',') === 'confetti,result'));
   await page.click('#btnPeek');
@@ -211,6 +212,11 @@ try {
     return ['deal', 'reveal', 'confetti'].every(kind =>
       document.querySelectorAll(`#${kind}Row .showcase`).length === listOf(kind).length);
   }));
+  check('两个拼图展柜预览使用不同的实际插画', await stylesPage.evaluate(() => {
+    const cat = document.querySelector('.showcase[data-reveal="kitten"] image')?.getAttribute('href');
+    const rabbit = document.querySelector('.showcase[data-reveal="starlight"] image')?.getAttribute('href');
+    return cat?.endsWith('/victory-kitten.webp') && rabbit?.endsWith('/starlight-rabbit.webp') && cat !== rabbit;
+  }));
   const untouched = await stylesPage.evaluate(() => {
     const d = window.__QUEENS_DEBUG__;
     return JSON.stringify({ marks: [...d.state.marks], steps: d.state.steps, daily: d.state.daily, history: d.history() });
@@ -252,6 +258,8 @@ try {
   await stylesPage.waitForSelector('.look-tiles[data-mode="ripple"]');
   check('星光拼图先翻面，再发射所选爱心礼花', await stylesPage.locator('.look-celebration').count() === 0);
   await stylesPage.waitForSelector('.look-has-reward');
+  check('星光拼图实际翻成星空小兔图片', await stylesPage.locator('.look-tiles.is-reward').evaluate(el =>
+    el.dataset.picture.endsWith('/starlight-rabbit.webp') && el.getAttribute('aria-label').includes('小兔')));
   await stylesPage.waitForSelector('.look-celebration[data-kind="hearts"]');
   check('星光拼图含星光，爱心礼花来自插件', await stylesPage.locator('.look-sparkle').count() === 8 && await stylesPage.locator('.look-particle').count() === 30 && await stylesPage.locator('.confetti').count() === 0);
   await stylesPage.waitForSelector('#result:not([hidden])');

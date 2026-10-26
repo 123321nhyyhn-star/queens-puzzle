@@ -13,7 +13,7 @@
 looks/
   index.js                登记、分类、默认项
   effects.js              通用动作接口：选择、取消、资源与时序
-  transitions.js          斜向 / 逐行 / 涟漪翻格，猫咪 / 星光拼图
+  transitions.js          斜向 / 逐行 / 涟漪翻格，皇冠猫咪 / 星空小兔拼图
   celebration.js          爱心 / 星芒 / 安静礼炮
   original-effects.js     交回作者原有动画的选项
   effects/tiles.js         翻格插件的画面工具
