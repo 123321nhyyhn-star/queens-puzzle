@@ -28,13 +28,23 @@
 .look-tile-borders path { fill: none; stroke: var(--ink); stroke-linecap: square; }
 .look-tiles.is-reward { display: block; background-size: 100% 100%; background-repeat: no-repeat; }
 .look-sparkle {
-  position: absolute; width: 7%; aspect-ratio: 1;
-  background: #fff5ad; clip-path: polygon(50% 0, 63% 37%, 100% 50%, 63% 63%, 50% 100%, 37% 63%, 0 50%, 37% 37%);
-  animation: lookStar 1.2s ease-out both; pointer-events: none;
+  position: absolute; width: clamp(24px, 9%, 44px); aspect-ratio: 1;
+  filter: drop-shadow(0 1px 1px #a66118) drop-shadow(0 0 3px #fff6d5);
+  animation: lookStar 1.5s ease-out both; pointer-events: none;
+}
+.look-sparkle::before, .look-sparkle::after {
+  content: ''; position: absolute; inset: 0; background: #fff;
+  clip-path: polygon(50% 0, 63% 37%, 100% 50%, 63% 63%, 50% 100%, 37% 63%, 0 50%, 37% 37%);
+}
+.look-sparkle::after {
+  inset: 2px; background: #ffc531;
 }
 .showcase[data-deal] .sc-case, .showcase[data-reveal] .sc-case, .showcase[data-confetti] .sc-case { height: 72px; }
 .showcase[data-deal] .sc-item, .showcase[data-reveal] .sc-item, .showcase[data-confetti] .sc-item { width: 44px; height: 44px; }
 .showcase[data-deal]:hover .sc-item { animation: lookPreview .9s ease-in-out; }
 @keyframes lookTileTurn { from { transform: rotate3d(var(--look-axis), 0deg); } to { transform: rotate3d(var(--look-axis), -180deg); } }
-@keyframes lookStar { 0%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(.3) rotate(0); } 35% { opacity: .9; transform: translate(-50%, -50%) scale(1) rotate(40deg); } }
+@keyframes lookStar {
+  0%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(.3) rotate(0); }
+  20%, 65% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(25deg); }
+}
 @keyframes lookPreview { 50% { transform: perspective(200px) rotateY(150deg); } }

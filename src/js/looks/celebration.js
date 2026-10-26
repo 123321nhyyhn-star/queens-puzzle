@@ -9,7 +9,19 @@ function launch(ctx, type) {
   root.className = 'look-celebration';
   root.dataset.kind = type;
   root.setAttribute('aria-hidden', 'true');
-  const colors = ['#e98b9e', '#edb65e', '#81bcaa', '#a794cb', '#79abcf'];
+  const fireworks = type === 'fireworks';
+  const colors = fireworks ? ['#f6ad16', '#f15b91', '#278fc9', '#9860d6', '#22a58b'] :
+    ['#e98b9e', '#edb65e', '#81bcaa', '#a794cb', '#79abcf'];
+  root.style.setProperty('--star-size', Math.max(20, Math.min(28, rect.width * .06)) + 'px');
+  if (fireworks) for (let group = 0; group < 3; group++) {
+    const burst = document.createElement('span');
+    burst.className = 'look-burst';
+    burst.style.left = (rect.left + rect.width * [.25, .5, .75][group]) + 'px';
+    burst.style.top = (rect.top + rect.height * [.5, .3, .5][group]) + 'px';
+    burst.style.setProperty('--particle-color', colors[group]);
+    burst.style.setProperty('--particle-delay', group * 170 + 'ms');
+    root.appendChild(burst);
+  }
   const count = type === 'hearts' ? 30 : 48;
   for (let i = 0; i < count; i++) {
     const p = document.createElement('i');
@@ -22,11 +34,11 @@ function launch(ctx, type) {
     p.style.setProperty('--particle-color', colors[i % colors.length]);
     p.style.setProperty('--particle-x', (type === 'hearts' ? (Math.random() - .5) * rect.width * .5 : Math.cos(angle) * radius) + 'px');
     p.style.setProperty('--particle-y', (type === 'hearts' ? -rect.height * (.55 + Math.random() * .5) : Math.sin(angle) * radius) + 'px');
-    p.style.setProperty('--particle-delay', (type === 'hearts' ? i * 16 : group * 150) + 'ms');
+    p.style.setProperty('--particle-delay', (type === 'hearts' ? i * 16 : group * 170) + 'ms');
     root.appendChild(p);
   }
   ctx.fx.appendChild(root);
-  const timer = window.setTimeout(() => root.remove(), 2200);
+  const timer = window.setTimeout(() => root.remove(), fireworks ? 2400 : 2200);
   ctx.signal.addEventListener('abort', () => { clearTimeout(timer); root.remove(); }, { once: true });
   return true;
 }
@@ -36,7 +48,7 @@ export default {
   stylesheet: new URL('./effects/celebration.css', import.meta.url).href,
   confettis: [
     { id: 'hearts', name: '爱心礼花', desc: '柔和彩色爱心缓缓升起', svg: heart, play: ctx => launch(ctx, 'hearts') },
-    { id: 'fireworks', name: '星芒礼炮', desc: '三束彩色星芒依次绽放', svg: firework, play: ctx => launch(ctx, 'fireworks') },
+    { id: 'fireworks', name: '星芒礼炮', desc: '三束高亮星芒，伴着光环依次绽放', svg: firework, play: ctx => launch(ctx, 'fireworks') },
     { id: 'quiet', name: '安静庆祝', desc: '保留通关效果，收起礼花', svg: '<svg viewBox="0 0 80 80" aria-hidden="true"><path d="M17 40l15 15 31-33" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>', play: () => true }
   ]
 };
