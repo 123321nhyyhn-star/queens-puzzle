@@ -1,9 +1,14 @@
 /* ============================================================================
  * panels/mismatch.js · 「没抽到够格的盘」
  * ----------------------------------------------------------------------------
- * 宁可先不出盘，也不让玩家玩一盘不符合设定的：这批一张都没落进档位区间
- * （DIFF_BANDS[x] 的 [min, max)）时由 app/puzzle.js 调 showMismatch()，
+ * 宁可先不出盘，也不让玩家玩一盘不符合设定的：这一档里抽不到分数落在
+ * `DIFF_BANDS[x]` 的 `[min, max)` 区间里的盘时，由 app/puzzle.js 调 showMismatch()，
  * 那一盘**不装**。
+ *
+ * 注意它是个兜底，不是常规流程：puzzle 的 search() 会先替玩家多抽 3 秒
+ * （见那边的 SEARCH_MS），抽到了就当没这回事。等满还抽不到——这个档位
+ * 在这个尺寸上根本够不着——才轮到这里。所以读数里报的是「找了多久」，
+ * 不只是「抽了几张」：时间才是玩家刚才实际付出的东西。
  *
  * 两头都要拦，说法的方向正好相反：
  *   dir = 'low'  一张都没够到下限（「还不够困难」）→ 建议放大尺寸
@@ -11,7 +16,7 @@
  * 所以标题、两个读数的名字、按钮下面那句建议都由 dir 决定，别各写一套。
  *
  * 只给两条路：
- *   · 再抽一局：交给 puzzle 的 onRetry 再抽一批（同一尺寸、同一档）
+ *   · 再抽一局：交给 puzzle 的 onRetry 再来一轮（同一尺寸、同一档）
  *   · 更换设置：打开「新的一局」面板并停在这一档上，可以换个更大的尺寸或换档
  *
  * 跟结果层一样不许 Esc 关掉：关掉之后既没新盘也没旧盘，只剩一块空棋盘。
@@ -27,10 +32,10 @@ export var HTML = /* html */ `
   <div class="result-card" role="dialog" aria-modal="true" aria-labelledby="mmTitle" aria-describedby="mmSub">
     <p class="result-kicker" id="mmKicker">TOO EASY</p>
     <h2 class="result-title" id="mmTitle">还不够「极难」</h2>
-    <p class="result-sub" id="mmSub">13×13 抽了 6 张，最高 7.8（困难）</p>
+    <p class="result-sub" id="mmSub">13×13 找了 3.0 秒，抽了 26 张</p>
     <div class="result-stats">
       <div class="result-stat"><b id="mmNeed">8.4</b><span id="mmNeedLabel">档位要求</span></div>
-      <div class="result-stat"><b id="mmBest">7.8</b><span id="mmBestLabel">这批最高</span></div>
+      <div class="result-stat"><b id="mmBest">7.8</b><span id="mmBestLabel">这批最高（困难）</span></div>
     </div>
     <button class="btn btn-hint" id="btnMmRetry" type="button">再抽一局</button>
     <div class="result-links">
@@ -82,6 +87,11 @@ export function dismissMismatch() {
   sheet.close({ force: true });
 }
 
+/* 「找了多久」：一位小数就够，读数说的是「刚才等了这一截」 */
+function waitText(ms) {
+  return (Math.max(0, ms || 0) / 1000).toFixed(1) + ' 秒';
+}
+
 function fill(o) {
   var high = o.dir === 'high';
   var edge = high ? o.band.max : o.band.min;     // 差的那条线
@@ -90,16 +100,19 @@ function fill(o) {
   mmKicker.textContent = high ? 'TOO HARD' : 'TOO EASY';
   mmTitle.textContent = (high ? '超出了「' : '还不够「') + o.band.name + '」';
   mmNeedLabel.textContent = high ? '档位上限' : '档位要求';
-  mmBestLabel.textContent = high ? '这批最低' : '这批最高';
+  /* 抽到的那张真实属于哪一档，挂在这个读数上：数值和「它是困难还是极难」
+   * 是一件事，放进副标题会把那一行撑到两句（320 宽还会断在「最高 / 8.1」之间）。 */
+  mmBestLabel.textContent = (high ? '这批最低' : '这批最高') + '（' + o.vibe.level + '）';
   mmNeed.textContent = edge.toFixed(1);
   mmBest.textContent = o.vibe.score.toFixed(1);
-  // 尺寸和抽了几张放一句话里说完，读屏一次读完不用来回跳
-  mmSub.textContent = o.size + '×' + o.size + ' 抽了 ' + o.tried + ' 张，' +
-    (high ? '最低 ' : '最高 ') + o.vibe.score.toFixed(1) + '（' + o.vibe.level + '）';
+  // 副标题只说「刚才花了多少代价」：尺寸、等了多久、抽了几张
+  mmSub.textContent = o.size + '×' + o.size + ' 找了 ' + waitText(o.waited) +
+    '，抽了 ' + o.tried + ' 张';
   mmNote.textContent = nextHint(o);
 
-  announce('没抽到「' + o.band.name + '」的盘：' + o.size + '×' + o.size + ' 抽了 ' + o.tried +
-    ' 张，' + (high ? '最低 ' : '最高 ') + o.vibe.score.toFixed(1) +
+  announce('没抽到「' + o.band.name + '」的盘：' + o.size + '×' + o.size + ' 找了 ' +
+    waitText(o.waited) + '、抽了 ' + o.tried + ' 张，' + (high ? '最低 ' : '最高 ') +
+    o.vibe.score.toFixed(1) +
     (high ? '，超过了上限 ' + edge.toFixed(1) : '，要 ' + edge.toFixed(1) + ' 起'));
 }
 

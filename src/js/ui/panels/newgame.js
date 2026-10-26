@@ -28,7 +28,7 @@ import {
 } from '../../core/config.js';
 import { btnNew } from '../../core/dom.js';
 import { createSheet } from '../../core/sheet.js';
-import { pending, settings, state } from '../../core/state.js';
+import { pending, settings, state, view } from '../../core/state.js';
 import { saveSettings } from '../../core/storage.js';
 import { announce, clamp } from '../../core/utils.js';
 import { loadShareFromClipboard } from '../share.js';
@@ -421,7 +421,12 @@ export function setPendingSize(n) {
 /* ==========================================================
    开 / 关
    ========================================================== */
-export function openNew() { ctl.open(); }
+export function openNew() {
+  /* 正在出题的那几秒别把面板压上去（遮罩挡得住鼠标，挡不住 N 键）：
+   * 盘马上要换，换了之后面板上那些「待生效」的读数就对不上了。 */
+  if (view.rolling) return;
+  ctl.open();
+}
 export function closeNew() { ctl.close(); }
 export function isNewOpen() { return !!ctl && ctl.isOpen(); }
 

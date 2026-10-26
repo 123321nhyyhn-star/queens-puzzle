@@ -5,7 +5,7 @@
 
 import './events.js';   // 事件接线（纯副作用模块，必须早于 boot 执行）
 import { clearBoard } from './app/actions.js';
-import { applyBoard, newGame, retryGame } from './app/puzzle.js';
+import { applyBoard, lastRoll, newGame, retryGame } from './app/puzzle.js';
 import { clearSnap, restoreSnap, saveSnap } from './app/snap.js';
 import { limitRemaining, paintClock, pauseTimer, startTimer } from './core/clock.js';
 import { hintEl, sheetsHost, stage } from './core/dom.js';
@@ -133,6 +133,8 @@ window.__QUEENS_DEBUG__ = {
   settings: settings,
   newGame: newGame,
   retry: retryGame,
+  // 上一次出题花了多久、抽了几张、有没有装上（只给 tools/ 里的自动化测试用）
+  rollInfo: lastRoll,
   useHint: useHint,
   clear: function () { clearBoard(true); },
   render: render,

@@ -251,10 +251,13 @@ ok('档位与分数自洽', toneOk(hard1), hard1);
 ok('困难档不会抽到中等或容易', hard1.lvl !== '中等' && hard1.lvl !== '容易', hard1.lvl);
 /* 上界也要卡住：困难档（9–13）里偶尔会出 8.5 以上的极难盘，那一张不许装 */
 ok('困难档不会抽到极难', hard1.lvl !== '极难' && hard1.score < 8.4, hard1);
-/* 被「没抽到够格的盘」挡过的那一回中途会重抽一次，遮罩自然也会跟着露第二次，
- * 所以这条只在一次性抽到时判（12×12 一批命中约九成，绝大多数时候都走这条路）。 */
-ok('快盘不闪遮罩（12×12 出题 100ms 级）', hard1.blocked > 0 || veilShown.length === 0,
-  { veil, blocked: hard1.blocked });
+/* 被「没抽到够格的盘」挡过的那一回中途会重抽一轮，遮罩自然也会跟着露第二次，
+ * 所以这条只在一次性抽到时判（12×12 一批命中约九成，绝大多数时候都走这条路）。
+ * 现在一批抽空不会马上弹卡，而是接着抽到 3 秒（见 SEARCH_MS），
+ * 所以「露了没」改为跟这一次出题的真实耗时对照：90ms 内就出盘的，不该有遮罩。 */
+const roll1 = await page.evaluate(() => __QUEENS_DEBUG__.rollInfo());
+ok('快盘不闪遮罩（90ms 内出盘就没有遮罩）', !roll1 || roll1.ms >= 90 || veilShown.length === 0,
+  { veil, roll: roll1, blocked: hard1.blocked });
 ok('设置已写回 settings', afterShuffle.setting === 'hard' && afterShuffle.size === 12, afterShuffle);
 ok('设置已落 localStorage', afterShuffle.ls.difficulty === 'hard' && afterShuffle.ls.size === 12, afterShuffle.ls);
 ok('面板收起', afterShuffle.sheetClosed === true);
@@ -504,12 +507,14 @@ const good = await page.evaluate(() => {
 ok('测试素材：找得到一张够 8.4 的 14×14', !!good, good && Math.round(good.score * 10) / 10);
 
 const beforeMm = await snap();
+const mmT0 = Date.now();
 await page.evaluate(() => {
   __QUEENS_DEBUG__.settings.difficulty = 'extreme';
   window.QueensEngine.generate = window.__badGen;
   __QUEENS_DEBUG__.newGame(14);
 });
 await page.waitForFunction(() => !document.getElementById('mismatch').hidden, { timeout: 30000 });
+const mmWait = Date.now() - mmT0;
 await sleep(150);
 const mm = await page.evaluate(() => ({
   title: document.getElementById('mmTitle').textContent.trim(),
@@ -523,7 +528,12 @@ const mm = await page.evaluate(() => ({
   veil: document.getElementById('veil').hidden
 }));
 ok('弹出「没抽到够格的盘」', /还不够「极难」/.test(mm.title), mm.title);
-ok('说明写清尺寸与抽了几张', /14×14/.test(mm.sub) && /抽了 4 张/.test(mm.sub), mm.sub);
+/* 这一层现在的触发条件是时间：抽空就弹卡的话，玩家大部分时候都在为
+ * 「其实再等半秒就有」的盘点按钮（见 app/puzzle.js 的 SEARCH_MS）。 */
+ok('等够了才弹（约 3 秒，不是一抽空就弹）', mmWait >= 2600, mmWait);
+ok('说明写清尺寸、找了多久、抽了几张',
+  /14×14/.test(mm.sub) && /找了 \d+(\.\d)? 秒/.test(mm.sub) &&
+  Number((mm.sub.match(/抽了 (\d+) 张/) || [])[1]) > 4, mm.sub);
 ok('读数：档位要求 8.4', mm.need === '8.4', mm.need);
 ok('读数：这批最高没够 8.4', parseFloat(mm.best) < 8.4, mm.best);
 ok('顺手劝一句「放大一档」', /15×15/.test(mm.note), mm.note);
@@ -549,8 +559,8 @@ await page.waitForFunction(() => !document.getElementById('mismatch').hidden, { 
 await sleep(150);
 const sub2 = await page.evaluate(() => document.getElementById('mmSub').textContent.trim());
 const tried2 = (sub2.match(/抽了 (\d+) 张/) || [])[1];
-// 第二批发得比第一批狠（triesFor：4 → 5 → 6），所以只要「变多了」就说明累计对
-ok('再抽一批：累计张数接着往上涨', tried2 && Number(tried2) > 4, sub2);
+// 再抽一轮也是一整段 3 秒，所以张数只增不减：这条只是确认「累计」没被清零
+ok('再抽一轮：累计张数接着往上涨', tried2 && Number(tried2) > 4, sub2);
 
 await jsClick('#btnMmSetup');
 await sleep(460);
@@ -630,12 +640,12 @@ const mmHi = await page.evaluate(() => ({
 }));
 ok('卡片标题说「超出了」', /超出了「困难」/.test(mmHi.title), mmHi.title);
 ok('英文小标题换成 TOO HARD', mmHi.kicker === 'TOO HARD', mmHi.kicker);
-ok('读数改成上限 / 这批最低', mmHi.needLabel === '档位上限' && mmHi.bestLabel === '这批最低',
+ok('读数改成上限 / 这批最低', mmHi.needLabel === '档位上限' && /^这批最低/.test(mmHi.bestLabel),
   [mmHi.needLabel, mmHi.bestLabel]);
+ok('抽到的那张的档位挂在读数上', /极难/.test(mmHi.bestLabel), mmHi.bestLabel);
 ok('上限写 8.4', mmHi.need === '8.4', mmHi.need);
 ok('这批最低确实超了 8.4', parseFloat(mmHi.best) >= 8.4, mmHi.best);
-ok('说明写清尺寸、抽了几张、最低多少',
-  /13×13/.test(mmHi.sub) && /抽了 4 张/.test(mmHi.sub) && /最低/.test(mmHi.sub), mmHi.sub);
+ok('说明写清尺寸与抽了几张', /13×13/.test(mmHi.sub) && /抽了 \d+ 张/.test(mmHi.sub), mmHi.sub);
 ok('建议改成收小一格（12×12）', /12×12/.test(mmHi.note), mmHi.note);
 ok('卡片换成「超了」的配色', mmHi.over === true);
 ok('这一盘也没装', mmHi.board === beforeHi.n && mmHi.seed === beforeHi.seed,

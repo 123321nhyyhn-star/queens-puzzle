@@ -21,9 +21,10 @@ import { checkSteps, checkWin, failByLives } from '../ui/win.js';
    落子 / 标记
    ========================================================== */
 /* 能不能往棋盘上落子。浮层开没开只看 view.sheet 一个字段——
- * 浮层基座负责维护它（core/sheet.js），新加面板不用再来这里加一条。 */
+ * 浮层基座负责维护它（core/sheet.js），新加面板不用再来这里加一条。
+ * rolling 是「出题中」：遮罩挡得住鼠标挡不住键盘，那几秒里棋盘得是只读的。 */
 export function canPlay() {
-  return state.status === 'playing' && !view.sheet && !view.filling;
+  return state.status === 'playing' && !view.sheet && !view.filling && !view.rolling;
 }
 
 export function setMarks(next, anim) {
