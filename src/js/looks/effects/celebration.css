@@ -1,0 +1,24 @@
+.look-celebration { position: fixed; inset: 0; pointer-events: none; }
+.look-particle {
+  position: absolute; display: block; width: 10px; height: 10px;
+  background: var(--particle-color);
+  animation: lookFirework 1.3s ease-out var(--particle-delay) both;
+}
+.look-celebration[data-kind="fireworks"] .look-particle {
+  clip-path: polygon(50% 0, 63% 37%, 100% 50%, 63% 63%, 50% 100%, 37% 63%, 0 50%, 37% 37%);
+}
+.look-celebration[data-kind="hearts"] .look-particle {
+  width: 12px; height: 12px;
+  clip-path: polygon(50% 20%, 66% 4%, 89% 8%, 100% 30%, 94% 50%, 50% 96%, 6% 50%, 0 30%, 11% 8%, 34% 4%);
+  animation-name: lookHeartRise; animation-duration: 1.5s;
+}
+@keyframes lookFirework {
+  0% { opacity: 0; transform: translate(0, 0) scale(.3); }
+  15% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--particle-x), var(--particle-y)) scale(.3) rotate(100deg); }
+}
+@keyframes lookHeartRise {
+  0% { opacity: 0; transform: translate(0, 0) scale(.4) rotate(-15deg); }
+  18% { opacity: .85; }
+  100% { opacity: 0; transform: translate(var(--particle-x), var(--particle-y)) scale(1) rotate(20deg); }
+}

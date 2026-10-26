@@ -20,7 +20,6 @@ import { buildBoard, buildRegionBar } from './game/board.js';
 import { decodeShare, encodeShare } from './game/share-code.js';
 import { computeVibe } from './game/vibe.js';
 import { updateDiffChip } from './ui/difficulty.js';
-import { flipBoard, revealReward } from './ui/board-flip.js';
 import { applyFadeNow } from './ui/fade.js';
 import { closeGuide, guideNext, guidePrev, useHint } from './ui/guide.js';
 import { flashHint } from './ui/hint.js';
@@ -34,6 +33,7 @@ import { render, updateStats } from './ui/render.js';
 import { takeHashCode, tryLoadShare } from './ui/share.js';
 import { traceCells } from './ui/trace.js';
 import { checkLives, checkSteps, checkTimeout } from './ui/win.js';
+import { playBoardLook } from './looks/effects.js';
 
 /* 浮层先挂上：markup 进 #sheets，各面板的元素引用与事件在这一步接好。
  * 必须早于 boot()——外观面板要按面板里的展位建按钮，applyLook 靠它。 */
@@ -78,7 +78,7 @@ function boot() {
   } else if (restored) {
     state.diffApplied = settings.difficulty;   // 续玩的这局当作已按当前设置开出
     state.vibe = computeVibe(state.size, state.regions, state.solution);
-    buildBoard();
+    buildBoard(false);
     buildRegionBar();
     relayout();
     render();
@@ -87,16 +87,13 @@ function boot() {
     applyFadeNow();
     updateStats();
     updateDiffChip();
+    playBoardLook(true);
 
     if (state.status === 'won') {
-      revealReward(false);
       showResult();
-    } else {
-      flipBoard(null);
-      if (hasProgress()) {
-        state.runningSince = 0;
-        startTimer();
-      }
+    } else if (hasProgress()) {
+      state.runningSince = 0;
+      startTimer();
     }
     announce('已恢复上一局：' + state.size + '×' + state.size);
   } else {

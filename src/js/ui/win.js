@@ -16,10 +16,10 @@ import { save } from '../core/storage.js';
 import { announce, formatTime } from '../core/utils.js';
 import { queenCount, regionCounts } from '../game/rules.js';
 import { closeGuide } from './guide.js';
-import { revealReward } from './board-flip.js';
 import { updateHint } from './hint.js';
 import { showResult } from './panels/result.js';
 import { updateStats } from './render.js';
+import { afterWinLook, playLookEffect } from '../looks/effects.js';
 
 /* ==========================================================
    胜利
@@ -36,6 +36,8 @@ export function checkWin() {
   state.lostBy = null;
   if (guide.open) closeGuide();
   stopTimer();
+  sfx('win');
+  buzz([20, 40, 20, 40, 80]);
   updateStats();
   updateHint();
   announce('解开了！用时 ' + formatTime(state.elapsed) +
@@ -51,16 +53,11 @@ export function checkWin() {
   save();
   recordFinish(true);
 
-  const marks = state.marks;
-  revealReward().then(function (completed) {
-    if (!completed || state.marks !== marks || state.status !== 'won' || view.rolling) return;
-    sfx('win');
-    buzz([20, 40, 20, 40, 80]);
+  afterWinLook(function (current) {
     burstConfetti();
     window.setTimeout(function () {
-      if (state.marks !== marks || state.status !== 'won' || view.rolling) return;
-      showResult();
-    }, REDUCE_MOTION ? 200 : 1100);
+      if (current()) showResult();
+    }, REDUCE_MOTION ? 200 : 900);
   });
 }
 
@@ -165,6 +162,7 @@ export function failByLives() { failGame('lives'); }
 
 export function burstConfetti() {
   if (REDUCE_MOTION) return;
+  if (playLookEffect('confetti').handled) return;
   var rect = boardEl.getBoundingClientRect();
   var colors = ['#FFD93D', '#FF6B6B', '#4FC46F', '#5B9DFF', '#A06BE8', '#FFFFFF'];
   for (var i = 0; i < 34; i++) {

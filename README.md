@@ -18,20 +18,11 @@
 皇后可以换成小猫，命数可以换成血条——满盘 × 看得眼花时换一套就安静了。
 四类样式都由 `src/js/looks/` 里的插件提供。
 
-## 棋盘翻格与通关图片
-
-新局、每日挑战、重试、载入分享码和刷新续玩都会从左上角向右下角逐条对角线翻面。
-旧局面留在格子正面，新棋盘在背面；4×4–16×16 的整段动画均不超过约 1.1 秒。
-翻动期间暂时锁定棋盘输入，换局会取消旧动画。
-
-解开棋盘后，从左下角向右上角翻成一张戴皇冠的可爱猫咪图片，完整显示后再放礼花，
-随后弹出成绩卡。「看看棋盘」可以收起成绩、欣赏图片；刷新已通关对局会恢复图片，
-不重复礼花或记录战绩。系统开启「减少动态效果」时直接展示结果，不做翻转或礼花。
-
-动画在 `src/js/ui/board-flip.js` 与 `src/styles/base/board-flip.css`，
-插画在 `src/assets/victory-kitten.webp`（生成提示词见同目录 README）。
-真实浏览器回归：`node tools/check-board-flip.mjs`（需 Playwright，可用 `NODE_PATH` 指向已有安装；
-`QUEENS_BROWSER` 可指定 Chromium 路径），截图输出到 `tools/shots/board-flip/`。
+开局、通关与礼炮也可在「外观」里分别选择：斜向翻牌 / 逐行翻页 / 涟漪翻面，
+猫咪拼图 / 星光拼图，以及原版 / 爱心 / 星芒 / 安静礼炮；原版入场与保留棋盘也有对应选项。
+动画、专用样式和图片都在 `src/js/looks/` 内，翻格间隙跟随页面的背景色。
+插件接口和目录见 [`src/js/looks/README.md`](src/js/looks/README.md)，
+浏览器回归运行 `node tools/check-look-effects.mjs`。
 
 ## 局内信息
 

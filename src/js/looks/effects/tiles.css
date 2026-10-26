@@ -1,0 +1,40 @@
+/* 翻面插件专用样式；背景吃页面令牌，翻转间隙不会露出白底。 */
+.board.look-is-animating, .look-tiles, .look-tile-face { background-color: var(--bg-body); }
+.board.look-is-animating > :not(.look-tiles):not(.skin-defs),
+.board.look-has-reward > :not(.look-tiles):not(.skin-defs) { visibility: hidden; }
+.look-tiles {
+  position: absolute; inset: 0; z-index: 5;
+  display: grid;
+  grid-template-columns: repeat(var(--look-n), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--look-n), minmax(0, 1fr));
+  pointer-events: auto;
+}
+.look-tile { position: relative; min-width: 0; min-height: 0; perspective: 650px; }
+.look-tile-card {
+  position: absolute; inset: 0; transform-style: preserve-3d;
+  animation: lookTileTurn 500ms cubic-bezier(.42, 0, .2, 1) var(--look-delay) both;
+}
+.look-tile-face {
+  position: absolute; inset: 0; display: block; overflow: hidden;
+  backface-visibility: hidden; -webkit-backface-visibility: hidden;
+  background-repeat: no-repeat;
+}
+.look-tile-back { transform: rotate3d(var(--look-axis), 180deg); }
+.look-tile-face .mark { opacity: var(--look-mark, 0); transform: none; }
+.look-tile-face .piece { opacity: var(--look-piece, 0); transform: none; }
+.look-tile-face .sk { opacity: var(--sk-veil, 1); }
+.look-tile-face .piece, .look-tile-face .mark, .look-tile-face .sk { animation: none !important; transition: none !important; }
+.look-tile-borders { position: absolute; inset: 0; width: 100%; height: 100%; }
+.look-tile-borders path { fill: none; stroke: var(--ink); stroke-linecap: square; }
+.look-tiles.is-reward { display: block; background-size: 100% 100%; background-repeat: no-repeat; }
+.look-sparkle {
+  position: absolute; width: 7%; aspect-ratio: 1;
+  background: #fff5ad; clip-path: polygon(50% 0, 63% 37%, 100% 50%, 63% 63%, 50% 100%, 37% 63%, 0 50%, 37% 37%);
+  animation: lookStar 1.2s ease-out both; pointer-events: none;
+}
+.showcase[data-deal] .sc-case, .showcase[data-reveal] .sc-case, .showcase[data-confetti] .sc-case { height: 72px; }
+.showcase[data-deal] .sc-item, .showcase[data-reveal] .sc-item, .showcase[data-confetti] .sc-item { width: 44px; height: 44px; }
+.showcase[data-deal]:hover .sc-item { animation: lookPreview .9s ease-in-out; }
+@keyframes lookTileTurn { from { transform: rotate3d(var(--look-axis), 0deg); } to { transform: rotate3d(var(--look-axis), -180deg); } }
+@keyframes lookStar { 0%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(.3) rotate(0); } 35% { opacity: .9; transform: translate(-50%, -50%) scale(1) rotate(40deg); } }
+@keyframes lookPreview { 50% { transform: perspective(200px) rotateY(150deg); } }

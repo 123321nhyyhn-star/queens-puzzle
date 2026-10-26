@@ -58,14 +58,18 @@ async function closeSheet() {
   if (open) { await jsClick('#btnCloseNew'); await sleep(320); }
 }
 async function waitFreshBoard(prevSeed) {
-  const view = await page.evaluateHandle(async () => (await import('/src/js/core/state.js')).view);
+  const phase = await page.evaluateHandle(async () => {
+    const { view } = await import('/src/js/core/state.js');
+    const { isLookBusy } = await import('/src/js/looks/effects.js');
+    return { get rolling() { return view.rolling; }, get animating() { return isLookBusy(); } };
+  });
   try {
-    await page.waitForFunction((s, v) => {
+    await page.waitForFunction((s, phase) => {
       const st = __QUEENS_DEBUG__.state;
-      return st.regions && !v.rolling && !v.flipping && document.getElementById('newWrap').hidden &&
+      return st.regions && !phase.rolling && !phase.animating && document.getElementById('newWrap').hidden &&
         (s === null || st.seed !== s);
-    }, { timeout: 40000 }, prevSeed, view);
-  } finally { await view.dispose(); }
+    }, { timeout: 40000 }, prevSeed, phase);
+  } finally { await phase.dispose(); }
   await sleep(250);
 }
 async function openRecords() { await jsClick('#btnRecords'); await sleep(340); }
