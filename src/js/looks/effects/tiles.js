@@ -125,7 +125,7 @@ export async function flipTiles(ctx, options) {
         ctx.board.classList.add('look-has-reward');
         ctx.grid.setAttribute('aria-hidden', 'true');
         ctx.retain(remove);
-        if (options.sparkle && !ctx.reducedMotion) for (let i = 0; i < 8; i++) {
+        if (options.sparkle && animated) for (let i = 0; i < 8; i++) {
           const star = document.createElement('i');
           star.className = 'look-sparkle';
           const angle = i / 8 * Math.PI * 2;

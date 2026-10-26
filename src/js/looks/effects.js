@@ -11,7 +11,7 @@ const sheets = new Map();
 const artifacts = new Set();
 let generation = 0;
 let previous = null;
-let signature = '';
+let signature = null;
 let winJob = null;
 
 function option(kind) { return findOf(kind, settings[KIND[kind].key]); }
@@ -104,13 +104,23 @@ export function afterWinLook(callback) {
 export function applyEffectLooks() {
   styles();
   option('reveal')?.preload?.();
-  const next = ['deal', 'reveal', 'confetti'].map(kind => settings[KIND[kind].key]).join('/');
-  if (signature && signature !== next) {
-    const pending = winJob;
-    cancelTasks();
-    if (state.status === 'won') {
-      if (pending && !pending.started) afterWinLook(pending.callback);
-      else playLookEffect('reveal', { animate: false });
+  const kinds = ['deal', 'reveal', 'confetti'];
+  const next = Object.fromEntries(kinds.map(kind => [kind, settings[KIND[kind].key]]));
+  if (signature) {
+    const changed = kinds.filter(kind => signature[kind] !== next[kind]);
+    for (const kind of changed) {
+      active.get(kind)?.controller.abort();
+      active.delete(kind);
+    }
+    // 礼炮和开局选项不重建通关画面，也不重启等待中的胜利流程。
+    if (changed.includes('reveal')) {
+      for (const cleanup of artifacts) cleanup();
+      artifacts.clear();
+      const pending = winJob;
+      if (state.status === 'won') {
+        if (pending && !pending.started) afterWinLook(pending.callback);
+        else playLookEffect('reveal', { animate: false });
+      }
     }
   }
   signature = next;
