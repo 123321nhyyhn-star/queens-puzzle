@@ -14,7 +14,7 @@ import { clearSnap } from './app/snap.js';
 import { audio, buzz, sfx } from './core/audio.js';
 import { pauseTimer, startTimer } from './core/clock.js';
 import {
-  btnClear, btnFinish, btnHint, btnNew, btnUndo, coachClose, coachNext, coachPrev, gridEl,
+  btnClear, btnFinish, btnHint, btnNew, btnRedo, btnUndo, coachClose, coachNext, coachPrev, gridEl,
   regionsEl
 } from './core/dom.js';
 import { handleKey } from './core/sheet.js';
@@ -223,6 +223,7 @@ gridEl.addEventListener('click', function (e) {
    工具栏 / 提示行 / 引导
    ========================================================== */
 btnUndo.addEventListener('click', undo);
+btnRedo.addEventListener('click', redo);
 btnHint.addEventListener('click', useHint);
 btnClear.addEventListener('click', function () { clearBoard(false); });
 /* 记录点：点一下记下 / 再点一下还原，按住清空（手势都在 ui/snap.js 里绑） */
@@ -273,9 +274,15 @@ document.addEventListener('keydown', function (e) {
   }
 
   if (e.ctrlKey || e.metaKey) {
-    if (e.key.toLowerCase() === 'z') {
+    /* 撤销 / 重做两套读法都收：Z 与 Shift+Z 是 Mac 与游戏里那一套，
+     * Ctrl+Y 是 Windows 上大家肌肉记忆里的重做。 */
+    var k = e.key.toLowerCase();
+    if (k === 'z') {
       e.preventDefault();
       if (e.shiftKey) redo(); else undo();
+    } else if (k === 'y') {
+      e.preventDefault();
+      redo();
     }
     return;
   }

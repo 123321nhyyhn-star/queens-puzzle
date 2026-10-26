@@ -93,7 +93,11 @@
    各画各的、各自抗锯齿，拐角处就漏出一像素的缝，看着像断线。
    现在改成一整张 SVG：同一条色块边界合并成一笔（M…L…），
    stroke-linecap: square 让每笔两端多伸出半个线宽，横竖交汇处自然叠实，
-   外圈那半个线宽被棋盘外框裁掉，正好接上。 */
+   外圈那半个线宽被棋盘外框裁掉，正好接上。
+
+   层级 2：残影那圈（`.tr`）不带 z-index，压在这一层之下 —— 它往格子里收了
+   几个像素，跟描边错开，不靠压住墨线来保证连续。`.rl` / `.gl` 是 3、
+   `.gl-tags` 是 4、`.links` 不带 z-index，顺序跟以前一样。 */
 .rb {
   position: absolute;
   inset: 0;
@@ -109,6 +113,69 @@
   stroke: var(--ink);
   stroke-width: var(--bw, 2px);
   stroke-linecap: square;
+}
+
+/* ---- 撤销后的残影：上一步动过的那几格 ----
+   撤销退回去之后，人常常想不起「刚才那一笔是在说什么」。退完把上一步
+   **变化过**的那几格圈出来（见 ui/trace.js：拿退回去前后的整盘 marks 一比，
+   outlinePath 取外轮廓），手指一碰棋盘就灭 —— 它只回答「刚才那一下动了哪儿」，
+   不是这一局的结论。
+
+   画法上的几条取舍：
+   · 独立一层 SVG，紧跟格子之后（index.html 里 #tr 紧挨着 #grid）：
+     既不进 .cell（格子 overflow:hidden，框出不来）。
+   · 只有**一圈线**，没有洗色、没有光晕、没有模糊：撤销是件小事，
+     屏幕上不该突然亮一块。前一版三层叠出来的「光」太抢眼，砍掉。
+   · 这圈线是**内描边**：js 那边让开半个线宽（`--bw / 2`），笔画正好整条落在
+     格子里面、外沿与格线齐平。它跟色块压在格线上的墨线是同一个位置，
+     所以看着就是「这一格的边界在呼吸」，而不是浮在里头另起一条线 ——
+     收得太进去（前一版收 3px）会跟格子边线分家，看着像两个东西。
+   · 颜色也压得轻：笔画是墨色，但**整层只在 .32–.5 之间浅浅起伏**，
+     变化幅度小，不会一会儿深一会儿浅地抢眼睛。
+   · 因为它跟描边位置重合、粗细也一样，层级谁在上谁在下都一样：
+     重合的地方永远是墨色，只有格子内部那半圈在明暗。所以这一层**不抢 z-index**，
+     仍旧压在 .rb 之下（`.rl` / `.gl` 在 3、`.gl-tags` 在 4，都在它上面）。
+   · 慢慢呼吸：这是「回头看一眼」的节奏，不该催人。 */
+.tr {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+/* 进场那一下**落脚点要对上**呼吸的最低点（.32），否则淡入到 1 之后
+   呼吸从 .32 起跳，会在 0.24s 处猛地一暗 —— 这就是最早那版看着「一顿」的原因。 */
+.tr-g {
+  animation: trIn .24s ease-out both, trBreath 2.4s ease-in-out .24s infinite;
+}
+
+/* 端点 / 拐角跟色块描边（`.rb path`）用同一套：square + miter。
+   外轮廓是一条条 M…L… 拼起来的，每一个拐角都是「一横一竖」两笔的端点相接，
+   square 让每笔两端各多伸半个线宽、正好把角填成直角 —— 换成 round 就是圆角，
+   跟棋盘上其它所有方角对不上。 */
+.tr-line {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: var(--bw, 2px);
+  stroke-linejoin: miter;
+  stroke-linecap: square;
+}
+
+@keyframes trIn {
+  from { opacity: 0; }
+  to { opacity: .32; }
+}
+
+/* 幅度收得很小（.32 ↔ .5）：只是让这圈线「活」着，不是让人盯着它看 */
+@keyframes trBreath {
+  0%, 100% { opacity: .32; }
+  40%, 66% { opacity: .5; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tr-g { animation: none; opacity: .5; }
 }
 
 /* ---- 色块高亮层 ----

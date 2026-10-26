@@ -5,8 +5,8 @@
 
 import { buzz, sfx } from '../core/audio.js';
 import { paintClock } from '../core/clock.js';
-import { boardEl, btnClear, btnHint, btnSnap, btnUndo, hudSize, linksEl, queenCountEl, queenPill,
-  rbEl, rlBad, rlEl, snapLabel, stepCountEl, stepPill, stepUnitEl } from '../core/dom.js';
+import { boardEl, btnClear, btnHint, btnRedo, btnSnap, btnUndo, hudSize, linksEl, queenCountEl,
+  queenPill, rbEl, rlBad, rlEl, snapLabel, stepCountEl, stepPill, stepUnitEl } from '../core/dom.js';
 import { settings, state, view } from '../core/state.js';
 import { pulseClass, svgEl } from '../core/utils.js';
 import { cellSize, regionPath } from '../game/geometry.js';
@@ -335,6 +335,11 @@ export function updateStats() {
   btnUndo.disabled = settings.noUndo || view.undo.length === 0;
   btnUndo.classList.toggle('is-locked', !!settings.noUndo);
   btnUndo.setAttribute('title', settings.noUndo ? '挑战模式：这局不能撤销' : '撤销（Z）');
+  /* 重做跟撤销同一套读法：判据从「有得撤」换成「有得重做」（view.redo 在
+   * 新的一笔落下时就被 pushEntry 清空，所以「改了主意」这条路自然断开）。 */
+  btnRedo.disabled = settings.noUndo || view.redo.length === 0;
+  btnRedo.classList.toggle('is-locked', !!settings.noUndo);
+  btnRedo.setAttribute('title', settings.noUndo ? '挑战模式：这局不能重做' : '重做（Shift+Z）');
   btnHint.disabled = !playing || settings.noHint;
   btnHint.classList.toggle('is-locked', !!settings.noHint);
   btnHint.setAttribute('title', settings.noHint ? '挑战模式：这局不能用提示' : '提示（H）');

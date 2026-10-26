@@ -16,6 +16,10 @@ export var app = $('app');
 export var stage = $('stage');
 export var boardEl = $('board');
 export var gridEl = $('grid');
+/* 撤销残影那一层（ui/trace.js）：紧挨着格子，压在色块描边之下、
+   提示 / 出错 / 圈画层之下（层级写在 board.css 的 .tr 一节）；
+   它自己往格子里收几个像素，跟描边错开，不靠层级取胜 */
+export var trEl = $('tr');
 export var rbEl = $('rb');
 export var rlEl = $('rl');
 export var rlBad = $('rlBad');
@@ -75,9 +79,12 @@ export var btnLook = $('btnLook');
 export var btnRecords = $('btnRecords');
 
 export var btnUndo = $('btnUndo');
+/* 重做：撤销的孪生兄弟，紧挨着它左边那颗。
+ * 可用状态由 ui/render.js 的 updateStats() 统一刷（跟撤销一套读法）。 */
+export var btnRedo = $('btnRedo');
 export var btnHint = $('btnHint');
 export var btnClear = $('btnClear');
-/* 记录点：工具栏第二颗（撤销与提示之间）。空着是「记录」（白底），
+/* 记录点：工具栏第三颗（重做与提示之间）。空着是「记录」（白底），
  * 记下了是「还原」（墨底）。按钮上的字与可用状态由 ui/render.js 的 updateStats()
  * 统一刷，手势（点 / 长按）在 ui/snap.js。 */
 export var btnSnap = $('btnSnap');

@@ -15,6 +15,7 @@ import { loseLife } from '../ui/lives.js';
 import { isSolutionCell, pendingQueens } from '../game/rules.js';
 import { pushHistory } from './history.js';
 import { render } from '../ui/render.js';
+import { clearTrace } from '../ui/trace.js';
 import { checkSteps, checkWin, failByLives } from '../ui/win.js';
 
 /* ==========================================================
@@ -39,6 +40,10 @@ export function setMarks(next, anim) {
 
 export function onCell(i) {
   if (!canPlay()) return;
+  /* 手一碰棋盘，上一步的残影就收掉 —— 玩家说的是「点任意格子后就消失」，
+   * 包括点在一格自动打了叉、这一下其实什么也没干的地方：
+   * 手指落下就意味着注意力已经回到棋盘上了，光再留着只会碍事。 */
+  clearTrace();
   // 玩家自己动手了，之前那张提示的圈就撤掉，免得指着一处已经变了的棋盘
   if (guide.open) closeGuide();
   // Tab 位跟着最后一次操作的格子走
@@ -101,6 +106,7 @@ export function onCell(i) {
 
 export function placeQueen(i, skipHistory) {
   if (!canPlay()) return;     // 赢了 / 超时封盘的局，键盘也别想再落子
+  clearTrace();               // 键盘落子不经过 onCell，残影在这儿收
   /* 标错惩罚（挑战）：这一格不是解位就别落子 —— 红 X 闪一下、格子还原成空的、
    * 扣一条命，扣光判负（见下面的 rejectQueen）。
    * 判在 pushHistory 之前：这一手压根没发生，不该进撤销栈、也不该涨步数。 */

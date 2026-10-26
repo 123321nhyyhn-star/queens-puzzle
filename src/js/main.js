@@ -5,6 +5,7 @@
 
 import './events.js';   // 事件接线（纯副作用模块，必须早于 boot 执行）
 import { clearBoard } from './app/actions.js';
+import { redo, undo } from './app/history.js';
 import { applyBoard, lastRoll, newGame, retryGame } from './app/puzzle.js';
 import { clearSnap, restoreSnap, saveSnap } from './app/snap.js';
 import { limitRemaining, paintClock, pauseTimer, startTimer } from './core/clock.js';
@@ -29,6 +30,7 @@ import { closeRecords, openRecords } from './ui/panels/records.js';
 import { showResult } from './ui/panels/result.js';
 import { render, updateStats } from './ui/render.js';
 import { takeHashCode, tryLoadShare } from './ui/share.js';
+import { traceCells } from './ui/trace.js';
 import { checkLives, checkSteps, checkTimeout } from './ui/win.js';
 
 /* 浮层先挂上：markup 进 #sheets，各面板的元素引用与事件在这一步接好。
@@ -138,6 +140,12 @@ window.__QUEENS_DEBUG__ = {
   useHint: useHint,
   clear: function () { clearBoard(true); },
   render: render,
+  // 撤销 / 重做与两个栈的深度、以及撤销后亮着的那几格（残影）。
+  // 只给 tools/ 里的自动化测试用——正常游玩都走工具栏那两颗
+  undo: undo,
+  redo: redo,
+  history: function () { return { undo: view.undo.length, redo: view.redo.length }; },
+  trace: function () { return traceCells(); },
   vibe: function () { return state.vibe; },
   openDiff: openDiff,
   closeDiff: closeDiff,

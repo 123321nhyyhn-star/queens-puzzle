@@ -138,6 +138,7 @@
            格子里的 .sk > use 指向它（见 game/skin.js）。0×0，不占地方。 -->
       <svg class="skin-defs" id="skinDefs" aria-hidden="true" focusable="false"></svg>
       <div class="grid" id="grid" role="grid" aria-label="皇后棋盘"></div>
+      <svg class="tr" id="tr" aria-hidden="true"></svg>
       <svg class="rb" id="rb" aria-hidden="true"></svg>
       <svg class="rl" id="rl" aria-hidden="true">
         <g id="rlBad"></g>
@@ -150,12 +151,15 @@
 
     <div class="regions" id="regions" aria-hidden="true"></div>
 
-    <!-- 工具栏：撤销 / 记录点 / 提示 / 清空。
+    <!-- 工具栏：撤销 / 重做 / 记录点 / 提示 / 清空。
+         撤销与重做是一对（Z / Shift+Z）：撤销退一步、重做把那一步再走回来，
+         两边都只动棋盘、不涨步数，刷新之后两边一起空（撤销栈不落盘）。
          记录点是「记下这一刻、回头再来」的锚点（见 app/snap.js）：
          空着时写「记录」，记下了整颗翻成墨底、写「还原」。
          右上角那枚「?」只说三句话——长按清空这件事没法写在按钮上。 -->
     <div class="toolbar" id="toolbar">
       <button class="btn" id="btnUndo" type="button">撤销</button>
+      <button class="btn" id="btnRedo" type="button">重做</button>
       <div class="snap-wrap">
         <button class="btn btn-snap" id="btnSnap" type="button" aria-pressed="false" title="记下这一刻（S）">
           <svg class="snap-ico" width="13" height="13" viewBox="0 0 24 24" aria-hidden="true">

@@ -15,6 +15,7 @@ import { regionPath } from '../game/geometry.js';
 import { flashHint, updateHint } from './hint.js';
 import { pushHistory } from '../app/history.js';
 import { relayout } from './layout.js';
+import { clearTrace } from './trace.js';
 
 /* ==========================================================
    提示引导
@@ -56,6 +57,10 @@ export function openGuide() {
   var plan = guidePlan();
   if (!plan || !plan.steps || !plan.steps.length) { flashHint('这盘暂时没有提示可给'); return; }
   if (plan.kind === 'done') { flashHint('已经是解了'); return; }
+
+  /* 撤销留下的残影这会儿该让位：圈画层马上要在同一片棋盘上讲另一件事，
+   * 两层光叠在一起，玩家分不清哪圈是「刚撤掉的」、哪圈是「提示要看的」。 */
+  clearTrace();
 
   guide.open = true;
   guide.plan = plan;

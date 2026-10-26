@@ -16,6 +16,7 @@ import { closeGuide, paintGl } from '../ui/guide.js';
 import { flashHint } from '../ui/hint.js';
 import { relayout } from '../ui/layout.js';
 import { render, resetBad, updateStats } from '../ui/render.js';
+import { clearTrace } from '../ui/trace.js';
 import { closeSheet, isOpen } from '../core/sheet.js';
 import { dismissMismatch, showMismatch } from '../ui/panels/mismatch.js';
 
@@ -299,6 +300,9 @@ export function applyBoard(n, regions, solution, seed, preVibe) {
   view.lastConflictCount = 0;
   view.undo = [];
   view.redo = [];
+  /* 换盘 / 重试 / 载入分享码：上一步的残影是「那张盘上的一件事」，
+   * 跟着撤销栈一起清掉（clean 之后 buildBoard 又会重建格子，类名本来也不在了） */
+  clearTrace();
   /* 上一局可能还有一串「补齐」在落子：换盘时把锁解开，
    * 那一串自己会发现 state.marks 已经不是它记的那个数组，随即收手。 */
   view.filling = false;

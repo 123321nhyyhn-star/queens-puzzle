@@ -17,12 +17,13 @@
  * ========================================================================== */
 
 import { buzz, sfx } from '../core/audio.js';
-import { guide, state } from '../core/state.js';
+import { guide, state, view } from '../core/state.js';
 import { save } from '../core/storage.js';
 import { announce } from '../core/utils.js';
 import { closeGuide } from '../ui/guide.js';
 import { clearHintTimer, flashHint } from '../ui/hint.js';
 import { render } from '../ui/render.js';
+import { markTrace } from '../ui/trace.js';
 import { canPlay } from './actions.js';
 import { pushRestorePoint } from './history.js';
 
@@ -56,6 +57,13 @@ export function restoreSnap() {
   if (guide.open) closeGuide();
   clearHintTimer();
 
+  /* 只圈「记录之后的那一步」：跳得远时，前后一比往往有十几格不一样，
+   * 一次全点亮，屏幕上一大片，反而看不出「我记完那一刻之后先走的是哪一步」。
+   * 找法见 stepAfterSnap() —— 必须在 pushRestorePoint() 之前取，
+   * 否则刚压进去的那一条（还原前的盘面）会顶到栈顶，把要找的那一条挤远。
+   * 找不到就什么都不亮：宁可安静，也不把十几格一起点亮。 */
+  var next = stepAfterSnap(s.marks, state.marks);
+
   pushRestorePoint();
   state.marks = s.marks.slice();     // 同样拷一份：存的那盘不能被棋盘改掉
   state.hints = s.hints;
@@ -63,12 +71,42 @@ export function restoreSnap() {
   state.lastTap = null;
   state.snap = null;
 
+  markTrace(state.marks, next || state.marks);
+
   sfx('restore');
   buzz([12, 26, 12]);
   render();
   save();
   flashHint('已回到记录点 · 撤销可退回', true, 2000);
   announce('已回到记录点');
+  return true;
+}
+
+/* ------------------------------------------------------------ 记录之后的第一步
+ * 撤销栈里每一条存的都是「某一步**做之前**的盘面」（app/history.js 的
+ * pushEntry 在改棋盘之前压）。所以记下那一刻的盘面 S 落在栈里第 i 条时，
+ * 第 i+1 条就是「记录之后第一步做完」的盘面 —— 两者一比，正好是那一步动的格子。
+ *
+ * 只走了一步时，第 i 条就是**栈顶**，后面没有第 i+1 条：那一步做完的盘面
+ * 正是眼下这块棋盘（`currentMarks`，还原之前的那一盘）。少了这一条兜底，
+ * 「记完只走一步就还原」会一格都不亮。
+ *
+ * 同一盘面可能被走到过好几回，从栈顶往下找**最近**的那一次：离现在最近的那条
+ * 后面跟的，才是玩家这次真正「记完先走的那一步」。
+ * 找不到就返回 null（记完还没落笔，或撤销已经把那一刻挤出栈了）。 */
+function stepAfterSnap(snapMarks, currentMarks) {
+  var stack = view.undo;
+  for (var i = stack.length - 1; i >= 0; i--) {
+    if (!sameMarks(stack[i].marks, snapMarks)) continue;
+    var after = stack[i + 1];
+    return after ? after.marks : currentMarks;
+  }
+  return null;
+}
+
+function sameMarks(a, b) {
+  if (!a || !b || a.length !== b.length) return false;
+  for (var i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
   return true;
 }
 

@@ -1,11 +1,11 @@
 /* ============================================================================
- * 记录点（工具栏第四颗）
+ * 记录点（工具栏第三颗）
  *
  *   python serve.py --no-open
  *   node tools/check-snap.mjs
  *
  * 覆盖：
- *   1. 结构：第四颗按钮 + 右上角「?」，320 / 390 两档都放得下、不挤出屏幕
+ *   1. 结构：这颗按钮 + 右上角「?」，320 / 390 两档都放得下、不挤出屏幕
  *   2. 记下：抄一份整盘 marks（不压撤销点、不涨步数），按钮翻成墨底「还原」
  *   3. 还原：回到那一刻、只占一个撤销位、**不算一步**、记录点用完即清
  *   4. 长按清空：红环走满 620ms → 清空 + 不误触发一次「记下」
@@ -120,8 +120,8 @@ const layout390 = await D(() => {
     helpOverlapsHint: help.right > hintR.left
   };
 });
-ok('工具栏是四颗', layout390.count === 4, layout390.count);
-ok('390 上四颗等宽且不溢出', layout390.overflow <= 0 && layout390.docOverflow <= 0, layout390);
+ok('工具栏是五颗', layout390.count === 5, layout390.count);
+ok('390 上五颗等宽且不溢出', layout390.overflow <= 0 && layout390.docOverflow <= 0, layout390);
 ok('390 上「?」在屏幕里', layout390.helpInside, layout390.helpInside);
 ok('「?」不压到「提示」', !layout390.helpOverlapsHint, layout390.helpOverlapsHint);
 await page.screenshot({ path: `${SHOTS}/snap-390-empty.png` });
@@ -305,7 +305,7 @@ const narrow = await D(() => {
     vw: window.innerWidth
   };
 });
-ok('320 上四颗都放得下（字没被截）', narrow.clipped.every(v => v <= 0), narrow.clipped);
+ok('320 上五颗都放得下（字没被截）', narrow.clipped.every(v => v <= 0), narrow.clipped);
 ok('320 上不横向溢出', narrow.overflow <= 0 && narrow.docOverflow <= 0, narrow);
 ok('320 上「?」还在屏幕里', narrow.helpRight <= narrow.vw, narrow);
 await page.screenshot({ path: `${SHOTS}/snap-320.png` });

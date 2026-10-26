@@ -140,6 +140,11 @@ export function sfx(name, detail) {
     case 'undo':
       audio.tone('sine', 430, 300, 0.09, 0, 0.3);
       break;
+    case 'redo':
+      /* 重做：把 undo 那一句倒过来放（300 → 430）。
+       * 同一个音色、上行的走向，「往回退」和「再往前走回去」一听就分得开 */
+      audio.tone('sine', 300, 430, 0.09, 0, 0.3);
+      break;
     case 'snap':
       /* 记录点：记下这一刻。一声干脆的「合页」，比 undo 亮一档 */
       audio.noise(0.045, 1700, 1.5, 0, 0.3);

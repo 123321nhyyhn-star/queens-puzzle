@@ -10,6 +10,10 @@
   .stage { padding-left: 8px; padding-right: 8px; gap: 6px; }
   .hint { font-size: 11.5px; }
   .btn { min-height: 40px; font-size: 13px; }
+  /* 工具栏五颗：缝收窄到 6、左右内边距收窄到 8，两字按钮才不至于贴着描边
+     （320 上每颗 56px，内容区 36px，「撤销」两字 27px，还有余量） */
+  .toolbar { gap: 6px; }
+  .toolbar .btn { padding: 0 8px; }
   /* 外观面板：窄屏把展柜压矮一档，两个展位并排也不挤 */
   .sc-case { height: 82px; }
   .sc-item { width: 44px; height: 44px; }
@@ -31,6 +35,11 @@
   .icon-btn { width: 27px; height: 27px; }
   .icon-btn svg { width: 14px; height: 14px; }
   .actions { gap: 4px; }
+  /* 五颗里最挤的是记录点：图标 13 + 缝 4 + 两字 26，比 56px 的格子多出 3px。
+     这里让图标让位（它是装饰），留下「记录 / 还原」——那才是这颗按钮的状态。
+     按钮本身的 aria-label 与 title 一直带着完整说法，少一枚图标不丢信息。 */
+  .btn-snap .snap-ico { display: none; }
+  .btn-snap { padding: 0 6px; }
   .sc-case { height: 74px; }
   .sc-item { width: 38px; height: 38px; margin-bottom: 6px; }
   .sc-plinth { bottom: 9px; height: 6px; }

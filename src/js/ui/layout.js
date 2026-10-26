@@ -9,6 +9,7 @@ import { clamp } from '../core/utils.js';
 import { refreshPeek } from '../game/board.js';
 import { refreshGuidePaint } from './guide.js';
 import { drawLinks, drawRegionBorders, refreshBad } from './render.js';
+import { refreshTrace } from './trace.js';
 
 /* ==========================================================
    布局
@@ -57,4 +58,6 @@ export function relayout() {
   drawLinks(state.conflicts || { pairs: [], cells: new Set(), count: 0 });
   // 格子尺寸变了，圈画层里的坐标也得跟着重画（否则横屏一转就错位）
   refreshGuidePaint();
+  // 撤销残影那圈轮廓同理：它是按 --cell 算出来的 path
+  refreshTrace();
 }
