@@ -57,6 +57,14 @@ function face(snapshot, r, c, n, back) {
   return el;
 }
 
+function half(snapshot, r, c, n, back, position, className) {
+  const clip = document.createElement('span');
+  clip.className = 'look-fold-half ' + className;
+  clip.dataset.half = position;
+  clip.appendChild(face(snapshot, r, c, n, back));
+  return clip;
+}
+
 export async function flipTiles(ctx, options) {
   if (options.picture && !await preloadPicture(options.picture)) return true;
   if (ctx.signal.aborted) return false;
@@ -74,7 +82,8 @@ export async function flipTiles(ctx, options) {
   layer.dataset.direction = options.mode === 'ripple' ? 'center' : reward ? 'bottom-left' : 'top-left';
   layer.setAttribute('aria-hidden', 'true');
   layer.style.setProperty('--look-n', ctx.n);
-  const axis = options.mode === 'wave' ? '1, 0, 0' : options.mode === 'ripple' ? '1, 1, 0' : '0, 1, 0';
+  layer.dataset.fold = options.mode === 'wave' ? 'horizontal' : 'vertical';
+  const axis = options.mode === 'wave' ? '1, 0, 0' : '0, 1, 0';
   layer.style.setProperty('--look-axis', axis);
   const maxDistance = options.mode === 'ripple' ? Math.hypot((ctx.n - 1) / 2, (ctx.n - 1) / 2) : 2 * (ctx.n - 1);
   const gap = Math.min(65, 540 / Math.max(1, maxDistance));
@@ -90,7 +99,18 @@ export async function flipTiles(ctx, options) {
     const delay = distance * gap;
     lastDelay = Math.max(lastDelay, delay);
     card.style.setProperty('--look-delay', `${delay}ms`);
-    card.append(face(previous, r, c, ctx.n, false), face(next, r, c, ctx.n, true));
+    // 静止的旧左/上半、新右/下半，加上绕中线翻动的双面半页。
+    const leaf = document.createElement('span');
+    leaf.className = 'look-fold-leaf';
+    leaf.append(
+      half(previous, r, c, ctx.n, false, 'second', 'look-fold-front'),
+      half(next, r, c, ctx.n, true, 'first', 'look-fold-back')
+    );
+    card.append(
+      half(previous, r, c, ctx.n, false, 'first', 'look-fold-before'),
+      half(next, r, c, ctx.n, true, 'second', 'look-fold-after'),
+      leaf
+    );
     tile.appendChild(card);
     layer.appendChild(tile);
   }
@@ -144,7 +164,7 @@ export async function flipTiles(ctx, options) {
     if (animated) {
       ctx.board.classList.add('look-is-animating');
       ctx.grid.setAttribute('aria-busy', 'true');
-      timer = window.setTimeout(finish, 540 + lastDelay);
+      timer = window.setTimeout(finish, 590 + lastDelay);
     } else finish();
   });
 }

@@ -32,7 +32,7 @@ const direction = page => page.evaluate(() => {
 const facesUseRegionColors = (page, side = 'back') => page.evaluate(side => {
   const probe = document.createElement('span');
   const cells = [...document.querySelectorAll('#grid .cell')];
-  const faces = [...document.querySelectorAll(side === 'back' ? '.look-tile-back' : '.look-tile-face:not(.look-tile-back)')];
+  const faces = [...document.querySelectorAll(side === 'back' ? '.look-fold-after .look-tile-back' : '.look-fold-before .look-tile-face')];
   return faces.length === cells.length && faces.every((face, i) => {
     probe.style.backgroundColor = getComputedStyle(cells[i]).getPropertyValue('--rc').trim();
     return getComputedStyle(face).backgroundColor === probe.style.backgroundColor;
@@ -50,6 +50,12 @@ try {
   check('开局从左上到右下推进', corners[0] === 0 && corners[1] === corners[2] && corners[3] > corners[1]);
   check('初次开局翻牌正面保留区域原色', await facesUseRegionColors(page, 'front'));
   check('初次开局翻牌背面使用实际格子颜色', await facesUseRegionColors(page));
+  check('每格沿中线分为固定半页与双面翻动半页', await page.evaluate(() => {
+    const card = document.querySelector('.look-tile-card'), leaf = card.querySelector('.look-fold-leaf');
+    return card.querySelectorAll('.look-fold-half').length === 4 &&
+      Math.abs(leaf.offsetWidth * 2 - card.offsetWidth) <= 1 && leaf.offsetHeight === card.offsetHeight &&
+      getComputedStyle(leaf).transformOrigin.split(' ')[0] === '0px' && getComputedStyle(card).transform === 'none';
+  }));
   check('翻格时拦住鼠标、键盘落子', await page.evaluate(async () => {
     const { onCell, placeQueen, canPlay } = await import('/src/js/app/actions.js');
     onCell(0); placeQueen(1);
@@ -92,9 +98,9 @@ try {
     }, n);
     await page.evaluate(n => window.__QUEENS_DEBUG__.newGame(n), n);
     await page.waitForSelector('.board.look-is-animating');
-    check(`${n}×${n} 每格都有双面翻牌`, await page.locator('.look-tile-card').count() === n * n && await page.locator('.look-tile-face').count() === n * n * 2);
+    check(`${n}×${n} 每格都有固定半页与双面折页`, await page.locator('.look-tile-card').count() === n * n && await page.locator('.look-tile-face').count() === n * n * 4);
     check(`${n}×${n} 换盘从旧颜色翻到新颜色`, await page.evaluate(expected => {
-      const faces = [...document.querySelectorAll('.look-tile-face:not(.look-tile-back)')];
+      const faces = [...document.querySelectorAll('.look-fold-before .look-tile-face')];
       const n = Math.sqrt(faces.length);
       return [0, n - 1, n * (n - 1), n * n - 1].every((i, corner) => getComputedStyle(faces[i]).backgroundColor === expected[corner]);
     }, oldCorners) && await facesUseRegionColors(page));
@@ -125,10 +131,17 @@ try {
   check('通关翻图从区域原色翻出图片', await facesUseRegionColors(page, 'front'));
   check('翻图时没有礼炮或结果遮挡', await page.locator('.confetti').count() === 0 && await page.locator('#result').getAttribute('hidden') !== null);
   check('图片四角切片位置正确', await page.evaluate(() => {
-    const backs = [...document.querySelectorAll('.look-tile-back')];
+    const backs = [...document.querySelectorAll('.look-fold-after .look-tile-back')];
     const n = window.__QUEENS_DEBUG__.state.size;
     return backs[0].style.backgroundPosition === '0% 0%' && backs[n - 1].style.backgroundPosition === '100% 0%' &&
       backs[n * (n - 1)].style.backgroundPosition === '0% 100%' && backs.at(-1).style.backgroundPosition === '100% 100%';
+  }));
+  check('通关卡图两半共用完整切片尺寸和坐标', await page.evaluate(() => {
+    const card = document.querySelector('.look-tile-card');
+    const fixed = card.querySelector('.look-fold-after .look-tile-face');
+    const moving = card.querySelector('.look-fold-back .look-tile-face');
+    return Math.abs(fixed.offsetWidth - card.offsetWidth) <= 1 && Math.abs(moving.offsetWidth - card.offsetWidth) <= 1 &&
+      fixed.style.backgroundImage === moving.style.backgroundImage && fixed.style.backgroundPosition === moving.style.backgroundPosition;
   }));
   await page.waitForTimeout(340);
   await page.screenshot({ path: shots + '02-victory-flip.png' });
@@ -282,6 +295,11 @@ try {
     getComputedStyle(document.querySelector('.look-tiles')).backgroundColor === getComputedStyle(document.body).backgroundColor &&
     getComputedStyle(document.querySelector('#board')).backgroundColor === getComputedStyle(document.body).backgroundColor));
   check('逐行翻页使用横轴翻面', await stylesPage.locator('.look-tiles').evaluate(el => el.style.getPropertyValue('--look-axis') === '1, 0, 0'));
+  check('逐行翻页从上下中线折叠半格', await stylesPage.evaluate(() => {
+    const card = document.querySelector('.look-tile-card'), leaf = card.querySelector('.look-fold-leaf');
+    return Math.abs(leaf.offsetHeight * 2 - card.offsetHeight) <= 1 && leaf.offsetWidth === card.offsetWidth &&
+      getComputedStyle(leaf).transformOrigin.split(' ')[1] === '0px';
+  }));
   await settled(stylesPage);
   await pick('deal', 'ripple');
   await stylesPage.evaluate(() => window.__QUEENS_DEBUG__.retry());

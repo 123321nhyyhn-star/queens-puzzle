@@ -13,7 +13,7 @@
 looks/
   index.js                登记、分类、默认项
   effects.js              通用动作接口：选择、取消、资源与时序
-  transitions.js          斜向 / 逐行 / 涟漪翻格
+  transitions.js          斜向 / 逐行 / 涟漪对半折页
   pokemon.js              宝可梦随机藏卡插件与两种翻卡选项
   cards/catalog.js        18 种宝可梦名册与原有立绘
   cards/collection.js     独立集卡存档、一局一卡与去重领取
@@ -47,6 +47,7 @@ looks/
 基座只接通装盘前 / 后、恢复存档、胜利后和礼炮这几个调用点；具体变换、颜色、图片、粒子都在插件内。
 `core/state.js`、`game/board.js`、`styles/base/board-states.css` 和样式入口恢复为作者加入每日挑战时的原版内容。
 翻格正面使用旧棋盘的区域原色，背面使用新棋盘颜色或通关图片；已填格子的淡化纸色不进入翻牌快照。首次开盘、刷新续玩没有旧棋盘时，两面都使用当前棋盘原色。只有翻转空隙与底板使用 `--bg-body`，跟着页面背景色变化。
+每格由旧画面的固定半页、新画面的固定半页和双面翻动半页构成。斜向与涟漪模式沿左右中线折页，逐行模式沿上下中线折页；切片按完整格子尺寸绘制后裁切，两半保持原始比例。半页绕中线旋转，并叠加随折叠变化的阴影，完全展开后移除装饰层。单格动作 560ms，逐格延迟不超过 540ms。
 
 浏览器检查：`node tools/check-look-effects.mjs [url]`（Playwright；可通过 `NODE_PATH` 指向已有安装）。
 切换回归：`node tools/check-look-switching.mjs [url]`，覆盖通关后切换、静态恢复及翻图期间连续切换。

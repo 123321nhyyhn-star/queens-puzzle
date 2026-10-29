@@ -29,9 +29,9 @@ export default {
   stylesheet: new URL('./effects/cards.css', import.meta.url).href,
   mount: mountAlbum, onBoard: beginRound, onWin: awardCard,
   reveals: [
-    { id: 'pokemon', name: '镭射藏卡', desc: '从左下翻出随机宝可梦，拖动欣赏立体镭射卡', svg: preview,
+    { id: 'pokemon', name: '镭射藏卡', desc: '从左下逐格对半折页，揭开随机宝可梦藏卡', svg: preview,
       preload: () => cardPicture(CATALOG[0]), play: ctx => reveal(ctx, 'diagonal') },
-    { id: 'pokemon-ripple', name: '星河藏卡', desc: '涟漪翻出同一张本局藏卡，收藏不会重复领取', svg: preview,
+    { id: 'pokemon-ripple', name: '星河藏卡', desc: '涟漪折页揭开本局藏卡，收藏不会重复领取', svg: preview,
       preload: () => cardPicture(CATALOG[0]), play: ctx => reveal(ctx, 'ripple') }
   ]
 };
