@@ -60,16 +60,16 @@ try {
   await page.goto(url);
   await page.waitForFunction(() => window.__QUEENS_DEBUG__?.state.regions?.length);
   await settled(page);
-  await directPick(page, [['reveal', 'starlight'], ['confetti', 'hearts']]);
+  await directPick(page, [['reveal', 'pokemon-ripple'], ['confetti', 'hearts']]);
   await page.evaluate(async () => {
     const { findOf } = await import('/src/js/looks/index.js');
-    await Promise.all(['kitten', 'starlight'].map(id => findOf('reveal', id).preload()));
+    await Promise.all(['pokemon', 'pokemon-ripple'].map(id => findOf('reveal', id).preload()));
   });
   await monitor(page);
   await solve(page);
   await page.waitForSelector('#result:not([hidden])');
-  check('星光拼图通关只播放一轮星光和所选爱心礼花', await page.evaluate(() =>
-    lookEvents.sparkles === 8 && lookEvents.hearts === 1 && lookEvents.fireworks === 0 && lookEvents.results === 1));
+  check('星河藏卡通关只播放一次所选爱心礼花', await page.evaluate(() =>
+    lookEvents.sparkles === 0 && lookEvents.hearts === 1 && lookEvents.fireworks === 0 && lookEvents.results === 1));
   await page.click('#btnPeek');
   await page.waitForSelector('.look-celebration', { state: 'detached' });
   await page.evaluate(() => {
@@ -84,21 +84,21 @@ try {
   };
   for (const id of ['fireworks', 'quiet', 'hearts', 'original', 'fireworks']) await pick('confetti', id);
   check('通关后反复切换礼炮保留同一张图片', await page.evaluate(() => savedReward === document.querySelector('.look-tiles.is-reward')));
-  check('切换礼炮不重放星光、礼花或结果卡', await page.evaluate(() => Object.values(lookEvents).every(count => count === 0)));
+  check('切换礼炮不重放翻卡、礼花或结果卡', await page.evaluate(() => Object.values(lookEvents).every(count => count === 0)));
   check('切换礼炮不重复记战绩', await page.evaluate(() => savedRecords === localStorage.getItem('queens.records.v1')));
 
-  await directPick(page, [['reveal', 'kitten']]);
-  await page.waitForSelector('.look-tiles.is-reward[data-picture$="victory-kitten.webp"]');
+  await directPick(page, [['reveal', 'pokemon']]);
+  await page.waitForSelector('.poke-reward[data-mode="diagonal"]');
   await monitor(page);
-  await pick('reveal', 'starlight');
-  await page.waitForSelector('.look-tiles.is-reward[data-picture$="starlight-rabbit.webp"]');
-  check('通关后切换图片只显示静态预览，不重放星光或礼炮', await page.evaluate(() =>
+  await pick('reveal', 'pokemon-ripple');
+  await page.waitForSelector('.poke-reward[data-mode="ripple"]');
+  check('通关后切换翻卡形式只显示本局卡片，不重复礼炮', await page.evaluate(() =>
     document.querySelectorAll('.look-sparkle, .look-celebration').length === 0 && Object.values(lookEvents).every(count => count === 0)));
   await page.reload();
   await page.waitForSelector('.look-tiles.is-reward');
-  check('恢复已通关存档不会重放星光或礼炮', await page.locator('.look-sparkle, .look-celebration, .confetti').count() === 0);
+  check('恢复已通关存档不重复翻卡或礼炮', await page.locator('.look-sparkle, .look-celebration, .confetti').count() === 0);
 
-  await directPick(page, [['reveal', 'kitten'], ['confetti', 'fireworks']]);
+  await directPick(page, [['reveal', 'pokemon'], ['confetti', 'fireworks']]);
   await page.evaluate(() => window.__QUEENS_DEBUG__.retry());
   await settled(page);
   await monitor(page);
@@ -108,8 +108,8 @@ try {
   await directPick(page, [['confetti', 'quiet'], ['deal', 'wave'], ['confetti', 'hearts'], ['confetti', 'fireworks']]);
   check('翻图期间切换礼炮和开局样式不重建通关动画', await page.evaluate(() => savedReveal === document.querySelector('.look-tiles')));
   await page.waitForSelector('.look-celebration[data-kind="fireworks"]');
-  check('猫咪拼图可以搭配星芒礼炮，且在图片完成后播放', await page.evaluate(() =>
-    document.querySelector('.look-tiles.is-reward').dataset.picture.endsWith('/victory-kitten.webp') &&
+  check('镭射藏卡可以搭配星芒礼炮，且在图片完成后播放', await page.evaluate(() =>
+    !!document.querySelector('.poke-reward')?.dataset.cardId &&
     document.querySelectorAll('.look-particle').length === 48 && lookEvents.fireworks === 1 && lookEvents.hearts === 0 && lookEvents.sparkles === 0));
   await page.waitForSelector('#result:not([hidden])');
   await page.click('#btnPeek');
@@ -121,13 +121,13 @@ try {
   await monitor(page);
   await solve(page);
   await page.waitForSelector('.board.look-is-animating .look-tiles');
-  await directPick(page, [['reveal', 'starlight'], ['reveal', 'kitten'], ['reveal', 'starlight']]);
+  await directPick(page, [['reveal', 'pokemon-ripple'], ['reveal', 'pokemon'], ['reveal', 'pokemon-ripple']]);
   await page.waitForSelector('#result:not([hidden])');
   await page.click('#btnPeek');
   await page.waitForSelector('.look-celebration', { state: 'detached' });
-  check('翻图期间连续换图片最终只播放一轮星光、礼炮和结果', await page.evaluate(() =>
-    lookEvents.sparkles === 8 && lookEvents.fireworks === 1 && lookEvents.results === 1 &&
-    document.querySelector('.look-tiles.is-reward').dataset.picture.endsWith('/starlight-rabbit.webp')));
+  check('翻卡期间连续切换最终只播放一次礼炮和结果', await page.evaluate(() =>
+    lookEvents.sparkles === 0 && lookEvents.fireworks === 1 && lookEvents.results === 1 &&
+    document.querySelector('.poke-reward')?.dataset.mode === 'ripple'));
   check('浏览器无脚本错误', errors.length === 0);
   console.log(`\n${checks} checks passed.`);
 } catch (error) {

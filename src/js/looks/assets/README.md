@@ -1,22 +1,11 @@
-# 通关插画
+# 宝可梦卡面资源
 
-`victory-kitten.webp`（猫咪拼图）和 `starlight-rabbit.webp`（星光拼图）是内置 imagegen 工具生成的两张独立奖励图片，生成后仅转换为 WebP（quality 88），不依赖外部图床。
-替换时保持正方形即可，每个通关选项的预览和各尺寸棋盘都使用该选项自己的完整图片。
+原有的两张生成插画已移除，通关奖励统一使用 `pokemon/` 中的 18 张原有透明 PNG 立绘。
+这些图片不是 AI 生成，也未改绘或重采样。镭射边框、背景、反光和角色分层视差由代码绘制，不包含重新生成的宝可梦形象。
 
-皇冠猫咪生成提示词：
+- 来源：[PokéAPI sprites 的 official-artwork 目录](https://github.com/PokeAPI/sprites/tree/master/sprites/pokemon/other/official-artwork)。使用普通立绘，没有使用 custom shiny 目录。
+- 每张原图为 475 × 475 RGBA PNG；具体下载地址和 SHA-256 见 [pokemon/sources.json](pokemon/sources.json)。
+- 图片版权归 The Pokémon Company；来源仓库的 [LICENCE.txt](https://github.com/PokeAPI/sprites/blob/master/LICENCE.txt) 也保留了这一声明。来源仓库的代码/数据库许可不改变图片的版权归属。
+- 图片随项目保存，游玩时无需访问外部图床或 API。卡片名册见 `../cards/catalog.js`。
 
-> Use case: illustration-story
-> Asset type: square reward illustration for a cozy Queens logic puzzle game, revealed as a seamless mosaic across the game board after a win.
-> Primary request: one adorable round cream-and-peach kitten wearing a tiny golden queen crown, smiling with closed happy eyes, little rosy cheeks, front paws tucked close, surrounded by a few soft pastel flower and star accents.
-> Style/medium: polished charming picture-book illustration, gentle gouache texture, clean silhouette and soft dark brown contours, warm cream background, pastel peach, mint and buttery yellow accents. Suitable for all ages.
-> Composition/framing: square 1:1, kitten centered and large filling about 70 percent of the frame, crown comfortably inside the image, simple uninterrupted warm background extends edge to edge. Keep the face well readable when divided into 4x4 to 16x16 square tiles.
-> Constraints: a single continuous complete image, no grid, no tile borders, no letters, no numbers, no captions, no logos, no watermark.
-
-星空小兔生成提示词：
-
-> Use case: illustration-story
-> Asset type: square reward illustration for the Starlight picture reveal in a cozy Queens logic puzzle game.
-> Primary request: a completely distinct cute reward image: one fluffy white baby rabbit with softly lilac-tipped long ears, rosy cheeks and happy closed eyes, cuddling a glowing buttery-yellow star while resting on a large golden crescent moon. A few small twinkling stars and soft clouds around it.
-> Style/medium: polished charming picture-book gouache illustration with soft painterly texture, clean readable silhouette, tender cocoa-brown contours. Gentle pastel powder blue and lavender starry backdrop, warm cream highlights and buttery gold moon, quiet joyful mood.
-> Composition/framing: square 1:1, rabbit and crescent moon centered and large, about 75 percent of the frame, full ears and moon comfortably inside the image, background extends edge to edge. Recognizable when revealed across 4x4 through 16x16 game-board tiles.
-> Constraints: one continuous complete illustration, clearly a rabbit with long ears, no cats and no crowns, no grid, no tile borders, no words, no letters, no numbers, no logos, no watermark.
+扩展卡池时应加入有可核对来源的原有立绘，登记名册及校验值，不使用 AI 生成或 AI 改绘的宝可梦形象。

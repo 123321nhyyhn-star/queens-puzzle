@@ -13,12 +13,15 @@ let generation = 0;
 let previous = null;
 let signature = null;
 let winJob = null;
+let mounted = false;
 
 function option(kind) { return findOf(kind, settings[KIND[kind].key]); }
 function context(signal, extra = {}) {
   return Object.assign({
     n: state.size, regions: Array.from(state.regions || []), cells: view.cells.slice(),
     board: boardEl, grid: gridEl, fx: fxEl, reducedMotion: !!REDUCE_MOTION, signal,
+    won: state.status === 'won',
+    boardKey: JSON.stringify([state.size, state.seed, Array.from(state.regions || [])]),
     retain: cleanup => artifacts.add(cleanup)
   }, extra);
 }
@@ -81,6 +84,7 @@ export function prepareBoardLook() {
 }
 
 export function playBoardLook(restored = false) {
+  for (const p of PLUGIN_LIST) p.onBoard?.(context(null, { restored }));
   if (restored && state.status === 'won') return playLookEffect('reveal', { animate: false });
   const before = previous;
   previous = null;
@@ -89,6 +93,7 @@ export function playBoardLook(restored = false) {
 
 /** 胜利判定与记账仍在 win.js；插件结束之后，才继续礼炮与原版成绩卡。 */
 export function afterWinLook(callback) {
+  for (const p of PLUGIN_LIST) p.onWin?.(context(null));
   const job = { callback, marks: state.marks, generation, started: false };
   winJob = job;
   const current = () => generation === job.generation && state.marks === job.marks &&
@@ -103,6 +108,10 @@ export function afterWinLook(callback) {
 /** 外观面板即时生效；所选动作与素材都由登记项提供。 */
 export function applyEffectLooks() {
   styles();
+  if (!mounted) {
+    mounted = true;
+    for (const p of PLUGIN_LIST) p.mount?.(context(null));
+  }
   option('reveal')?.preload?.();
   const kinds = ['deal', 'reveal', 'confetti'];
   const next = Object.fromEntries(kinds.map(kind => [kind, settings[KIND[kind].key]]));

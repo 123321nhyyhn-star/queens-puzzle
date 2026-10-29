@@ -57,6 +57,7 @@ import nature from './nature.js';
 import sky from './sky.js';
 import sticker from './sticker.js';
 import transitions from './transitions.js';
+import pokemon from './pokemon.js';
 import originalEffects from './original-effects.js';
 import celebration from './celebration.js';
 
@@ -78,7 +79,7 @@ export var KINDS = ['surface', 'mark', 'piece', 'life', 'deal', 'reveal', 'confe
  * 色块图案的几套主题排在前面（面板里是同一排），墨线那套垫底：
  * 它提供的「纯色」就是没有图案的那一档。生命单独一个插件——它不在棋盘上，
  * 跟哪套纹样都没关系。 */
-var PLUGINS = [geometry, nature, sky, sticker, classic, life, transitions, originalEffects, celebration];
+var PLUGINS = [geometry, nature, sky, sticker, classic, life, transitions, pokemon, originalEffects, celebration];
 
 /* ==========================================================
    登记：把插件按类别摊平成表
@@ -96,7 +97,8 @@ for (var kind of KINDS) { LISTS[kind] = []; GROUPS[kind] = []; }
       id: plug.id || 'plugin-' + (p + 1),
       name: plug.name || plug.id || '插件 ' + (p + 1),
       note: plug.note || '',
-      stylesheet: plug.stylesheet || ''
+      stylesheet: plug.stylesheet || '',
+      mount: plug.mount, onBoard: plug.onBoard, onWin: plug.onWin
     };
     PLUGIN_LIST.push(info);
 
@@ -137,6 +139,7 @@ export function findOf(kind, id) {
 
 /** 认一个样式 id：认不出来（老存档 / 手改过 / 插件被删了）就退回这一类里的第一套。 */
 export function styleId(kind, id) {
+  if (kind === 'reveal') id = ({ kitten: 'pokemon', starlight: 'pokemon-ripple' })[id] || id;
   if (findOf(kind, id)) return id;
   var first = (LISTS[kind] || [])[0];
   return first ? first.id : '';

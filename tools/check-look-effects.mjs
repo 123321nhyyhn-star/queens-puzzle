@@ -80,14 +80,16 @@ try {
   await page.evaluate(() => { window.__QUEENS_DEBUG__.settings.fadeMark = false; });
 
   for (const n of [4, 8, 16]) {
-    const oldCorners = await page.evaluate(() => {
+    const oldCorners = await page.evaluate(nextSize => {
       const cells = [...document.querySelectorAll('#grid .cell')];
       const n = Math.sqrt(cells.length), probe = document.createElement('span');
-      return [0, n - 1, n * (n - 1), n * n - 1].map(i => {
+      // 改尺寸时按新格中心在旧棋盘中的位置取色。
+      const first = Math.floor(n / (2 * nextSize)), last = Math.floor(n - n / (2 * nextSize));
+      return [first * n + first, first * n + last, last * n + first, last * n + last].map(i => {
         probe.style.backgroundColor = getComputedStyle(cells[i]).getPropertyValue('--rc').trim();
         return probe.style.backgroundColor;
       });
-    });
+    }, n);
     await page.evaluate(n => window.__QUEENS_DEBUG__.newGame(n), n);
     await page.waitForSelector('.board.look-is-animating');
     check(`${n}×${n} 每格都有双面翻牌`, await page.locator('.look-tile-card').count() === n * n && await page.locator('.look-tile-face').count() === n * n * 2);
@@ -132,8 +134,8 @@ try {
   await page.screenshot({ path: shots + '02-victory-flip.png' });
   await page.waitForSelector('.board.look-has-reward');
   await page.screenshot({ path: shots + '03-reward.png' });
-  check('翻完合为完整图片，移除切片接缝', await page.locator('.look-tiles[role="img"]').count() === 1 && await page.locator('.look-tile-card').count() === 0);
-  check('猫咪拼图使用独立的皇冠猫咪图片', await page.locator('.look-tiles.is-reward').evaluate(el => el.dataset.picture.endsWith('/victory-kitten.webp')));
+  check('翻完合为完整图片，移除切片接缝', await page.locator('.poke-reward').count() === 1 && await page.locator('.look-tile-card').count() === 0);
+  check('通关随机获得本地宝可梦卡片', await page.locator('.look-tiles.is-reward').evaluate(el => !!el.dataset.cardId));
   await page.waitForSelector('#result:not([hidden])');
   check('图片 → 礼炮 → 成绩的顺序正确', await page.evaluate(() => window.flipEvents.join(',') === 'confetti,result'));
   await page.click('#btnPeek');
@@ -157,7 +159,7 @@ try {
   await page.evaluate(() => window.__QUEENS_DEBUG__.newGame(4));
   await page.waitForSelector('.board.look-is-animating');
   check('从奖励图换盘时翻牌正面保留原图片', await page.locator('.look-tile-face:not(.look-tile-back)').evaluateAll(faces =>
-    faces.length > 0 && faces.every(el => el.style.backgroundImage.includes('victory-kitten.webp'))));
+    faces.length > 0 && faces.every(el => el.style.backgroundImage.includes('blob:'))));
   await settled(page);
   await page.waitForTimeout(1250);
   check('礼炮后换局不会弹出旧成绩', await page.locator('#result:not([hidden]), .board.look-has-reward').count() === 0);
@@ -195,7 +197,7 @@ try {
   check('每日通关翻图前已正确记账，礼炮仍等待图片', await dailyPage.evaluate(() => window.__QUEENS_DEBUG__.daily().done.easy) && await dailyPage.locator('.confetti').count() === 0);
   await dailyPage.waitForSelector('.board.look-has-reward');
   await dailyPage.waitForSelector('#result:not([hidden])');
-  check('每日通关显示奖励图片和成绩', await dailyPage.locator('.look-tiles[role="img"]').count() === 1);
+  check('每日通关显示奖励图片和成绩', await dailyPage.locator('.poke-reward').count() === 1);
   await dailyPage.reload();
   await ready(dailyPage);
   await dailyPage.waitForSelector('.board.look-has-reward');
@@ -231,7 +233,7 @@ try {
   await quiet.screenshot({ path: shots + '04-desktop-reward.png' });
 
   const broken = await context.newPage();
-  await broken.route('**/victory-kitten.webp', route => route.abort());
+  await broken.route('**/assets/pokemon/*.png', route => route.abort());
   await broken.goto(url);
   await ready(broken);
   await settled(broken);
@@ -255,17 +257,17 @@ try {
     return ['deal', 'reveal', 'confetti'].every(kind =>
       document.querySelectorAll(`#${kind}Row .showcase`).length === listOf(kind).length);
   }));
-  check('两个拼图展柜预览使用不同的实际插画', await stylesPage.evaluate(() => {
-    const cat = document.querySelector('.showcase[data-reveal="kitten"] image')?.getAttribute('href');
-    const rabbit = document.querySelector('.showcase[data-reveal="starlight"] image')?.getAttribute('href');
-    return cat?.endsWith('/victory-kitten.webp') && rabbit?.endsWith('/starlight-rabbit.webp') && cat !== rabbit;
+  check('两种翻卡展柜使用原有宝可梦立绘', await stylesPage.evaluate(() => {
+    const diagonal = document.querySelector('.showcase[data-reveal="pokemon"] image')?.getAttribute('href');
+    const ripple = document.querySelector('.showcase[data-reveal="pokemon-ripple"] image')?.getAttribute('href');
+    return diagonal?.endsWith('/pokemon/25.png') && ripple === diagonal;
   }));
   const untouched = await stylesPage.evaluate(() => {
     const d = window.__QUEENS_DEBUG__;
     return JSON.stringify({ marks: [...d.state.marks], steps: d.state.steps, daily: d.state.daily, history: d.history() });
   });
   await pick('deal', 'wave');
-  await pick('reveal', 'starlight');
+  await pick('reveal', 'pokemon-ripple');
   await pick('confetti', 'hearts');
   check('换动画只改变外观，不改局面、撤销和每日身份', await stylesPage.evaluate(expected => {
     const d = window.__QUEENS_DEBUG__;
@@ -295,19 +297,19 @@ try {
   await settled(stylesPage);
   check('三组动画选项刷新后仍保留', await stylesPage.evaluate(() => {
     const s = window.__QUEENS_DEBUG__.settings;
-    return s.dealStyle === 'ripple' && s.revealStyle === 'starlight' && s.confettiStyle === 'hearts';
+    return s.dealStyle === 'ripple' && s.revealStyle === 'pokemon-ripple' && s.confettiStyle === 'hearts';
   }));
   await solve(stylesPage);
   await stylesPage.waitForSelector('.look-tiles[data-mode="ripple"]');
-  check('星光拼图先翻面，再发射所选爱心礼花', await stylesPage.locator('.look-celebration').count() === 0);
+  check('星河藏卡先翻面，再发射所选爱心礼花', await stylesPage.locator('.look-celebration').count() === 0);
   await stylesPage.waitForSelector('.look-has-reward');
-  check('星光拼图实际翻成星空小兔图片', await stylesPage.locator('.look-tiles.is-reward').evaluate(el =>
-    el.dataset.picture.endsWith('/starlight-rabbit.webp') && el.getAttribute('aria-label').includes('小兔')));
+  check('星河藏卡翻成本局宝可梦卡片', await stylesPage.locator('.look-tiles.is-reward').evaluate(el =>
+    !!el.dataset.cardId && el.getAttribute('aria-label').includes('宝可梦')));
   await stylesPage.waitForSelector('.look-celebration[data-kind="hearts"]');
-  check('星光拼图含星光，爱心礼花来自插件', await stylesPage.locator('.look-sparkle').count() === 8 && await stylesPage.locator('.look-particle').count() === 30 && await stylesPage.locator('.confetti').count() === 0);
+  check('藏卡含宝可梦立绘，爱心礼花来自插件', await stylesPage.locator('.poke-card-art').count() > 0 && await stylesPage.locator('.look-particle').count() === 30 && await stylesPage.locator('.confetti').count() === 0);
   await stylesPage.waitForSelector('#result:not([hidden])');
   await stylesPage.click('#btnPeek');
-  await stylesPage.screenshot({ path: shots + '05-starlight-hearts.png' });
+  await stylesPage.screenshot({ path: shots + '05-pokemon-hearts.png' });
   await pick('confetti', 'fireworks');
   await stylesPage.evaluate(async () => (await import('/src/js/ui/win.js')).burstConfetti());
   await stylesPage.waitForSelector('.look-celebration[data-kind="fireworks"]');
@@ -343,7 +345,7 @@ try {
   await ready(stylesPage);
   check('插件选项丢失时按登记顺序退回默认', await stylesPage.evaluate(() => {
     const s = window.__QUEENS_DEBUG__.settings;
-    return s.dealStyle === 'diagonal' && s.revealStyle === 'kitten' && s.confettiStyle === 'original';
+    return s.dealStyle === 'diagonal' && s.revealStyle === 'pokemon' && s.confettiStyle === 'original';
   }));
   check('浏览器无脚本错误', errors.length === 0);
   console.log(`\n${checks} checks passed. Screenshots: ${shots}`);
