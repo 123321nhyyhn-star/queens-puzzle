@@ -29,6 +29,15 @@ const direction = page => page.evaluate(() => {
   const n = window.__QUEENS_DEBUG__.state.size;
   return [0, n - 1, n * (n - 1), n * n - 1].map(i => parseFloat(cards[i].style.getPropertyValue('--look-delay')));
 });
+const facesUseRegionColors = (page, side = 'back') => page.evaluate(side => {
+  const probe = document.createElement('span');
+  const cells = [...document.querySelectorAll('#grid .cell')];
+  const faces = [...document.querySelectorAll(side === 'back' ? '.look-tile-back' : '.look-tile-face:not(.look-tile-back)')];
+  return faces.length === cells.length && faces.every((face, i) => {
+    probe.style.backgroundColor = getComputedStyle(cells[i]).getPropertyValue('--rc').trim();
+    return getComputedStyle(face).backgroundColor === probe.style.backgroundColor;
+  });
+}, side);
 
 try {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
@@ -39,6 +48,8 @@ try {
   await page.waitForSelector('.board.look-is-animating');
   let corners = await direction(page);
   check('开局从左上到右下推进', corners[0] === 0 && corners[1] === corners[2] && corners[3] > corners[1]);
+  check('初次开局翻牌正面保留区域原色', await facesUseRegionColors(page, 'front'));
+  check('初次开局翻牌背面使用实际格子颜色', await facesUseRegionColors(page));
   check('翻格时拦住鼠标、键盘落子', await page.evaluate(async () => {
     const { onCell, placeQueen, canPlay } = await import('/src/js/app/actions.js');
     onCell(0); placeQueen(1);
@@ -54,10 +65,37 @@ try {
   check('重试翻面保留旧棋盘的正面', Number(await page.locator('.look-tile-face').first().evaluate(el => el.style.getPropertyValue('--look-mark'))) > .9);
   await settled(page);
 
+  await page.evaluate(async () => {
+    const d = window.__QUEENS_DEBUG__;
+    d.settings.fadeMark = true;
+    (await import('/src/js/app/actions.js')).onCell(0);
+    (await import('/src/js/ui/fade.js')).applyFadeNow();
+  });
+  await page.waitForTimeout(350);
+  check('已填格子的淡化效果仍然保留', await page.locator('.cell').first().evaluate(el =>
+    getComputedStyle(el).backgroundColor === getComputedStyle(document.body).backgroundColor));
+  await page.evaluate(() => window.__QUEENS_DEBUG__.retry());
+  check('淡化过的旧格子翻转时仍使用区域原色', await facesUseRegionColors(page, 'front'));
+  await settled(page);
+  await page.evaluate(() => { window.__QUEENS_DEBUG__.settings.fadeMark = false; });
+
   for (const n of [4, 8, 16]) {
+    const oldCorners = await page.evaluate(() => {
+      const cells = [...document.querySelectorAll('#grid .cell')];
+      const n = Math.sqrt(cells.length), probe = document.createElement('span');
+      return [0, n - 1, n * (n - 1), n * n - 1].map(i => {
+        probe.style.backgroundColor = getComputedStyle(cells[i]).getPropertyValue('--rc').trim();
+        return probe.style.backgroundColor;
+      });
+    });
     await page.evaluate(n => window.__QUEENS_DEBUG__.newGame(n), n);
     await page.waitForSelector('.board.look-is-animating');
     check(`${n}×${n} 每格都有双面翻牌`, await page.locator('.look-tile-card').count() === n * n && await page.locator('.look-tile-face').count() === n * n * 2);
+    check(`${n}×${n} 换盘从旧颜色翻到新颜色`, await page.evaluate(expected => {
+      const faces = [...document.querySelectorAll('.look-tile-face:not(.look-tile-back)')];
+      const n = Math.sqrt(faces.length);
+      return [0, n - 1, n * (n - 1), n * n - 1].every((i, corner) => getComputedStyle(faces[i]).backgroundColor === expected[corner]);
+    }, oldCorners) && await facesUseRegionColors(page));
     corners = await direction(page);
     check(`${n}×${n} 波程不超过 540ms`, corners[3] <= 540);
     await settled(page);
@@ -82,6 +120,7 @@ try {
   await page.waitForSelector('.look-tiles[data-direction="bottom-left"]');
   corners = await direction(page);
   check('胜利从左下到右上推进', corners[2] === 0 && corners[0] === corners[3] && corners[1] > corners[0]);
+  check('通关翻图从区域原色翻出图片', await facesUseRegionColors(page, 'front'));
   check('翻图时没有礼炮或结果遮挡', await page.locator('.confetti').count() === 0 && await page.locator('#result').getAttribute('hidden') !== null);
   check('图片四角切片位置正确', await page.evaluate(() => {
     const backs = [...document.querySelectorAll('.look-tile-back')];
@@ -116,6 +155,9 @@ try {
   await solve(page);
   await page.waitForSelector('.board.look-has-reward');
   await page.evaluate(() => window.__QUEENS_DEBUG__.newGame(4));
+  await page.waitForSelector('.board.look-is-animating');
+  check('从奖励图换盘时翻牌正面保留原图片', await page.locator('.look-tile-face:not(.look-tile-back)').evaluateAll(faces =>
+    faces.length > 0 && faces.every(el => el.style.backgroundImage.includes('victory-kitten.webp'))));
   await settled(page);
   await page.waitForTimeout(1250);
   check('礼炮后换局不会弹出旧成绩', await page.locator('#result:not([hidden]), .board.look-has-reward').count() === 0);
@@ -124,6 +166,7 @@ try {
   await page.reload({ waitUntil: 'domcontentloaded' });
   await ready(page);
   await page.waitForSelector('.board.look-is-animating');
+  check('刷新续玩翻牌两面保留当前格子原色', await facesUseRegionColors(page, 'front') && await facesUseRegionColors(page));
   await settled(page);
   check('刷新续玩也翻格，并保留进度', await page.evaluate(() => window.__QUEENS_DEBUG__.state.marks[0] === 1 && window.__QUEENS_DEBUG__.state.steps === 1));
 

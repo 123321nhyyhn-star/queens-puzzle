@@ -25,7 +25,9 @@ export function captureTiles(ctx) {
     if (c < n - 1 && ctx.regions[i + 1] !== g) edges += `M${size} 0V${size}`;
     return {
       html: cell.innerHTML + `<svg class="look-tile-borders" viewBox="0 0 ${size} ${size}" preserveAspectRatio="none"><path d="${edges}" stroke-width="${line}"/></svg>`,
-      color: css.backgroundColor, shadow: css.boxShadow, ink: css.getPropertyValue('--rc-ink'),
+      // 翻牌使用区域原色，不把已填格子的淡化纸色带到牌面上。
+      color: css.getPropertyValue('--rc').trim() || css.backgroundColor,
+      shadow: css.boxShadow, ink: css.getPropertyValue('--rc-ink'),
       veil: ctx.grid.classList.contains('has-skin') ? css.getPropertyValue('--sk-veil') || '1' : '0',
       mark: cell.matches('.is-x, .is-auto') ? getComputedStyle(cell.querySelector('.mark')).opacity : '0',
       piece: cell.classList.contains('is-q') ? '1' : '0'
@@ -63,8 +65,9 @@ export async function flipTiles(ctx, options) {
   if (!reward && !animated) return true;
   // 作者原有的 deal 类保留在基座，只有选中本插件时才让它让位。
   for (const cell of ctx.cells) cell.classList.remove('deal');
-  const previous = reward ? captureTiles(ctx) : ctx.previous;
   const next = reward ? { image: options.picture } : captureTiles(ctx);
+  // 首次开盘和刷新续玩没有旧快照，两面都从当前的有色棋盘取画面。
+  const previous = (reward ? captureTiles(ctx) : ctx.previous) || next;
   const layer = document.createElement('div');
   layer.className = 'look-tiles';
   layer.dataset.mode = options.mode;

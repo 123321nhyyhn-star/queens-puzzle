@@ -31,7 +31,7 @@ looks/
 
 基座只接通装盘前 / 后、恢复存档、胜利后和礼炮这几个调用点；具体变换、颜色、图片、粒子都在插件内。
 `core/state.js`、`game/board.js`、`styles/base/board-states.css` 和样式入口恢复为作者加入每日挑战时的原版内容。
-翻格的空隙、空白面及底板均使用 `--bg-body`，跟着页面背景色变化。
+翻格正面使用旧棋盘的区域原色，背面使用新棋盘颜色或通关图片；已填格子的淡化纸色不进入翻牌快照。首次开盘、刷新续玩没有旧棋盘时，两面都使用当前棋盘原色。只有翻转空隙与底板使用 `--bg-body`，跟着页面背景色变化。
 
 浏览器检查：`node tools/check-look-effects.mjs [url]`（Playwright；可通过 `NODE_PATH` 指向已有安装）。
 切换回归：`node tools/check-look-switching.mjs [url]`，覆盖通关后切换、静态恢复及翻图期间连续切换。

@@ -1,5 +1,5 @@
-/* 翻面插件专用样式；背景吃页面令牌，翻转间隙不会露出白底。 */
-.board.look-is-animating, .look-tiles, .look-tile-face { background-color: var(--bg-body); }
+/* 翻牌正反面使用棋盘快照的原色，只有翻转间隙与底板使用页面背景。 */
+.board.look-is-animating, .look-tiles { background-color: var(--bg-body); }
 .board.look-is-animating > :not(.look-tiles):not(.skin-defs),
 .board.look-has-reward > :not(.look-tiles):not(.skin-defs) { visibility: hidden; }
 .look-tiles {
