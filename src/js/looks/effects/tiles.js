@@ -82,9 +82,7 @@ export async function flipTiles(ctx, options) {
   layer.dataset.direction = options.mode === 'ripple' ? 'center' : reward ? 'bottom-left' : 'top-left';
   layer.setAttribute('aria-hidden', 'true');
   layer.style.setProperty('--look-n', ctx.n);
-  layer.dataset.fold = options.mode === 'wave' ? 'horizontal' : 'vertical';
-  const axis = options.mode === 'wave' ? '1, 0, 0' : '0, 1, 0';
-  layer.style.setProperty('--look-axis', axis);
+  layer.dataset.fold = 'right-to-left';
   const maxDistance = options.mode === 'ripple' ? Math.hypot((ctx.n - 1) / 2, (ctx.n - 1) / 2) : 2 * (ctx.n - 1);
   const gap = Math.min(65, 540 / Math.max(1, maxDistance));
   let lastDelay = 0;
@@ -99,7 +97,7 @@ export async function flipTiles(ctx, options) {
     const delay = distance * gap;
     lastDelay = Math.max(lastDelay, delay);
     card.style.setProperty('--look-delay', `${delay}ms`);
-    // 静止的旧左/上半、新右/下半，加上绕中线翻动的双面半页。
+    // 左半页固定，右半页像书页一样绕竖直中线向左翻动。
     const leaf = document.createElement('span');
     leaf.className = 'look-fold-leaf';
     leaf.append(

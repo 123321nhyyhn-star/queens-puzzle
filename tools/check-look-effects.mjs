@@ -294,11 +294,12 @@ try {
   check('翻格间隙与页面背景颜色相同，跟随主题令牌', await stylesPage.evaluate(() =>
     getComputedStyle(document.querySelector('.look-tiles')).backgroundColor === getComputedStyle(document.body).backgroundColor &&
     getComputedStyle(document.querySelector('#board')).backgroundColor === getComputedStyle(document.body).backgroundColor));
-  check('逐行翻页使用横轴翻面', await stylesPage.locator('.look-tiles').evaluate(el => el.style.getPropertyValue('--look-axis') === '1, 0, 0'));
-  check('逐行翻页从上下中线折叠半格', await stylesPage.evaluate(() => {
+  check('逐行模式同样从右半格向左翻页', await stylesPage.locator('.look-tiles').evaluate(el => el.dataset.fold === 'right-to-left'));
+  check('逐行翻页只移动右半格，左半格固定', await stylesPage.evaluate(() => {
     const card = document.querySelector('.look-tile-card'), leaf = card.querySelector('.look-fold-leaf');
-    return Math.abs(leaf.offsetHeight * 2 - card.offsetHeight) <= 1 && leaf.offsetWidth === card.offsetWidth &&
-      getComputedStyle(leaf).transformOrigin.split(' ')[1] === '0px';
+    return Math.abs(leaf.offsetWidth * 2 - card.offsetWidth) <= 1 && leaf.offsetHeight === card.offsetHeight &&
+      Math.abs(leaf.offsetLeft * 2 - card.offsetWidth) <= 1 && getComputedStyle(leaf).transformOrigin.split(' ')[0] === '0px' &&
+      getComputedStyle(card.querySelector('.look-fold-before')).transform === 'none';
   }));
   await settled(stylesPage);
   await pick('deal', 'ripple');

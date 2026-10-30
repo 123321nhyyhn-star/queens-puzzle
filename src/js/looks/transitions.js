@@ -9,11 +9,11 @@ export default {
   id: 'transitions', name: '翻面', note: '翻格只改变画法',
   stylesheet: new URL('./effects/tiles.css', import.meta.url).href,
   deals: [
-    { id: 'diagonal', name: '斜向折页', desc: '左右对半折页，从左上推进到右下', svg: icon('diagonal'),
+    { id: 'diagonal', name: '斜向折页', desc: '右半页向左翻，从左上推进到右下', svg: icon('diagonal'),
       capture: captureTiles, play: ctx => flipTiles(ctx, { mode: 'diagonal' }) },
-    { id: 'wave', name: '逐行翻页', desc: '上下对半折页，逐行向下推进', svg: icon('wave'),
+    { id: 'wave', name: '逐行翻页', desc: '右半页向左翻，逐行向下推进', svg: icon('wave'),
       capture: captureTiles, play: ctx => flipTiles(ctx, { mode: 'wave' }) },
-    { id: 'ripple', name: '涟漪折页', desc: '从中央向四周逐格对半折页', svg: icon('ripple'),
+    { id: 'ripple', name: '涟漪折页', desc: '右半页向左翻，从中央向四周推进', svg: icon('ripple'),
       capture: captureTiles, play: ctx => flipTiles(ctx, { mode: 'ripple' }) }
   ]
 };
