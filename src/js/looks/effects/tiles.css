@@ -13,6 +13,11 @@
 .look-tile-card {
   position: absolute; inset: 0; transform-style: preserve-3d;
 }
+/* 折痕只画一条固定在中轴的细线，不使用阴影或渐变。 */
+.look-tile-card::after {
+  content: ''; position: absolute; top: 0; bottom: 0; left: 50%; width: 1px;
+  background: var(--ink); opacity: .32; z-index: 2; pointer-events: none;
+}
 .look-fold-half { position: absolute; display: block; overflow: hidden; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
 .look-fold-before, .look-fold-after { width: 50%; height: 100%; top: 0; }
 .look-fold-before { left: 0; }
