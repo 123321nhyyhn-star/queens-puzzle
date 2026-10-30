@@ -27,12 +27,6 @@
 .look-fold-half > .look-tile-face { width: 200%; height: 100%; top: 0; }
 .look-fold-half[data-half="first"] > .look-tile-face { left: 0; }
 .look-fold-half[data-half="second"] > .look-tile-face { left: -100%; }
-.look-fold-front::after, .look-fold-back::after {
-  content: ''; position: absolute; inset: 0; pointer-events: none;
-  background: linear-gradient(to right, #241a3a66, transparent 80%);
-  animation: lookFoldShade 560ms ease-in-out var(--look-delay) both;
-}
-.look-fold-back::after { animation-name: lookUnfoldShade; }
 .look-tiles[data-fold="horizontal"] .look-fold-before,
 .look-tiles[data-fold="horizontal"] .look-fold-after { width: 100%; height: 50%; left: 0; right: auto; }
 .look-tiles[data-fold="horizontal"] .look-fold-after { top: 50%; }
@@ -43,8 +37,6 @@
 .look-tiles[data-fold="horizontal"] .look-fold-half > .look-tile-face { width: 100%; height: 200%; left: 0; }
 .look-tiles[data-fold="horizontal"] .look-fold-half[data-half="first"] > .look-tile-face { top: 0; }
 .look-tiles[data-fold="horizontal"] .look-fold-half[data-half="second"] > .look-tile-face { top: -100%; }
-.look-tiles[data-fold="horizontal"] .look-fold-front::after,
-.look-tiles[data-fold="horizontal"] .look-fold-back::after { background: linear-gradient(to bottom, #241a3a66, transparent 80%); }
 .look-tile-face {
   position: absolute; inset: 0; display: block; overflow: hidden;
   backface-visibility: hidden; -webkit-backface-visibility: hidden;
@@ -75,8 +67,6 @@
 .showcase[data-deal]:hover .sc-item { animation: lookPreview .9s ease-in-out; }
 @keyframes lookPageFold { from { transform: rotateY(0deg); } to { transform: rotateY(-180deg); } }
 @keyframes lookPageFoldUp { from { transform: rotateX(0deg); } to { transform: rotateX(180deg); } }
-@keyframes lookFoldShade { 0%, 100% { opacity: 0; } 45% { opacity: 1; } }
-@keyframes lookUnfoldShade { 0%, 45%, 100% { opacity: 0; } 55% { opacity: 1; } }
 @keyframes lookStar {
   0%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(.3) rotate(0); }
   20%, 65% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(25deg); }
